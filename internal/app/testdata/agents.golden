@@ -1,0 +1,4 @@
+Runtime: NOT AVAILABLE (runtime: unavailable: herdr version: exit -1: exec: "caffe-golden-no-such-runtime": executable file not found in $PATH)
+
+AGENT                KIND    ROLE       RUN       PANE   RUNTIME STATUS
+cbbbb0001-developer  claude  developer  bbbbbbbb  w3:p1  unknown (runtime: unavailable: herdr agent get: exit -1: exec: "caffe-golden-no-such-runtime": executable file not found in $PATH)

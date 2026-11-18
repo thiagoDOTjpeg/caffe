@@ -1,0 +1,7 @@
+Run bbbbbbbb-2222-2222-2222-222222222222  executing  Refactor the config loader
+  TASK      ROLE        STATUS     TRY  DEPENDS ON  DETAIL
+  research  researcher  completed  1/3              
+  impl      developer   blocked    1/3  research    agent is waiting for human input in its Herdr pane
+  docs      developer   ready      0/3              queued: at most 3 agents run at once
+  review    reviewer    pending    0/3  impl,docs   waiting on impl (blocked), docs (ready)
+
