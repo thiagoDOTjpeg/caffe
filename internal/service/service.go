@@ -108,6 +108,12 @@ type ExecutionDetail struct {
 	RunID     string
 	Agent     *c.Agent      // nil for validation commands
 	Artifacts []*c.Artifact // of the execution's task
+	// Report is the execution's own report (its directory), else the task's
+	// latest; nil when none was delivered or it is unreadable.
+	Report *c.Report
+	// ClaimsUnverified: Report.Tests are the agent's claims
+	// (contracts.LabelClaimed); see core.ClaimsUnverified.
+	ClaimsUnverified bool
 }
 
 type ArtifactContent struct {
@@ -260,12 +266,48 @@ func (s *Service) Execution(ctx context.Context, id string) (*ExecutionDetail, e
 			d.Agent = &a
 		}
 	}
+	var own, latest string // report paths
 	for _, a := range snap.Artifacts {
-		if a.TaskID == ex.TaskID {
-			d.Artifacts = append(d.Artifacts, a)
+		if a.TaskID != ex.TaskID {
+			continue
+		}
+		d.Artifacts = append(d.Artifacts, a)
+		if a.Type == c.ArtifactReport {
+			latest = a.Path
+			if ex.AgentID != "" && filepath.Dir(a.Path) == filepath.Dir(ex.Prompt) {
+				own = a.Path // agent files share the directory of prompt.md
+			}
 		}
 	}
+	if own == "" {
+		own = latest
+	}
+	if own != "" && within(own, s.cfg.ArtifactDir()) {
+		d.Report = core.LoadReport(own)
+	}
+	execs := make([]*c.Execution, len(snap.Executions))
+	for i := range snap.Executions {
+		execs[i] = &snap.Executions[i].Execution
+	}
+	d.ClaimsUnverified = core.ClaimsUnverified(d.Role, execs, ex.TaskID)
 	return d, nil
+}
+
+// ReadPrompt returns up to max bytes of what an execution was asked: the
+// prompt file of an agent execution, or the command line of a validation
+// command.
+func (s *Service) ReadPrompt(ctx context.Context, executionID string, max int64) (*ArtifactContent, error) {
+	ex, _, err := s.store.GetExecution(ctx, executionID)
+	if err != nil {
+		return nil, notFound(err)
+	}
+	if (ex.AgentID == "" && ex.ExitCode != nil) || !filepath.IsAbs(ex.Prompt) {
+		return &ArtifactContent{Text: runtime.Redact(ex.Prompt), Size: int64(len(ex.Prompt))}, nil
+	}
+	if !within(ex.Prompt, s.cfg.ArtifactDir()) {
+		return nil, fmt.Errorf("execution %s: prompt points outside the artifact directory: %s", executionID, ex.Prompt)
+	}
+	return readBounded(ex.Prompt, max)
 }
 
 // ReadArtifact returns up to max bytes of an artifact's file, redacted. Only
@@ -283,7 +325,21 @@ func (s *Service) ReadArtifact(ctx context.Context, id string, max int64) (*Arti
 	if !within(a.Path, s.cfg.ArtifactDir()) && !within(a.Path, s.cfg.Git.WorktreeDirectory) {
 		return nil, fmt.Errorf("artifact %s points outside the project's artifact and worktree directories: %s", id, a.Path)
 	}
-	f, err := os.Open(a.Path)
+	out, err := readBounded(a.Path, max)
+	if err != nil {
+		return nil, fmt.Errorf("artifact %s: %w", id, err)
+	}
+	out.Artifact = a
+	return out, nil
+}
+
+// readBounded reads up to max bytes of a regular file, redacted. The caller
+// has checked that path is one Caffè may read.
+func readBounded(path string, max int64) (*ArtifactContent, error) {
+	if max <= 0 {
+		return nil, fmt.Errorf("max must be positive, got %d", max)
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -293,13 +349,13 @@ func (s *Service) ReadArtifact(ctx context.Context, id string, max int64) (*Arti
 		return nil, err
 	}
 	if !fi.Mode().IsRegular() {
-		return nil, fmt.Errorf("artifact %s is not a regular file", id)
+		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
 	buf, err := io.ReadAll(io.LimitReader(f, max))
 	if err != nil {
 		return nil, err
 	}
-	return &ArtifactContent{Artifact: a, Size: fi.Size(), Truncated: fi.Size() > max,
+	return &ArtifactContent{Size: fi.Size(), Truncated: fi.Size() > max,
 		Text: runtime.Redact(strings.ToValidUTF8(string(buf), "�"))}, nil
 }
 

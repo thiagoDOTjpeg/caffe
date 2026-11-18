@@ -17,6 +17,9 @@ type source interface {
 	RunSnapshot(ctx context.Context, runID string) (*service.RunView, error)
 	EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error)
 	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
+	Execution(ctx context.Context, id string) (*service.ExecutionDetail, error)
+	ReadPrompt(ctx context.Context, executionID string, max int64) (*service.ArtifactContent, error)
+	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)
 }
 
 // Timings of architecture §7. Variables so tests can shrink them.

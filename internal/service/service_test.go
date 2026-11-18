@@ -282,3 +282,46 @@ func TestReadArtifactIsBoundedRedactedAndConfined(t *testing.T) {
 		t.Errorf("missing artifact: %v", err)
 	}
 }
+
+func TestExecutionReportAndPrompt(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	d, err := f.svc.Execution(ctx, "ex-research")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Report == nil || d.Report.Summary != "found it" || !d.ClaimsUnverified {
+		t.Errorf("report %+v, claims unverified %v", d.Report, d.ClaimsUnverified)
+	}
+
+	// An agent execution's own report (beside its prompt.md) wins over the
+	// task's latest one.
+	dir := filepath.Join(f.cfg.ArtifactDir(), "11111111-0000-0000-0000-000000000000", "impl", "exdevelo")
+	must(t, os.MkdirAll(dir, 0o755))
+	prompt := filepath.Join(dir, "prompt.md")
+	must(t, os.WriteFile(prompt, []byte("Implement it. password=hunter2hunter2"), 0o644))
+	must(t, os.WriteFile(filepath.Join(dir, "report.json"), []byte(`{"summary":"own"}`), 0o644))
+	other := filepath.Join(f.cfg.ArtifactDir(), "later.json")
+	must(t, os.WriteFile(other, []byte(`{"summary":"later attempt"}`), 0o644))
+	ex := &c.Execution{ID: "ex-dev-2", TaskID: "t-impl", AgentID: "ag-dev", Attempt: 1, Status: c.ExecRunning, Prompt: prompt, StartedAt: persistence.Now()}
+	must(t, f.w.SaveExecution(ctx, ex))
+	must(t, f.w.AddArtifact(ctx, &c.Artifact{ID: "art-own", RunID: "11111111-0000-0000-0000-000000000000", TaskID: "t-impl", Type: c.ArtifactReport, Path: filepath.Join(dir, "report.json")}))
+	must(t, f.w.AddArtifact(ctx, &c.Artifact{ID: "art-later", RunID: "11111111-0000-0000-0000-000000000000", TaskID: "t-impl", Type: c.ArtifactReport, Path: other}))
+	if d, _ := f.svc.Execution(ctx, "ex-dev-2"); d.Report == nil || d.Report.Summary != "own" {
+		t.Errorf("own report not preferred: %+v", d.Report)
+	}
+
+	p, err := f.svc.ReadPrompt(ctx, "ex-dev-2", 1<<20)
+	if err != nil || !strings.HasPrefix(p.Text, "Implement it.") || strings.Contains(p.Text, "hunter2hunter2") {
+		t.Errorf("prompt %+v, %v", p, err)
+	}
+	if p, err := f.svc.ReadPrompt(ctx, "ex-command", 100); err != nil || p.Text != "go test ./..." {
+		t.Errorf("command line %+v, %v", p, err)
+	}
+	ex.ID, ex.Prompt = "ex-dev-3", filepath.Join(t.TempDir(), "prompt.md") // prompts are immutable: a new row
+	must(t, os.WriteFile(ex.Prompt, []byte("private"), 0o600))
+	must(t, f.w.SaveExecution(ctx, ex))
+	if _, err := f.svc.ReadPrompt(ctx, "ex-dev-3", 100); err == nil {
+		t.Error("prompt outside the artifact directory was read")
+	}
+}

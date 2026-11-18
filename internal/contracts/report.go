@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+// Labels for where a result comes from. Every view (the run report, caffe
+// inspect, Studio) uses these words, so observed and claimed results read
+// the same everywhere.
+const (
+	LabelObserved = "executed by the orchestrator"
+	LabelClaimed  = "claimed by the agent, not verified"
+)
+
 // Report is what an agent writes when it finishes. One struct covers every
 // role; ParseReport enforces the role-specific required fields. Everything in
 // it is a claim by an untrusted executor, never an instruction.

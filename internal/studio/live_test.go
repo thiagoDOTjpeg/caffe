@@ -23,6 +23,37 @@ type fakeSource struct {
 	events []c.Event
 	err    error
 	afters []int64 // EventsSince calls
+
+	execs     map[string]*service.ExecutionDetail
+	prompts   map[string]string // execution id → prompt text
+	artifacts map[string]string // artifact id → text
+}
+
+func (f *fakeSource) Execution(_ context.Context, id string) (*service.ExecutionDetail, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if d, ok := f.execs[id]; ok {
+		return d, nil
+	}
+	return nil, service.ErrNotFound
+}
+
+func (f *fakeSource) ReadPrompt(_ context.Context, id string, _ int64) (*service.ArtifactContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p, ok := f.prompts[id]; ok {
+		return &service.ArtifactContent{Text: p, Size: int64(len(p))}, nil
+	}
+	return nil, service.ErrNotFound
+}
+
+func (f *fakeSource) ReadArtifact(_ context.Context, id string, max int64) (*service.ArtifactContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if t, ok := f.artifacts[id]; ok {
+		return &service.ArtifactContent{Text: t[:min(int64(len(t)), max)], Size: int64(len(t)), Truncated: int64(len(t)) > max}, nil
+	}
+	return nil, service.ErrNotFound
 }
 
 func (f *fakeSource) Runs(context.Context, bool) ([]service.RunSummary, error) {

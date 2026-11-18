@@ -35,6 +35,7 @@ type model struct {
 	runs    runsView
 	tasks   tasksView
 	agents  agentsView
+	inspect *inspector // nil: closed
 	now     func() time.Time
 	project Project
 	guard   *crashGuard
@@ -79,8 +80,16 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
 		return m.key(msg) // every key goes through the action registry
-	case changeMsg, refreshMsg, loadedMsg:
+	case loadedMsg:
+		next, cmd := m.updateLive(msg)
+		if msg.err == nil {
+			cmd = tea.Batch(cmd, next.refreshInspector())
+		}
+		return next, cmd
+	case changeMsg, refreshMsg:
 		return m.updateLive(msg)
+	case inspectedMsg:
+		return m.updateInspector(msg)
 	case healthMsg, healthTickMsg:
 		return m.updateHealth(msg)
 	}
@@ -115,14 +124,16 @@ func (m model) view() tea.View {
 		if stale != "" {
 			h--
 		}
-		switch m.screen {
-		case screenOverview:
+		switch {
+		case m.inspect != nil:
+			main = m.inspectorScreen(l.Main.W, h)
+		case m.screen == screenOverview:
 			main = m.overviewScreen(h)
-		case screenTasks:
+		case m.screen == screenTasks:
 			main = m.tasksScreen(l.Main.W, h)
-		case screenAgents:
+		case m.screen == screenAgents:
 			main = m.agentsScreen(l.Main.W, h)
-		case screenRuns:
+		case m.screen == screenRuns:
 			main = m.runsScreen(l.Main.W)
 		}
 		if stale != "" {

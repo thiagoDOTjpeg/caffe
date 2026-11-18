@@ -305,8 +305,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · M · Depends:** CC-05 · **Acceptance:** visual states from F-07; sort order per §2.3.
 - **Done.** Order: blocked/lost, working/waiting, interrupted, starting, idle, finished; ties keep snapshot order. Focused card has a double border; `h/l` across, `j/k` by row; cursor by agent id. Avatars are PO-01; "idle for …" on Waiting needs runtime status (CC-15); card actions come with CC-11/CC-15/CC-16.
 
-### CC-11 · Execution Inspector
+### [x] CC-11 · Execution Inspector
 - **P0 · M · Depends:** CC-05 · **Acceptance:** Report/Prompt/Output/Artifacts/Events tabs; observed vs claimed labels identical to `caffe inspect`.
+- **Done.** Opened with `enter` on a Task Board card (latest execution) or `i` on an agent card; `tab`/`h l` switch tabs, `j k ctrl+d ctrl+u` scroll, `esc` closes. Labels are `contracts.LabelObserved`/`LabelClaimed`, shared with the run report. Service: `ExecutionDetail.Report` (the execution's own report, beside its `prompt.md`, else the task's latest) + `ClaimsUnverified`, and `ReadPrompt` (confined to the artifact directory). Running executions reload on each change; Events tab is over the in-memory feed.
 
 ### CC-12 · Events panel with filters
 - **P0 · S · Depends:** CC-05 · **Acceptance:** filter by task and type; scroll back loads older pages.

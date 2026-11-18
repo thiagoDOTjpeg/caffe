@@ -14,6 +14,8 @@ var special = map[string]tea.Key{
 	"backspace": {Code: tea.KeyBackspace},
 	"up":        {Code: tea.KeyUp},
 	"down":      {Code: tea.KeyDown},
+	"tab":       {Code: tea.KeyTab},
+	"shift+tab": {Code: tea.KeyTab, Mod: tea.ModShift},
 }
 
 // keyPress builds the message for a key name like "q", "ctrl+c" or "space",

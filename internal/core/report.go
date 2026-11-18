@@ -106,7 +106,7 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 				reportPath = a.Path
 			}
 		}
-		if rep := loadReport(reportPath); rep != nil {
+		if rep := LoadReport(reportPath); rep != nil {
 			w("")
 			w("%s", rep.Summary)
 			if rep.Approved != nil {
@@ -120,9 +120,9 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 				}
 				w("- [%s] %s %s", f.Severity, ifNonEmpty("`", loc, "` —"), oneLine(f.Description))
 			}
-			if t.Role != c.RoleValidator || !orchestratorRan(execs, t.ID) {
+			if ClaimsUnverified(t.Role, execs, t.ID) {
 				for _, r := range rep.Tests {
-					w("- claimed by the agent, not verified: `%s` → exit %d", r.Command, r.ExitCode)
+					w("- %s: `%s` → exit %d", c.LabelClaimed, r.Command, r.ExitCode)
 				}
 			}
 			for _, l := range rep.Limitations {
@@ -138,7 +138,7 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 				dur = e.CompletedAt.Sub(e.StartedAt).Round(time.Second).String()
 			}
 			if e.ExitCode != nil {
-				w("- Command `%s` → **exit %d** (%s, executed by the orchestrator)%s", e.Prompt, *e.ExitCode, dur, ifNonEmpty(" — ", e.Error))
+				w("- Command `%s` → **exit %d** (%s, %s)%s", e.Prompt, *e.ExitCode, dur, c.LabelObserved, ifNonEmpty(" — ", e.Error))
 				continue
 			}
 			who := "agent"
@@ -177,16 +177,23 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 	return b.String(), nil
 }
 
-func orchestratorRan(execs []*c.Execution, taskID string) bool {
+// ClaimsUnverified: the test results in a task's report are only the agent's
+// claims. A validator task whose commands the orchestrator ran has observed
+// exit codes instead, so its report's tests are not shown as claims.
+func ClaimsUnverified(role c.Role, execs []*c.Execution, taskID string) bool {
+	if role != c.RoleValidator {
+		return true
+	}
 	for _, e := range execs {
 		if e.TaskID == taskID && e.ExitCode != nil {
-			return true
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-func loadReport(path string) *c.Report {
+// LoadReport reads a stored report; nil when it is missing or unreadable.
+func LoadReport(path string) *c.Report {
 	if path == "" {
 		return nil
 	}

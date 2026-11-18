@@ -1,0 +1,40 @@
+[1;38;2;197;162;123mcaffè ─ demo ─ run 0112dd6a · reviewing ── 2/6 tasks ── ● runtime 0.9.5                                                 [m
+  1 Overview         [38;2;169;149;131m│[m Execution exreview · review · attempt 1 · reviewer · claude                                      
+[1;38;2;197;162;123m▸ 2 Tasks            [m[38;2;169;149;131m│[m status completed · 14:11:03 → 14:11:30 (27s) · agent c8eccebbd-reviewer                          
+  3 Agents           [38;2;169;149;131m│[m runtime  workspace w3 · pane w3:p1 · terminal term_66aa77b                                       
+  4 Runs             [38;2;169;149;131m│[m [Report]  Prompt  Output  Artifacts  Events   (tab / shift+tab · j/k scroll · esc close)         
+  5 Workspace        [38;2;169;149;131m│[m                                                                                                  
+  6 Terminals        [38;2;169;149;131m│[m [38;2;141;181;128m✓ approved (reviewer recommendation)[m                                                             
+                     [38;2;169;149;131m│[m Summary  Read changes.diff and checked it against the worktree                                   
+                     [38;2;169;149;131m│[m Tests                                                                                            
+                     [38;2;169;149;131m│[m  go test ./... → exit 0 · claimed by the agent, not verified                                     
+                     [38;2;169;149;131m│[m Findings                                                                                         
+                     [38;2;169;149;131m│[m  info    hello.txt:1  left as is                                                                 
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+[38;2;169;149;131m─ events ───────────────────────────────────────────────────────────────────────────────────────────────────────────────[m
+  14:11:05  task.completed    impl                                                                                      
+  14:11:05  diff.collected    impl                                                                                      
+  14:11:18  task.running      review                                                                                    
+  14:11:25  warning                                                                                                     
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+[38;2;169;149;131m NORMAL · ws: main · ? help · : commands · space menu · ctrl+q quit                                                     [m

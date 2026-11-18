@@ -48,8 +48,15 @@ func actions() (*ui.Registry, map[string]handler) {
 		})
 	add(ui.Action{ID: "leader.open", Title: "Leader menu", Scope: g, Keys: []string{"space"}},
 		func(m model) (model, tea.Cmd) { m.overlay, m.leaderGroup = overlayLeader, ""; return m, nil })
-	add(ui.Action{ID: "overlay.close", Title: "Close the overlay", Scope: g, Keys: []string{"esc", "q"}},
-		func(m model) (model, tea.Cmd) { m.overlay = overlayNone; return m, nil })
+	add(ui.Action{ID: "overlay.close", Title: "Close the overlay or view", Scope: g, Keys: []string{"esc", "q"}},
+		func(m model) (model, tea.Cmd) {
+			if m.overlay != overlayNone {
+				m.overlay = overlayNone
+			} else {
+				m.inspect = nil
+			}
+			return m, nil
+		})
 	add(ui.Action{ID: "layout.sidebar", Title: "Toggle the sidebar", Scope: g, Keys: []string{"ctrl+b"}, Leader: "v b"},
 		func(m model) (model, tea.Cmd) { m.toggles.Sidebar = flip(m.layout().Sidebar.Visible()); return m, nil })
 	add(ui.Action{ID: "layout.panel", Title: "Toggle the bottom panel", Scope: g, Keys: []string{"`"}, Leader: "v p"},
@@ -62,7 +69,7 @@ func actions() (*ui.Registry, map[string]handler) {
 		}
 		add(ui.Action{ID: "screen." + strings.ToLower(name), Title: "Go to " + name, Scope: g,
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
-			func(m model) (model, tea.Cmd) { m.screen, m.overlay = s, overlayNone; return m, nil })
+			func(m model) (model, tea.Cmd) { m.screen, m.overlay, m.inspect = s, overlayNone, nil; return m, nil })
 	}
 	rs := ui.Scope("runs")
 	move := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.runsMove(d), nil } }
@@ -94,6 +101,34 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "agents.right", Title: "Next agent", Scope: as, Keys: []string{"l", "right"}}, amove(func(int) int { return 1 }))
 	add(ui.Action{ID: "agents.down", Title: "Agent below", Scope: as, Keys: []string{"j", "down"}}, amove(func(n int) int { return n }))
 	add(ui.Action{ID: "agents.up", Title: "Agent above", Scope: as, Keys: []string{"k", "up"}}, amove(func(n int) int { return -n }))
+	add(ui.Action{ID: "tasks.inspect", Title: "Inspect the task's latest execution", Scope: ts, Keys: []string{"enter"}},
+		func(m model) (model, tea.Cmd) {
+			t, ok := m.cursorTask()
+			if !ok {
+				return m, nil
+			}
+			return m.openInspector(latestExecution(m.live.snap, t.ID))
+		})
+	add(ui.Action{ID: "agents.inspect", Title: "Inspect the agent's execution", Scope: as, Keys: []string{"i"}},
+		func(m model) (model, tea.Cmd) {
+			if m.live.snap == nil || len(m.live.snap.Agents) == 0 {
+				return m, nil
+			}
+			agents := sortedAgents(m.live.snap.Agents)
+			if a := agents[m.agents.index(agents)]; a.Execution != nil {
+				return m.openInspector(a.Execution.ID)
+			}
+			return m, nil
+		})
+	is := ui.Scope("inspector")
+	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
+	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }
+	add(ui.Action{ID: "inspector.next", Title: "Next tab", Scope: is, Keys: []string{"tab", "l", "right"}}, tab(1))
+	add(ui.Action{ID: "inspector.prev", Title: "Previous tab", Scope: is, Keys: []string{"shift+tab", "h", "left"}}, tab(-1))
+	add(ui.Action{ID: "inspector.down", Title: "Scroll down", Scope: is, Keys: []string{"j", "down"}}, scroll(1))
+	add(ui.Action{ID: "inspector.up", Title: "Scroll up", Scope: is, Keys: []string{"k", "up"}}, scroll(-1))
+	add(ui.Action{ID: "inspector.pagedown", Title: "Scroll a page down", Scope: is, Keys: []string{"ctrl+d", "pgdown"}}, scroll(10))
+	add(ui.Action{ID: "inspector.pageup", Title: "Scroll a page up", Scope: is, Keys: []string{"ctrl+u", "pgup"}}, scroll(-10))
 	return r, h
 }
 
@@ -106,7 +141,12 @@ func (m model) toggleOverlay(o overlay) model {
 	return m
 }
 
-func (m model) scope() ui.Scope { return ui.Scope(strings.ToLower(screenNames[m.screen])) }
+func (m model) scope() ui.Scope {
+	if m.inspect != nil {
+		return "inspector"
+	}
+	return ui.Scope(strings.ToLower(screenNames[m.screen]))
+}
 
 // run performs a registered action by id.
 func (m model) run(id string) (tea.Model, tea.Cmd) {
