@@ -28,18 +28,21 @@ var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace"
 // model is the root of Studio's state (docs/studio/architecture.md §7). All
 // I/O runs in commands, never in Update or View.
 type model struct {
-	src     source                // nil: no project data (tests of layout only)
-	changes <-chan service.Change // nil: no watcher
-	live    live
-	health  health
-	runs    runsView
-	tasks   tasksView
-	agents  agentsView
-	inspect *inspector // nil: closed
-	events  eventsPanel
-	now     func() time.Time
-	project Project
-	guard   *crashGuard
+	src      source                // nil: no project data (tests of layout only)
+	changes  <-chan service.Change // nil: no watcher
+	live     live
+	health   health
+	runs     runsView
+	tasks    tasksView
+	agents   agentsView
+	inspect  *inspector // nil: closed
+	events   eventsPanel
+	confirm  *confirmDialog // set while overlayConfirm is open
+	toasts   []toast
+	toastSeq int
+	now      func() time.Time
+	project  Project
+	guard    *crashGuard
 
 	registry *ui.Registry
 	handlers map[string]handler
@@ -93,6 +96,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateInspector(msg)
 	case olderMsg:
 		return m.updateOlder(msg)
+	case toastExpiredMsg:
+		return m.expireToast(msg.id), nil
 	case healthMsg, healthTickMsg:
 		return m.updateHealth(msg)
 	}
@@ -150,8 +155,16 @@ func (m model) view() tea.View {
 			}
 		}
 	}
-	if m.overlay != overlayNone {
+	switch m.overlay {
+	case overlayNone:
+	case overlayConfirm:
+		mode, main = "CONFIRM", m.confirmView(l.Main.W, l.Main.H)
+	default:
 		mode, main = m.overlayView()
+	}
+	status := fmt.Sprintf(" %s · ws: main · ? help · : commands · space menu · ctrl+q quit", mode)
+	if t := m.toastLine(); t != "" {
+		status = " " + mode + " ·" + t
 	}
 	v := tea.NewView(ui.Frame(l, ui.Content{
 		Header:     m.headerText(),
@@ -159,7 +172,7 @@ func (m model) view() tea.View {
 		Main:       main,
 		PanelTitle: m.panelTitle(),
 		Panel:      panel,
-		Status:     fmt.Sprintf(" %s · ws: main · ? help · : commands · space menu · ctrl+q quit", mode),
+		Status:     status,
 	}, m.theme))
 	v.AltScreen = true
 	v.WindowTitle = "caffè · " + m.project.Name

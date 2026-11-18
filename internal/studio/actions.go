@@ -17,6 +17,7 @@ const (
 	overlayHelp
 	overlayPalette
 	overlayLeader
+	overlayConfirm
 )
 
 // handler performs an action. Every registered action has exactly one;
@@ -52,9 +53,12 @@ func actions() (*ui.Registry, map[string]handler) {
 		func(m model) (model, tea.Cmd) {
 			if m.overlay != overlayNone {
 				m.overlay = overlayNone
-			} else {
-				m.inspect = nil
+				return m, nil
 			}
+			if next, had := m.dismissErrors(); had {
+				return next, nil
+			}
+			m.inspect = nil
 			return m, nil
 		})
 	add(ui.Action{ID: "layout.sidebar", Title: "Toggle the sidebar", Scope: g, Keys: []string{"ctrl+b"}, Leader: "v b"},
@@ -196,6 +200,8 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.paletteKey(msg)
 	case overlayLeader:
 		return m.leaderKey(k)
+	case overlayConfirm:
+		return m.confirmKey(k)
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)

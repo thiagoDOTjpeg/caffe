@@ -313,8 +313,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · S · Depends:** CC-05 · **Acceptance:** filter by task and type; scroll back loads older pages.
 - **Done.** `tab`/`shift+tab` focus the panel (when visible); then `j/k ctrl+d ctrl+u G` scroll, `/` type substring, `t` cycles the task filter, `x` clears. Reaching the top of what is loaded reads the previous 200 events with the new `EventsBefore` (persistence + service). The inspector's tabs moved to `h/l` (`tab` is now the global pane key). Fixed on the way: the panel dropped the newest event (it rendered H lines into H−1 rows). Known gap: if the live ring evicts events while older pages are loaded, a hole can appear between them.
 
-### CC-13 · Confirm dialog and toasts
+### [x] CC-13 · Confirm dialog and toasts
 - **P0 · S · Depends:** CC-04 · **Acceptance:** default "Cancel"; dialog text names target and consequence.
+- **Done.** `model.ask(title, action, body, handler)` opens a centred dialog that captures every key; `h/l/tab` move, `enter`/`space` choose, `esc q n` cancel; the handler runs only on an explicit choice of the action button. Toasts: `notify` (expires after 5 s) and `failed` (stays; `esc` dismisses errors before closing a view), newest shown in the status bar. No action uses the dialog yet: the first consumers are CC-14's cancel and clean.
 
 ### CC-17 · Report view
 - **P1 · S · Depends:** CC-05 · **Acceptance:** renders `service.Report` Markdown as plain text sections.
