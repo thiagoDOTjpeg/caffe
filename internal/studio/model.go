@@ -31,6 +31,7 @@ type model struct {
 	src     source                // nil: no project data (tests of layout only)
 	changes <-chan service.Change // nil: no watcher
 	live    live
+	health  health
 	runs    runsView
 	now     func() time.Time
 	project Project
@@ -60,7 +61,7 @@ func (m model) Init() tea.Cmd {
 	if m.src == nil {
 		return nil
 	}
-	return tea.Batch(m.live.load(m.src), waitChange(m.changes))
+	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src))
 }
 
 // Update is guarded: a panic anywhere below is written to the crash log
@@ -78,6 +79,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.key(msg) // every key goes through the action registry
 	case changeMsg, refreshMsg, loadedMsg:
 		return m.updateLive(msg)
+	case healthMsg, healthTickMsg:
+		return m.updateHealth(msg)
 	}
 	return m, nil
 }
@@ -105,12 +108,19 @@ func (m model) view() tea.View {
 	main := fmt.Sprintf(" %s\n\n Coming in the next increments of the Command Center.\n\n project  %s", screenNames[m.screen], m.project.Root)
 	panel := " (no project data)"
 	if m.src != nil {
-		main = fmt.Sprintf(" %s\n\n%s", screenNames[m.screen], m.live.summary())
-		if m.screen == screenRuns {
+		stale := m.live.staleLine()
+		h := l.Main.H
+		if stale != "" {
+			h--
+		}
+		switch m.screen {
+		case screenOverview:
+			main = m.overviewScreen(h)
+		case screenRuns:
 			main = m.runsScreen(l.Main.W)
 		}
-		if s := m.live.staleLine(); s != "" {
-			main = " " + m.theme.Render(ui.ToneWarn, s) + "\n" + main
+		if stale != "" {
+			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main
 		}
 		panel = strings.Join(m.live.feedLines(l.Panel.H), "\n")
 		if panel == "" {
@@ -121,7 +131,7 @@ func (m model) view() tea.View {
 		mode, main = m.overlayView()
 	}
 	v := tea.NewView(ui.Frame(l, ui.Content{
-		Header:     fmt.Sprintf("caffè ─ %s", m.project.Name),
+		Header:     m.headerText(),
 		Nav:        nav,
 		Main:       main,
 		PanelTitle: "events",

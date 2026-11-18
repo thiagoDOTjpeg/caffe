@@ -327,7 +327,11 @@ func (s *Service) Report(ctx context.Context, runID string) (string, error) {
 	return core.BuildReport(ctx, s.store, r.ID)
 }
 
+// RuntimeInfo is what the runtime can do; an alias so consumers need not
+// import the runtime package.
+type RuntimeInfo = runtime.Capabilities
+
 // Capabilities asks the runtime what it can do.
-func (s *Service) Capabilities(ctx context.Context) (*runtime.Capabilities, error) {
+func (s *Service) Capabilities(ctx context.Context) (*RuntimeInfo, error) {
 	return s.rt.Capabilities(ctx)
 }

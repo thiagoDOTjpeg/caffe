@@ -50,6 +50,10 @@ func (f *fakeSource) EventsSince(_ context.Context, after int64, _ string, limit
 	return out, f.err
 }
 
+func (f *fakeSource) Capabilities(context.Context) (*service.RuntimeInfo, error) {
+	return &service.RuntimeInfo{Version: "0.9.5"}, nil
+}
+
 func (f *fakeSource) set(fn func(f *fakeSource)) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -96,6 +100,9 @@ func drive(t *testing.T, m model, cmd tea.Cmd) model {
 		}
 		res, more := m.Update(msg)
 		m = res.(model)
+		if _, ok := msg.(healthMsg); ok {
+			continue // the next check is a 10 s tick that never settles
+		}
 		queue = append(queue, more)
 	}
 	return m
@@ -115,7 +122,7 @@ func TestInitialLoadSelectsActiveRunAndFeed(t *testing.T) {
 		t.Errorf("lastSeq %d, feed %d", m.live.lastSeq, len(m.live.feed))
 	}
 	lines := m.live.feedLines(10)
-	if len(lines) != 1 || !strings.Contains(lines[0], "task.transition  api") {
+	if len(lines) != 1 || !strings.Contains(lines[0], "task.transition   api") {
 		t.Errorf("feed of the selected run: %q", lines)
 	}
 }

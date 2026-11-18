@@ -3,7 +3,6 @@ package studio
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -17,6 +16,7 @@ type source interface {
 	Runs(ctx context.Context, activeOnly bool) ([]service.RunSummary, error)
 	RunSnapshot(ctx context.Context, runID string) (*service.RunView, error)
 	EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error)
+	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
 }
 
 // Timings of architecture §7. Variables so tests can shrink them.
@@ -219,9 +219,9 @@ func (l live) feedLines(n int) []string {
 		if e.RunID != l.runID {
 			continue
 		}
-		line := fmt.Sprintf(" %s  %s", e.CreatedAt.Local().Format("15:04:05"), e.Type)
+		line := fmt.Sprintf("  %s  %-18s", e.CreatedAt.Local().Format("15:04:05"), e.Type)
 		if k := keys[e.TaskID]; k != "" {
-			line += "  " + k
+			line += k
 		}
 		out = append(out, line)
 	}
@@ -229,22 +229,6 @@ func (l live) feedLines(n int) []string {
 		out[i], out[j] = out[j], out[i]
 	}
 	return out
-}
-
-// summary is the main-region text until the screens of CC-06… land.
-func (l live) summary() string {
-	if !l.loaded {
-		return " loading…"
-	}
-	if l.snap == nil {
-		return " no runs yet · start one with caffe run"
-	}
-	r := l.snap.Run
-	var b strings.Builder
-	fmt.Fprintf(&b, " run  %s  %s\n", short(r.ID), runBadge(r.Status).Symbol+" "+runBadge(r.Status).Label)
-	fmt.Fprintf(&b, " %s\n", r.Request)
-	fmt.Fprintf(&b, " %d tasks · %d agents · updated %s", len(l.snap.Tasks), len(l.snap.Agents), l.loadedAt.Format("15:04:05"))
-	return b.String()
 }
 
 func short(id string) string {
