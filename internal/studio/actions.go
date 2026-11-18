@@ -64,6 +64,18 @@ func actions() (*ui.Registry, map[string]handler) {
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
 			func(m model) (model, tea.Cmd) { m.screen, m.overlay = s, overlayNone; return m, nil })
 	}
+	rs := ui.Scope("runs")
+	move := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.runsMove(d), nil } }
+	add(ui.Action{ID: "runs.down", Title: "Next run", Scope: rs, Keys: []string{"j", "down"}}, move(1))
+	add(ui.Action{ID: "runs.up", Title: "Previous run", Scope: rs, Keys: []string{"k", "up"}}, move(-1))
+	add(ui.Action{ID: "runs.top", Title: "First run", Scope: rs, Keys: []string{"g", "home"}}, move(-1<<30))
+	add(ui.Action{ID: "runs.bottom", Title: "Last run", Scope: rs, Keys: []string{"G", "end"}}, move(1<<30))
+	add(ui.Action{ID: "runs.open", Title: "Open the run", Scope: rs, Keys: []string{"enter"}},
+		func(m model) (model, tea.Cmd) { return m.runsOpen() })
+	add(ui.Action{ID: "runs.filter", Title: "Filter runs", Scope: rs, Keys: []string{"/"}},
+		func(m model) (model, tea.Cmd) { m.runs.filtering = true; return m, nil })
+	add(ui.Action{ID: "runs.active", Title: "Show only active runs", Scope: rs, Keys: []string{"a"}},
+		func(m model) (model, tea.Cmd) { m.runs.activeOnly = !m.runs.activeOnly; return m, nil })
 	return r, h
 }
 
@@ -95,6 +107,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.paletteKey(msg)
 	case overlayLeader:
 		return m.leaderKey(k)
+	}
+	if m.screen == screenRuns && m.runs.filtering {
+		return m.runsFilterKey(msg)
 	}
 	if a, ok := m.registry.Match(m.scope(), k); ok {
 		return m.run(a.ID)

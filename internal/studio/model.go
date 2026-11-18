@@ -3,6 +3,7 @@ package studio
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -30,6 +31,8 @@ type model struct {
 	src     source                // nil: no project data (tests of layout only)
 	changes <-chan service.Change // nil: no watcher
 	live    live
+	runs    runsView
+	now     func() time.Time
 	project Project
 	guard   *crashGuard
 
@@ -49,7 +52,7 @@ type model struct {
 
 func newModel(src source, p Project, g *crashGuard) model {
 	r, h := actions()
-	return model{src: src, project: p, guard: g, registry: r, handlers: h, theme: ui.ThemeByName("caffe", false)}
+	return model{src: src, project: p, guard: g, registry: r, handlers: h, now: time.Now, theme: ui.ThemeByName("caffe", false)}
 }
 
 // Init loads the initial state and starts listening to the watcher.
@@ -103,6 +106,9 @@ func (m model) view() tea.View {
 	panel := " (no project data)"
 	if m.src != nil {
 		main = fmt.Sprintf(" %s\n\n%s", screenNames[m.screen], m.live.summary())
+		if m.screen == screenRuns {
+			main = m.runsScreen(l.Main.W)
+		}
 		if s := m.live.staleLine(); s != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, s) + "\n" + main
 		}

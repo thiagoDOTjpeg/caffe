@@ -284,8 +284,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Acceptance:** transition visible ≤ 1 s; database error → stale banner, no crash.
 - **Tests:** message-driven tests with a fake service.
 
-### CC-06 · Runs screen
+### [x] CC-06 · Runs screen
 - **P0 · S · Depends:** CC-05 · **Acceptance:** list, filter, selection kept by id.
+- **Done.** `j/k g/G` move, `/` filters by id/status/request (enter keeps, esc clears), `a` active only, `enter` selects the run and opens Overview. Run actions (`n R c x`) are CC-14.
 
 ### CC-07 · Overview screen
 - **P0 · M · Depends:** CC-05 · **Acceptance:** matches wireframe §2.1 fields; health indicators from heartbeat and capabilities.

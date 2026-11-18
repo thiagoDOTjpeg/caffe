@@ -96,7 +96,7 @@ func chooseRun(runs []service.RunSummary, current string) string {
 		}
 	}
 	for _, r := range runs {
-		if !r.Status.Terminal() && r.Status != c.RunInterrupted {
+		if active(r) {
 			return r.ID
 		}
 	}
