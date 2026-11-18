@@ -85,6 +85,19 @@ func (f *fakeSource) Capabilities(context.Context) (*service.RuntimeInfo, error)
 	return &service.RuntimeInfo{Version: "0.9.5"}, nil
 }
 
+func (f *fakeSource) EventsBefore(_ context.Context, before int64, runID string, limit int) ([]c.Event, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []c.Event
+	for i := len(f.events) - 1; i >= 0 && len(out) < limit; i-- {
+		e := f.events[i]
+		if (before == 0 || e.Seq < before) && (runID == "" || e.RunID == runID) {
+			out = append([]c.Event{e}, out...)
+		}
+	}
+	return out, f.err
+}
+
 func (f *fakeSource) set(fn func(f *fakeSource)) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

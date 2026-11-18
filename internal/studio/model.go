@@ -36,6 +36,7 @@ type model struct {
 	tasks   tasksView
 	agents  agentsView
 	inspect *inspector // nil: closed
+	events  eventsPanel
 	now     func() time.Time
 	project Project
 	guard   *crashGuard
@@ -90,6 +91,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLive(msg)
 	case inspectedMsg:
 		return m.updateInspector(msg)
+	case olderMsg:
+		return m.updateOlder(msg)
 	case healthMsg, healthTickMsg:
 		return m.updateHealth(msg)
 	}
@@ -139,9 +142,12 @@ func (m model) view() tea.View {
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main
 		}
-		panel = strings.Join(m.live.feedLines(l.Panel.H), "\n")
+		panel = strings.Join(m.panelLines(l.Panel.H-1), "\n") // the title takes a row
 		if panel == "" {
 			panel = " no events yet"
+			if m.events.typeFilter != "" || m.events.taskFilter != "" {
+				panel = " no event matches the filters (x clears them)"
+			}
 		}
 	}
 	if m.overlay != overlayNone {
@@ -151,7 +157,7 @@ func (m model) view() tea.View {
 		Header:     m.headerText(),
 		Nav:        nav,
 		Main:       main,
-		PanelTitle: "events",
+		PanelTitle: m.panelTitle(),
 		Panel:      panel,
 		Status:     fmt.Sprintf(" %s · ws: main · ? help · : commands · space menu · ctrl+q quit", mode),
 	}, m.theme))

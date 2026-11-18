@@ -123,12 +123,40 @@ func actions() (*ui.Registry, map[string]handler) {
 	is := ui.Scope("inspector")
 	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
 	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }
-	add(ui.Action{ID: "inspector.next", Title: "Next tab", Scope: is, Keys: []string{"tab", "l", "right"}}, tab(1))
-	add(ui.Action{ID: "inspector.prev", Title: "Previous tab", Scope: is, Keys: []string{"shift+tab", "h", "left"}}, tab(-1))
+	add(ui.Action{ID: "inspector.next", Title: "Next tab", Scope: is, Keys: []string{"l", "right"}}, tab(1))
+	add(ui.Action{ID: "inspector.prev", Title: "Previous tab", Scope: is, Keys: []string{"h", "left"}}, tab(-1))
 	add(ui.Action{ID: "inspector.down", Title: "Scroll down", Scope: is, Keys: []string{"j", "down"}}, scroll(1))
 	add(ui.Action{ID: "inspector.up", Title: "Scroll up", Scope: is, Keys: []string{"k", "up"}}, scroll(-1))
 	add(ui.Action{ID: "inspector.pagedown", Title: "Scroll a page down", Scope: is, Keys: []string{"ctrl+d", "pgdown"}}, scroll(10))
 	add(ui.Action{ID: "inspector.pageup", Title: "Scroll a page up", Scope: is, Keys: []string{"ctrl+u", "pgup"}}, scroll(-10))
+	focus := func(m model) (model, tea.Cmd) {
+		m.events.focused = !m.events.focused && m.layout().Panel.Visible()
+		return m, nil
+	}
+	add(ui.Action{ID: "pane.next", Title: "Next pane", Scope: g, Keys: []string{"tab"}}, focus)
+	add(ui.Action{ID: "pane.prev", Title: "Previous pane", Scope: g, Keys: []string{"shift+tab"}}, focus)
+	es := ui.Scope("events")
+	rows := func(m model) int { return max(m.layout().Panel.H-1, 1) }
+	escroll := func(d int) handler {
+		return func(m model) (model, tea.Cmd) { return m.eventsScroll(d, rows(m)) }
+	}
+	add(ui.Action{ID: "events.older", Title: "Older events", Scope: es, Keys: []string{"k", "up"}}, escroll(1))
+	add(ui.Action{ID: "events.newer", Title: "Newer events", Scope: es, Keys: []string{"j", "down"}}, escroll(-1))
+	add(ui.Action{ID: "events.pageup", Title: "A page of older events", Scope: es, Keys: []string{"ctrl+u", "pgup"}},
+		func(m model) (model, tea.Cmd) { return m.eventsScroll(rows(m), rows(m)) })
+	add(ui.Action{ID: "events.pagedown", Title: "A page of newer events", Scope: es, Keys: []string{"ctrl+d", "pgdown"}},
+		func(m model) (model, tea.Cmd) { return m.eventsScroll(-rows(m), rows(m)) })
+	add(ui.Action{ID: "events.newest", Title: "Follow new events", Scope: es, Keys: []string{"G", "end"}},
+		func(m model) (model, tea.Cmd) { m.events.scroll = 0; return m, nil })
+	add(ui.Action{ID: "events.type", Title: "Filter events by type", Scope: es, Keys: []string{"/"}},
+		func(m model) (model, tea.Cmd) { m.events.typing = true; return m, nil })
+	add(ui.Action{ID: "events.task", Title: "Filter events by task (cycle)", Scope: es, Keys: []string{"t"}},
+		func(m model) (model, tea.Cmd) { return m.cycleTask(), nil })
+	add(ui.Action{ID: "events.clear", Title: "Clear the event filters", Scope: es, Keys: []string{"x"}},
+		func(m model) (model, tea.Cmd) {
+			m.events.typeFilter, m.events.taskFilter, m.events.scroll = "", "", 0
+			return m, nil
+		})
 	return r, h
 }
 
@@ -142,6 +170,9 @@ func (m model) toggleOverlay(o overlay) model {
 }
 
 func (m model) scope() ui.Scope {
+	if m.events.focused && m.layout().Panel.Visible() {
+		return "events"
+	}
 	if m.inspect != nil {
 		return "inspector"
 	}
@@ -165,6 +196,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.paletteKey(msg)
 	case overlayLeader:
 		return m.leaderKey(k)
+	}
+	if m.events.typing {
+		return m.eventsFilterKey(msg)
 	}
 	if m.screen == screenRuns && m.runs.filtering {
 		return m.runsFilterKey(msg)

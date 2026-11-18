@@ -441,3 +441,43 @@ func TestBackupKeepsNewest(t *testing.T) {
 		t.Fatalf("backup is not a usable database: %v", err)
 	}
 }
+
+func TestEventsBeforePagesBackwards(t *testing.T) {
+	ctx := context.Background()
+	s, _ := open(t)
+	seed(t, s) // run-1
+	if err := s.CreateRun(ctx, &c.Run{ID: "run-2", ProjectPath: "/p", UserRequest: "r", Status: c.RunPending, CreatedAt: Now()}); err != nil {
+		t.Fatal(err)
+	}
+	for n := range 10 {
+		run := []string{"run-1", "run-2"}[n%2]
+		if err := s.AddEvent(ctx, &c.Event{RunID: run, Type: "test.tick", Payload: map[string]any{"n": n}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	all, _ := s.EventsSince(ctx, 0, "run-1", 1000)
+	// Walk run-1 backwards in pages of 2: every event once, in order.
+	var back []c.Event
+	for before := int64(0); ; {
+		page, err := s.EventsBefore(ctx, before, "run-1", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) == 0 {
+			break
+		}
+		if len(page) > 1 && page[0].Seq > page[1].Seq {
+			t.Fatal("page not oldest first")
+		}
+		back = append(page, back...)
+		before = page[0].Seq
+	}
+	if len(back) != len(all) {
+		t.Fatalf("walked %d events, want %d", len(back), len(all))
+	}
+	for i := range all {
+		if back[i].ID != all[i].ID {
+			t.Fatalf("event %d: %s, want %s", i, back[i].ID, all[i].ID)
+		}
+	}
+}

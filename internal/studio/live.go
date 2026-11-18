@@ -16,6 +16,7 @@ type source interface {
 	Runs(ctx context.Context, activeOnly bool) ([]service.RunSummary, error)
 	RunSnapshot(ctx context.Context, runID string) (*service.RunView, error)
 	EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error)
+	EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error)
 	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
 	Execution(ctx context.Context, id string) (*service.ExecutionDetail, error)
 	ReadPrompt(ctx context.Context, executionID string, max int64) (*service.ArtifactContent, error)

@@ -71,6 +71,7 @@ func (m model) runsOpen() (model, tea.Cmd) {
 		return m, nil
 	}
 	m.live.runID, m.live.snap = id, nil
+	m.events = eventsPanel{focused: m.events.focused} // filters and pages belong to a run
 	if m.live.pending {
 		m.live.dirty = true
 		return m, nil

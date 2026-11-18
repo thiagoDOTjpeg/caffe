@@ -208,6 +208,12 @@ func (s *Service) EventsSince(ctx context.Context, after int64, runID string, li
 	return s.store.EventsSince(ctx, after, runID, limit)
 }
 
+// EventsBefore returns up to limit events before seq (0: the newest), for
+// one run or all (""), oldest first.
+func (s *Service) EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error) {
+	return s.store.EventsBefore(ctx, before, runID, limit)
+}
+
 // Events returns every event of a run in log order, paging internally.
 func (s *Service) Events(ctx context.Context, runID string) ([]c.Event, error) {
 	var all []c.Event

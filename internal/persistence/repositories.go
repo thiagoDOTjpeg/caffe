@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,6 +66,19 @@ func (s *Store) EventsSince(ctx context.Context, after int64, runID string, limi
 	}
 	return s.queryEvents(ctx, `SELECT `+eventCols+` FROM events WHERE rowid > ? AND (? = '' OR run_id = ?) ORDER BY rowid LIMIT ?`,
 		after, runID, runID, limit)
+}
+
+// EventsBefore returns up to limit events with Seq < before (0: from the
+// newest), for one run or all, oldest first: the page just before a cursor,
+// for reading a log backwards.
+func (s *Store) EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error) {
+	if limit <= 0 {
+		return nil, fmt.Errorf("EventsBefore: limit must be positive, got %d", limit)
+	}
+	out, err := s.queryEvents(ctx, `SELECT `+eventCols+` FROM events WHERE (? = 0 OR rowid < ?) AND (? = '' OR run_id = ?) ORDER BY rowid DESC LIMIT ?`,
+		before, before, runID, runID, limit)
+	slices.Reverse(out)
+	return out, err
 }
 
 func (s *Store) queryEvents(ctx context.Context, q string, args ...any) ([]c.Event, error) {

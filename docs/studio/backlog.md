@@ -309,8 +309,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · M · Depends:** CC-05 · **Acceptance:** Report/Prompt/Output/Artifacts/Events tabs; observed vs claimed labels identical to `caffe inspect`.
 - **Done.** Opened with `enter` on a Task Board card (latest execution) or `i` on an agent card; `tab`/`h l` switch tabs, `j k ctrl+d ctrl+u` scroll, `esc` closes. Labels are `contracts.LabelObserved`/`LabelClaimed`, shared with the run report. Service: `ExecutionDetail.Report` (the execution's own report, beside its `prompt.md`, else the task's latest) + `ClaimsUnverified`, and `ReadPrompt` (confined to the artifact directory). Running executions reload on each change; Events tab is over the in-memory feed.
 
-### CC-12 · Events panel with filters
+### [x] CC-12 · Events panel with filters
 - **P0 · S · Depends:** CC-05 · **Acceptance:** filter by task and type; scroll back loads older pages.
+- **Done.** `tab`/`shift+tab` focus the panel (when visible); then `j/k ctrl+d ctrl+u G` scroll, `/` type substring, `t` cycles the task filter, `x` clears. Reaching the top of what is loaded reads the previous 200 events with the new `EventsBefore` (persistence + service). The inspector's tabs moved to `h/l` (`tab` is now the global pane key). Fixed on the way: the panel dropped the newest event (it rendered H lines into H−1 rows). Known gap: if the live ring evicts events while older pages are loaded, a hole can appear between them.
 
 ### CC-13 · Confirm dialog and toasts
 - **P0 · S · Depends:** CC-04 · **Acceptance:** default "Cancel"; dialog text names target and consequence.

@@ -79,12 +79,12 @@ func TestInspectorTabs(t *testing.T) {
 	for _, tc := range []struct {
 		key, want string
 	}{
-		{"tab", "Review the change."},
-		{"tab", "● Checked the worktree"},
-		{"tab", "reviewer report"},
-		{"tab", "task.running"},
-		{"tab", "[Report]"}, // wraps
-		{"shift+tab", "[Events]"},
+		{"l", "Review the change."},
+		{"l", "● Checked the worktree"},
+		{"l", "reviewer report"},
+		{"l", "task.running"},
+		{"l", "[Report]"}, // wraps
+		{"h", "[Events]"},
 	} {
 		m, _ = press(m, tc.key)
 		if v := m.View().Content; !strings.Contains(v, tc.want) {
@@ -107,7 +107,7 @@ func TestInspectorValidationCommandIsObserved(t *testing.T) {
 	if strings.Contains(v, c.LabelClaimed) {
 		t.Error("a validator's orchestrator-run tests shown as claims")
 	}
-	m, _ = press(m, "tab", "tab")
+	m, _ = press(m, "l", "l")
 	if v := m.View().Content; !strings.Contains(v, "vet: x.go:1: bad") {
 		t.Error("validation log not shown as output")
 	}

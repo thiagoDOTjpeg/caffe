@@ -149,7 +149,7 @@ func (m model) inspectorScreen(width, height int) string {
 		}
 		tabs = append(tabs, t)
 	}
-	head = append(head, " "+strings.Join(tabs, "  ")+"   (tab / shift+tab · j/k scroll · esc close)", "")
+	head = append(head, " "+strings.Join(tabs, "  ")+"   (h/l tab · j/k scroll · esc close)", "")
 	var body []string
 	switch inspectorTabs[in.tab] {
 	case "Report":
