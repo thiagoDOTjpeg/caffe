@@ -47,7 +47,10 @@ func board(tasks []service.TaskView) [][]service.TaskView {
 }
 
 // tasksView is the Task Board state; the cursor is a task id (§3.6).
-type tasksView struct{ cursor string }
+type tasksView struct {
+	cursor string
+	view   taskView
+}
 
 // cursorPos is the column and row of the cursor; the first card when the
 // cursor's task is gone.
@@ -151,13 +154,27 @@ func (m model) tasksScreen(width, height int) string {
 	}
 	v, th, now := l.snap, m.theme, m.now()
 	var out []string
-	out = append(out, " Tasks · run "+short(v.Run.ID))
+	view := m.tasks.view
+	note := ""
+	if view == viewGraph && len(v.Tasks) > graphMax {
+		view, note = viewList, fmt.Sprintf("   (graph shown up to %d tasks)", graphMax)
+	}
+	tabs := []string{"[b]oard", "[g]raph", "[L]ist"}
+	tabs[m.tasks.view] = "‹" + tabs[m.tasks.view] + "›"
+	title := " Tasks · run " + short(v.Run.ID) + note
+	out = append(out, fmt.Sprintf("%-*s%s", max(width-len([]rune(strings.Join(tabs, " ")))-1, len([]rune(title))+2), title, strings.Join(tabs, " ")))
 	if len(v.Tasks) == 0 {
 		return strings.Join(append(out, "", " no tasks yet (the run is planning)"), "\n")
 	}
 	keys := map[string]service.TaskView{}
 	for _, t := range v.Tasks {
 		keys[t.Key] = t
+	}
+	switch view {
+	case viewGraph:
+		return strings.Join(append(append(out, ""), graphLines(v.Tasks)...), "\n")
+	case viewList:
+		return strings.Join(append(append(out, ""), listLines(v.Tasks, width)...), "\n")
 	}
 	cols := board(v.Tasks)
 	ws := columnWidths(cols, width-1)

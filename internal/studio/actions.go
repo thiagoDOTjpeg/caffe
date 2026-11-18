@@ -82,6 +82,12 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "tasks.right", Title: "Next column", Scope: ts, Keys: []string{"l", "right"}}, tmove(1, 0))
 	add(ui.Action{ID: "tasks.down", Title: "Next task in the column", Scope: ts, Keys: []string{"j", "down"}}, tmove(0, 1))
 	add(ui.Action{ID: "tasks.up", Title: "Previous task in the column", Scope: ts, Keys: []string{"k", "up"}}, tmove(0, -1))
+	view := func(v taskView) handler {
+		return func(m model) (model, tea.Cmd) { m.tasks.view = v; return m, nil }
+	}
+	add(ui.Action{ID: "tasks.board", Title: "Task board", Scope: ts, Keys: []string{"b"}}, view(viewBoard))
+	add(ui.Action{ID: "tasks.graph", Title: "Task dependency graph", Scope: ts, Keys: []string{"g"}}, view(viewGraph))
+	add(ui.Action{ID: "tasks.list", Title: "Task list", Scope: ts, Keys: []string{"L"}}, view(viewList))
 	return r, h
 }
 

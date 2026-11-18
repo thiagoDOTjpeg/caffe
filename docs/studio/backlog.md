@@ -296,9 +296,10 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · M · Depends:** CC-05 · **Acceptance:** status→column mapping per §2.2; waiting reason shown.
 - **Done.** `h/l` move between non-empty columns, `j/k` within one; cursor by task id (follows a task to its new column). Unknown statuses fall into PENDING. Card actions (`enter d w a`) come with CC-11/WS/CC-16; `g`/`l` view switch with CC-09.
 
-### CC-09 · Task dependency graph view
+### [x] CC-09 · Task dependency graph view
 - **P1 · M · Depends:** CC-08 · **Acceptance:** layered rendering; fallback to list above 30 tasks.
 - **Tests:** layering algorithm unit tests (diamond, fan-out, long chain).
+- **Done.** `b` board, `g` graph, `L` list (`l` is already "next column"). Layers by longest path, ordered by barycenter sweeps; an edge between same-row neighbours is an arrow, every other dependency is listed under the task (`⤷ a, b`) instead of crossing lines.
 
 ### CC-10 · Agent Room cards (stored state)
 - **P0 · M · Depends:** CC-05 · **Acceptance:** visual states from F-07; sort order per §2.3.

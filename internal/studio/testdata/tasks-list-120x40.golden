@@ -1,0 +1,40 @@
+[1;38;2;197;162;123mcaffè ─ demo ─ run 0112dd6a · reviewing ── 2/6 tasks ── ● runtime 0.9.5                                                 [m
+  1 Overview         [38;2;169;149;131m│[m Tasks · run 0112dd6a                                                    [b]oard [g]raph ‹[L]ist› 
+[1;38;2;197;162;123m▸ 2 Tasks            [m[38;2;169;149;131m│[m                                                                                                  
+  3 Agents           [38;2;169;149;131m│[m   STATUS        TASK           ROLE        DEPENDS ON                                            
+  4 Runs             [38;2;169;149;131m│[m   ✓ completed   research       researcher                                                        
+  5 Workspace        [38;2;169;149;131m│[m   ✓ completed   impl           developer                                                         
+  6 Terminals        [38;2;169;149;131m│[m   ● running     review         reviewer    impl                                                  
+                     [38;2;169;149;131m│[m   ◌ pending     validate       validator   review                                                
+                     [38;2;169;149;131m│[m   ⚠ blocked     docs           developer                                                         
+                     [38;2;169;149;131m│[m   ✗ failed      lint                                                                             
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+[38;2;169;149;131m─ events ───────────────────────────────────────────────────────────────────────────────────────────────────────────────[m
+  14:11:05  task.completed    impl                                                                                      
+  14:11:05  diff.collected    impl                                                                                      
+  14:11:18  task.running      review                                                                                    
+  14:11:25  warning                                                                                                     
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+[38;2;169;149;131m NORMAL · ws: main · ? help · : commands · space menu · ctrl+q quit                                                     [m
