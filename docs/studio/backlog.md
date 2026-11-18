@@ -292,8 +292,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · M · Depends:** CC-05 · **Acceptance:** matches wireframe §2.1 fields; health indicators from heartbeat and capabilities.
 - **Done.** Header carries run, progress and runtime; `Capabilities` rechecked every 10 s (`service.RuntimeInfo` alias keeps `runtime` out of Studio). AGENTS and HEALTH are stacked, not side by side; the warning count is over the in-memory feed (a lower bound on long runs).
 
-### CC-08 · Task Board (columns + details)
+### [x] CC-08 · Task Board (columns + details)
 - **P0 · M · Depends:** CC-05 · **Acceptance:** status→column mapping per §2.2; waiting reason shown.
+- **Done.** `h/l` move between non-empty columns, `j/k` within one; cursor by task id (follows a task to its new column). Unknown statuses fall into PENDING. Card actions (`enter d w a`) come with CC-11/WS/CC-16; `g`/`l` view switch with CC-09.
 
 ### CC-09 · Task dependency graph view
 - **P1 · M · Depends:** CC-08 · **Acceptance:** layered rendering; fallback to list above 30 tasks.

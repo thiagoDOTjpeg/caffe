@@ -188,7 +188,10 @@ func compact(d time.Duration) string {
 }
 
 func clip(s string, n int) string {
-	s = strings.Join(strings.Fields(s), " ")
+	if n < 1 {
+		return ""
+	}
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ", "\t", " ").Replace(s) // one line, indentation kept
 	if r := []rune(s); len(r) > n {
 		return string(r[:n-1]) + "…"
 	}

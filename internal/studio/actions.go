@@ -76,6 +76,12 @@ func actions() (*ui.Registry, map[string]handler) {
 		func(m model) (model, tea.Cmd) { m.runs.filtering = true; return m, nil })
 	add(ui.Action{ID: "runs.active", Title: "Show only active runs", Scope: rs, Keys: []string{"a"}},
 		func(m model) (model, tea.Cmd) { m.runs.activeOnly = !m.runs.activeOnly; return m, nil })
+	ts := ui.Scope("tasks")
+	tmove := func(dc, dr int) handler { return func(m model) (model, tea.Cmd) { return m.tasksMove(dc, dr), nil } }
+	add(ui.Action{ID: "tasks.left", Title: "Previous column", Scope: ts, Keys: []string{"h", "left"}}, tmove(-1, 0))
+	add(ui.Action{ID: "tasks.right", Title: "Next column", Scope: ts, Keys: []string{"l", "right"}}, tmove(1, 0))
+	add(ui.Action{ID: "tasks.down", Title: "Next task in the column", Scope: ts, Keys: []string{"j", "down"}}, tmove(0, 1))
+	add(ui.Action{ID: "tasks.up", Title: "Previous task in the column", Scope: ts, Keys: []string{"k", "up"}}, tmove(0, -1))
 	return r, h
 }
 

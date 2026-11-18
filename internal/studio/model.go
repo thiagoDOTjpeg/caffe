@@ -33,6 +33,7 @@ type model struct {
 	live    live
 	health  health
 	runs    runsView
+	tasks   tasksView
 	now     func() time.Time
 	project Project
 	guard   *crashGuard
@@ -116,6 +117,8 @@ func (m model) view() tea.View {
 		switch m.screen {
 		case screenOverview:
 			main = m.overviewScreen(h)
+		case screenTasks:
+			main = m.tasksScreen(l.Main.W, h)
 		case screenRuns:
 			main = m.runsScreen(l.Main.W)
 		}
