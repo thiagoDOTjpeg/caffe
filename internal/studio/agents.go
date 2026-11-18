@@ -132,10 +132,10 @@ func box(lines []string, focused bool) []string {
 func (m model) agentsScreen(width, height int) string {
 	l := m.live
 	if !l.loaded {
-		return " Agents\n\n loading…"
+		return loadingText("Agents")
 	}
 	if l.snap == nil {
-		return " Agents\n\n no runs yet · start one with caffe run \"…\""
+		return noRunsText("Agents")
 	}
 	agents := sortedAgents(l.snap.Agents)
 	live, done := 0, 0

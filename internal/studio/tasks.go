@@ -147,10 +147,10 @@ func card(t service.TaskView, keys map[string]service.TaskView, now time.Time) [
 func (m model) tasksScreen(width, height int) string {
 	l := m.live
 	if !l.loaded {
-		return " Tasks\n\n loading…"
+		return loadingText("Tasks")
 	}
 	if l.snap == nil {
-		return " Tasks\n\n no runs yet · start one with caffe run \"…\""
+		return noRunsText("Tasks")
 	}
 	v, th, now := l.snap, m.theme, m.now()
 	var out []string

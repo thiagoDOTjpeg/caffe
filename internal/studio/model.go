@@ -43,7 +43,10 @@ type model struct {
 	toastSeq int
 	now      func() time.Time
 	project  Project
-	guard    *crashGuard
+	// noProject: opened outside a Caffè project (project.Root is the
+	// directory); only a message and quitting are possible.
+	noProject bool
+	guard     *crashGuard
 
 	registry *ui.Registry
 	handlers map[string]handler
@@ -84,6 +87,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
+		if m.noProject {
+			if k := msg.String(); k == "q" || k == "esc" || k == "ctrl+q" || k == "ctrl+c" {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		return m.key(msg) // every key goes through the action registry
 	case loadedMsg:
 		next, cmd := m.updateLive(msg)
@@ -122,6 +131,11 @@ func (m model) View() (v tea.View) {
 
 func (m model) view() tea.View {
 	l := m.layout()
+	if m.noProject {
+		v := tea.NewView(noProjectView(m.project.Root, m.width, m.height))
+		v.AltScreen = true
+		return v
+	}
 	nav := make([]ui.NavItem, len(screenNames))
 	for i, name := range screenNames {
 		nav[i] = ui.NavItem{Key: fmt.Sprint(i + 1), Label: name, Active: screen(i) == m.screen}

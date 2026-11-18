@@ -63,12 +63,14 @@ func (m model) reportScroll(delta int) model {
 
 func (m model) reportScreen(width, height int) string {
 	r := m.report
-	out := []string{fmt.Sprintf(" Report · run %s   (j/k scroll · g/G top/bottom · esc close)", short(r.runID)), ""}
+	title := fmt.Sprintf(" Report · run %s", short(r.runID))
+	if !r.loaded {
+		title += " · loading…"
+	}
+	out := []string{title + "   (j/k scroll · g/G top/bottom · esc close)", ""}
 	switch {
 	case r.err != nil:
 		out = append(out, " "+m.theme.Render(ui.ToneError, r.err.Error()))
-	case !r.loaded:
-		out = append(out, " loading…")
 	default:
 		room := max(height-len(out), 1)
 		scroll := min(r.scroll, max(len(r.lines)-room, 0))

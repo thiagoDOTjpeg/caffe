@@ -1,7 +1,7 @@
 [1;38;2;197;162;123mcaffè ─ demo ─ run 0112dd6a · reviewing ── 2/4 tasks ── ● runtime 0.9.5                                                 [m
 [1;38;2;197;162;123m▸ 1 Overview         [m[38;2;169;149;131m│[m Overview                                                                                         
   2 Tasks            [38;2;169;149;131m│[m Request  Add a hello file to the project                                                         
-  3 Agents           [38;2;169;149;131m│[m Started  14:09:29 (2m 01s)          Phase  reviewing     Base  7f5d944                           
+  3 Agents           [38;2;169;149;131m│[m Started  14:09:29 (2m 01s)          Phase  [38;2;197;162;123m↻ reviewing    [m Base  7f5d944                         
   4 Runs             [38;2;169;149;131m│[m                                                                                                  
   5 Workspace        [38;2;169;149;131m│[m TASKS  ■■□□  2 completed · 1 running · 1 pending                                                 
   6 Terminals        [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m research     researcher  55s                                                       

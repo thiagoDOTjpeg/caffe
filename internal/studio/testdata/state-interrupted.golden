@@ -1,0 +1,40 @@
+[1;38;2;197;162;123mcaffè ─ demo ─ run 0112dd6a · interrupted ── 2/4 tasks ── ● runtime 0.9.5                                               [m
+[1;38;2;197;162;123m▸ 1 Overview         [m[38;2;169;149;131m│[m Overview                                                                                         
+  2 Tasks            [38;2;169;149;131m│[m Request  Add a hello file to the project                                                         
+  3 Agents           [38;2;169;149;131m│[m Started  14:09:29 (—)               Phase  [38;2;224;168;79m⏸ interrupted  [m Base  7f5d944                         
+  4 Runs             [38;2;169;149;131m│[m[38;2;224;168;79m Interrupted: its process stopped · caffe resume 0112dd6a continues it, caffe cancel 0112dd6a sto…[m
+  5 Workspace        [38;2;169;149;131m│[m                                                                                                  
+  6 Terminals        [38;2;169;149;131m│[m TASKS  ■■□□  2 completed · 1 running · 1 pending                                                 
+                     [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m research     researcher  55s                                                       
+                     [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m impl         developer   39s      caffe/0112dd6a/impl                              
+                     [38;2;169;149;131m│[m  [38;2;197;162;123m● running   [m review       reviewer    12s      agent c8eccebbd                                  
+                     [38;2;169;149;131m│[m  [38;2;169;149;131m◌ pending   [m validate     validator            waiting on review (running)                      
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m AGENTS                                                                                           
+                     [38;2;169;149;131m│[m  [38;2;197;162;123m● working     [m c8eccebbd  reviewer   claude                                                     
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m HEALTH                                                                                           
+                     [38;2;169;149;131m│[m  [38;2;224;168;79m⚠ no heartbeat for 1s[m                                                                           
+                     [38;2;169;149;131m│[m  [38;2;141;181;128m● runtime 0.9.5[m                                                                                 
+                     [38;2;169;149;131m│[m  [38;2;224;168;79m⚠ warnings 1[m                                                                                    
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m RECENT EVENTS                                                                                    
+                     [38;2;169;149;131m│[m  14:11:05  task.completed    impl                                                                
+                     [38;2;169;149;131m│[m  14:11:05  diff.collected    impl                                                                
+                     [38;2;169;149;131m│[m  14:11:18  task.running      review                                                              
+                     [38;2;169;149;131m│[m  14:11:25  warning                                                                               
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+                     [38;2;169;149;131m│[m                                                                                                  
+[38;2;169;149;131m─ events ───────────────────────────────────────────────────────────────────────────────────────────────────────────────[m
+  14:11:05  task.completed    impl                                                                                      
+  14:11:05  diff.collected    impl                                                                                      
+  14:11:18  task.running      review                                                                                    
+  14:11:25  warning                                                                                                     
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+[38;2;169;149;131m NORMAL · ws: main · ? help · : commands · space menu · ctrl+q quit                                                     [m

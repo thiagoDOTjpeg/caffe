@@ -48,10 +48,10 @@ func TestGoldenOverview(t *testing.T) {
 }
 
 func TestOverviewFields(t *testing.T) {
-	v := overviewModel(t).View().Content
+	v := plain(overviewModel(t).View().Content)
 	for _, want := range []string{
 		"run 0112dd6a · reviewing ── 2/4 tasks ── ● runtime 0.9.5", // header
-		"Add a hello file to the project", "14:09:29 (2m 01s)", "Phase  reviewing", "Base  7f5d944",
+		"Add a hello file to the project", "14:09:29 (2m 01s)", "Phase  ↻ reviewing", "Base  7f5d944",
 		"■■□□  2 completed · 1 running · 1 pending",
 		"caffe/0112dd6a/impl", "agent c8eccebbd", "waiting on review (running)", "55s",
 		"● working", "claude",
@@ -69,10 +69,10 @@ func TestOverviewEmptyAndHealthStates(t *testing.T) {
 	f.runs, f.snaps, f.events = nil, nil, nil
 	m := drive(t, liveModel(f), liveModel(f).Init())
 	m.width, m.height = 120, 40
-	if v := m.View().Content; !strings.Contains(v, "no runs yet") {
+	if v := m.View().Content; !strings.Contains(v, "No runs yet") {
 		t.Error("no empty state")
 	}
-	if got := (health{checked: true, err: errors.New("dial: refused")}).badge().Label; got != "runtime unreachable" {
+	if got := (health{checked: true, err: errors.New("dial: refused")}).badge().Label; got != "runtime: dial: refused" {
 		t.Errorf("unreachable: %q", got)
 	}
 	r := service.RunSummary{Status: c.RunExecuting, HeartbeatAt: at(-40 * time.Second)}

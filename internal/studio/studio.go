@@ -37,6 +37,9 @@ type Options struct {
 	// environment forces the mono theme.
 	Theme string
 	Log   zerolog.Logger
+	// NoProject: p.Root is a directory that is not in a Caffè project; Studio
+	// shows how to create one and svc must be nil.
+	NoProject bool
 }
 
 // Run starts Studio and blocks until the user quits or ctx is cancelled
@@ -51,6 +54,7 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 		src = svc
 	}
 	m := newModel(src, p, guard)
+	m.noProject = opts.NoProject
 	if err := m.registry.Validate(); err != nil {
 		return err // a programming error: refuse to start with ambiguous keys
 	}

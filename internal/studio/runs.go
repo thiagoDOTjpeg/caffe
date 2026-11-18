@@ -116,7 +116,7 @@ func (m model) runsScreen(width int) string {
 	runs := m.runs.visibleRuns(m.live.runs)
 	if len(runs) == 0 {
 		if len(m.live.runs) == 0 {
-			b.WriteString("\n no runs yet · start one with caffe run")
+			b.WriteString("\n" + noRunsLine)
 		} else {
 			b.WriteString("\n no run matches")
 		}

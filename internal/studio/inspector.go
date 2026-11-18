@@ -138,7 +138,7 @@ func (m model) inspectorScreen(width, height int) string {
 		return fmt.Sprintf(" Execution %s\n\n %s", short(in.id), m.theme.Render(ui.ToneError, in.err.Error()))
 	}
 	if in.d == nil {
-		return fmt.Sprintf(" Execution %s\n\n loading…", short(in.id))
+		return loadingText("Execution " + short(in.id))
 	}
 	d := in.d
 	head := executionHeader(d, m)

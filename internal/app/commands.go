@@ -131,26 +131,34 @@ func NewRootCommand() *cobra.Command {
 	runCmd.Flags().BoolVar(&detach, "detach", false, "start the run as a background process and return its id")
 	root.AddCommand(runCmd)
 
+	var studioCmd func(*cobra.Command, []string) error // set below: opens the project, then Studio
 	root.AddCommand(&cobra.Command{
 		Use:   "studio",
 		Short: "Open Caffè Studio, the terminal UI (early preview)",
 		Long: "Caffè Studio supervises runs, agents and their worktrees from the terminal.\n" +
 			"Runs started from it are separate processes: quitting Studio does not stop them.",
 		Args: cobra.NoArgs,
-		RunE: with(func(cmd *cobra.Command, a *App, _ []string) error {
-			dir := filepath.Join(a.Cfg.Project.Path, config.Dir, "studio")
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if _, err := FindRoot(dir); err != nil { // not a project: say how to make one, full screen
+				abs, _ := filepath.Abs(dir)
+				return studio.Run(cmd.Context(), nil, studio.Project{Root: abs}, studio.Options{NoProject: true, Log: zerolog.Nop()})
 			}
-			logFile, err := os.OpenFile(filepath.Join(dir, "studio.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-			if err != nil {
-				return err
-			}
-			defer logFile.Close()
-			return studio.Run(cmd.Context(), a.Svc,
-				studio.Project{Name: a.Cfg.Project.Name, Root: a.Cfg.Project.Path},
-				studio.Options{Dir: dir, Theme: a.Cfg.Studio.Theme, Log: zerolog.New(logFile).With().Timestamp().Logger()})
-		}),
+			return studioCmd(cmd, args)
+		},
+	})
+	studioCmd = with(func(cmd *cobra.Command, a *App, _ []string) error {
+		dir := filepath.Join(a.Cfg.Project.Path, config.Dir, "studio")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		logFile, err := os.OpenFile(filepath.Join(dir, "studio.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		defer logFile.Close()
+		return studio.Run(cmd.Context(), a.Svc,
+			studio.Project{Name: a.Cfg.Project.Name, Root: a.Cfg.Project.Path},
+			studio.Options{Dir: dir, Theme: a.Cfg.Studio.Theme, Log: zerolog.New(logFile).With().Timestamp().Logger()})
 	})
 
 	root.AddCommand(&cobra.Command{

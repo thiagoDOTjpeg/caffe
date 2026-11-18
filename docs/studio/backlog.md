@@ -321,8 +321,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P1 · S · Depends:** CC-05 · **Acceptance:** renders `service.Report` Markdown as plain text sections.
 - **Done.** `r` on Overview or `space r o`; `j/k ctrl+d ctrl+u g/G` scroll, `esc` closes. `markdownText` covers what `core.BuildReport` writes (headings, tables → aligned columns, lists, `**`/`` ` `` dropped), not Markdown in general.
 
-### CC-18 · Empty, loading, error, disconnected states
+### [x] CC-18 · Empty, loading, error, disconnected states
 - **P0 · S · Depends:** CC-05 · **Acceptance:** every state in ux-specification §6 has a golden render.
+- **Done.** Goldens `state-*` (plus `layout-50x12` for too small). `caffe studio` outside a project opens a full-screen message instead of failing; the header shows `✗ database` while stale and the adapter's own error when the runtime is unreachable; interrupted runs show the resume/cancel commands; a Seq gap in the feed (cannot normally happen) is logged and the feed reloaded from a fresh snapshot. The empty state says `caffe run "…"` only: the `n` key comes with CC-14, and "live output/attach disabled with the reason" with CC-15/CC-16.
 
 ### CC-19 · End-to-end Studio test on the fake runtime
 - **P0 · M · Depends:** CC-06 … CC-11

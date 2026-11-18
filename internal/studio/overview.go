@@ -56,7 +56,7 @@ func (h health) badge() badge {
 	case !h.checked:
 		return badge{"◌", "runtime checking…", ui.ToneMuted}
 	case h.err != nil:
-		return badge{"✗", "runtime unreachable", ui.ToneError}
+		return badge{"✗", "runtime: " + clip(oneLine(h.err.Error()), 48), ui.ToneError} // the adapter's own words
 	case h.info.Version != "":
 		return badge{"●", "runtime " + h.info.Version, ui.ToneOK}
 	default:
@@ -72,8 +72,15 @@ func padded(b badge, th ui.Theme, w int) string {
 // headerText is the header line; it names the selected run when there is one.
 func (m model) headerText() string {
 	h := "caffè ─ " + m.project.Name
+	if m.src != nil && m.live.stale() {
+		h += " ── ✗ database"
+	}
 	v := m.live.snap
 	if m.src == nil || v == nil {
+		if m.src != nil && m.health.checked && m.health.err != nil {
+			b := m.health.badge()
+			h += " ── " + b.Symbol + " " + b.Label
+		}
 		return h
 	}
 	done := 0
@@ -90,10 +97,10 @@ func (m model) headerText() string {
 func (m model) overviewScreen(height int) string {
 	l := m.live
 	if !l.loaded {
-		return " Overview\n\n loading…"
+		return loadingText("Overview")
 	}
 	if l.snap == nil {
-		return " Overview\n\n no runs yet · start one with caffe run \"…\""
+		return noRunsText("Overview")
 	}
 	v, now, th := l.snap, m.now(), m.theme
 	r := v.Run
@@ -106,9 +113,13 @@ func (m model) overviewScreen(height int) string {
 	if r.StartedAt != nil {
 		started = fmt.Sprintf("%s (%s)", r.StartedAt.Local().Format("15:04:05"), duration(r, now))
 	}
-	add(" Started  %-26s Phase  %-13s Base  %s", started, r.Status, shortN(r.BaseCommit, 7))
+	phase := runBadge(r.Status)
+	add(" Started  %-26s Phase  %s Base  %s", started, padded(phase, th, 15), shortN(r.BaseCommit, 7))
 	if r.Error != "" {
 		add(" %s", th.Render(ui.ToneError, "Error    "+clip(r.Error, 200)))
+	}
+	if hint := interruptedHint(r); hint != "" {
+		add("%s", th.Render(ui.ToneWarn, hint))
 	}
 	add("")
 

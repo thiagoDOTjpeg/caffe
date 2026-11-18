@@ -161,6 +161,12 @@ func (m model) updateLive(msg tea.Msg) (model, tea.Cmd) {
 			l.pending = true
 			return m, after(l.backoff)
 		}
+		if gap(l.lastSeq, msg.events) {
+			m.guard.log.Warn().Int64("last_seq", l.lastSeq).Int64("next_seq", msg.events[0].Seq).Msg("event cursor gap: reloading the feed")
+			l.feed, l.lastSeq, l.loaded = nil, 0, false // the next load starts from a fresh snapshot
+			l.pending = true
+			return m, l.load(m.src)
+		}
 		l.apply(msg)
 		if msg.more || l.dirty {
 			l.dirty, l.pending = false, true
