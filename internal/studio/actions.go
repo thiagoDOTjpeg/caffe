@@ -88,6 +88,12 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "tasks.board", Title: "Task board", Scope: ts, Keys: []string{"b"}}, view(viewBoard))
 	add(ui.Action{ID: "tasks.graph", Title: "Task dependency graph", Scope: ts, Keys: []string{"g"}}, view(viewGraph))
 	add(ui.Action{ID: "tasks.list", Title: "Task list", Scope: ts, Keys: []string{"L"}}, view(viewList))
+	as := ui.Scope("agents")
+	amove := func(d func(int) int) handler { return func(m model) (model, tea.Cmd) { return m.agentsMove(d), nil } }
+	add(ui.Action{ID: "agents.left", Title: "Previous agent", Scope: as, Keys: []string{"h", "left"}}, amove(func(int) int { return -1 }))
+	add(ui.Action{ID: "agents.right", Title: "Next agent", Scope: as, Keys: []string{"l", "right"}}, amove(func(int) int { return 1 }))
+	add(ui.Action{ID: "agents.down", Title: "Agent below", Scope: as, Keys: []string{"j", "down"}}, amove(func(n int) int { return n }))
+	add(ui.Action{ID: "agents.up", Title: "Agent above", Scope: as, Keys: []string{"k", "up"}}, amove(func(n int) int { return -n }))
 	return r, h
 }
 

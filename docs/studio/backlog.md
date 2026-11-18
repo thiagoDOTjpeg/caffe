@@ -301,8 +301,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Tests:** layering algorithm unit tests (diamond, fan-out, long chain).
 - **Done.** `b` board, `g` graph, `L` list (`l` is already "next column"). Layers by longest path, ordered by barycenter sweeps; an edge between same-row neighbours is an arrow, every other dependency is listed under the task (`⤷ a, b`) instead of crossing lines.
 
-### CC-10 · Agent Room cards (stored state)
+### [x] CC-10 · Agent Room cards (stored state)
 - **P0 · M · Depends:** CC-05 · **Acceptance:** visual states from F-07; sort order per §2.3.
+- **Done.** Order: blocked/lost, working/waiting, interrupted, starting, idle, finished; ties keep snapshot order. Focused card has a double border; `h/l` across, `j/k` by row; cursor by agent id. Avatars are PO-01; "idle for …" on Waiting needs runtime status (CC-15); card actions come with CC-11/CC-15/CC-16.
 
 ### CC-11 · Execution Inspector
 - **P0 · M · Depends:** CC-05 · **Acceptance:** Report/Prompt/Output/Artifacts/Events tabs; observed vs claimed labels identical to `caffe inspect`.
