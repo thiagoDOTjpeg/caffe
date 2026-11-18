@@ -46,9 +46,21 @@ type Options struct {
 // separate processes and are not affected by Studio exiting.
 func Run(ctx context.Context, svc *service.Service, p Project, opts Options) error {
 	guard := &crashGuard{dir: opts.Dir, log: opts.Log}
-	m := newModel(svc, p, guard)
+	var src source
+	if svc != nil { // a nil *Service must not become a non-nil interface
+		src = svc
+	}
+	m := newModel(src, p, guard)
 	if err := m.registry.Validate(); err != nil {
 		return err // a programming error: refuse to start with ambiguous keys
+	}
+	if svc != nil {
+		w, err := svc.Watch(ctx, 0)
+		if err != nil {
+			m.live.watchErr = fmt.Errorf("watching for changes: %w", err)
+		} else {
+			m.changes = w.Changes()
+		}
 	}
 	m.theme = ui.ThemeByName(opts.Theme, os.Getenv("NO_COLOR") != "")
 	popts := []tea.ProgramOption{tea.WithContext(ctx)}

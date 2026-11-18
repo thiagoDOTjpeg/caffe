@@ -276,7 +276,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Packages:** `internal/studio/ui`.
 - **Tests:** conflict detection; palette filtering.
 
-### CC-05 · Live state: watcher, snapshots, feed, staleness
+### [x] CC-05 · Live state: watcher, snapshots, feed, staleness
+- **Done.** `internal/studio/live.go`: one feed ring of 2 000 events for all runs (filtered per run in the view), first load starts at `Seq − 2000` instead of replaying history; a watcher that fails to start shows "not updating". Studio-triggered immediate refresh comes with CC-14.
 - **P0 · M · Depends:** F-11, CC-01
 - **Description:** model wiring per architecture §7: debounced refresh,
   `Seq`-based dedupe, ring buffer, stale marking, backoff.

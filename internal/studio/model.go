@@ -2,6 +2,7 @@ package studio
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -26,7 +27,9 @@ var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace"
 // model is the root of Studio's state (docs/studio/architecture.md §7). All
 // I/O runs in commands, never in Update or View.
 type model struct {
-	svc     *service.Service
+	src     source                // nil: no project data (tests of layout only)
+	changes <-chan service.Change // nil: no watcher
+	live    live
 	project Project
 	guard   *crashGuard
 
@@ -44,12 +47,18 @@ type model struct {
 	leaderGroup  string
 }
 
-func newModel(svc *service.Service, p Project, g *crashGuard) model {
+func newModel(src source, p Project, g *crashGuard) model {
 	r, h := actions()
-	return model{svc: svc, project: p, guard: g, registry: r, handlers: h, theme: ui.ThemeByName("caffe", false)}
+	return model{src: src, project: p, guard: g, registry: r, handlers: h, theme: ui.ThemeByName("caffe", false)}
 }
 
-func (m model) Init() tea.Cmd { return nil }
+// Init loads the initial state and starts listening to the watcher.
+func (m model) Init() tea.Cmd {
+	if m.src == nil {
+		return nil
+	}
+	return tea.Batch(m.live.load(m.src), waitChange(m.changes))
+}
 
 // Update is guarded: a panic anywhere below is written to the crash log
 // before Bubble Tea restores the terminal.
@@ -64,6 +73,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
 		return m.key(msg) // every key goes through the action registry
+	case changeMsg, refreshMsg, loadedMsg:
+		return m.updateLive(msg)
 	}
 	return m, nil
 }
@@ -89,6 +100,17 @@ func (m model) view() tea.View {
 	}
 	mode := "NORMAL"
 	main := fmt.Sprintf(" %s\n\n Coming in the next increments of the Command Center.\n\n project  %s", screenNames[m.screen], m.project.Root)
+	panel := " (no project data)"
+	if m.src != nil {
+		main = fmt.Sprintf(" %s\n\n%s", screenNames[m.screen], m.live.summary())
+		if s := m.live.staleLine(); s != "" {
+			main = " " + m.theme.Render(ui.ToneWarn, s) + "\n" + main
+		}
+		panel = strings.Join(m.live.feedLines(l.Panel.H), "\n")
+		if panel == "" {
+			panel = " no events yet"
+		}
+	}
 	if m.overlay != overlayNone {
 		mode, main = m.overlayView()
 	}
@@ -97,7 +119,7 @@ func (m model) view() tea.View {
 		Nav:        nav,
 		Main:       main,
 		PanelTitle: "events",
-		Panel:      " (live events arrive with CC-05)",
+		Panel:      panel,
 		Status:     fmt.Sprintf(" %s · ws: main · ? help · : commands · space menu · ctrl+q quit", mode),
 	}, m.theme))
 	v.AltScreen = true
