@@ -1,0 +1,15 @@
+{
+ "goal": "Detached run test",
+ "tasks": [
+  {
+   "id": "wait",
+   "title": "Run the validation commands",
+   "description": "Run the configured validation commands (a 40 second ping) to keep the run alive while its launching console is closed.",
+   "role": "validator",
+   "dependencies": [],
+   "acceptance_criteria": [
+    "The validation commands pass"
+   ]
+  }
+ ]
+}

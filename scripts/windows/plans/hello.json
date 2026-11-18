@@ -1,0 +1,27 @@
+{
+ "goal": "Add a hello file",
+ "tasks": [
+  {
+   "id": "research",
+   "title": "Inspect the project",
+   "description": "List the files in the project root and report what the project contains.",
+   "role": "researcher",
+   "dependencies": [],
+   "acceptance_criteria": [
+    "The files in the project root are listed in the summary"
+   ]
+  },
+  {
+   "id": "impl",
+   "title": "Create hello.txt",
+   "description": "Create a file named hello.txt in the root of your working directory containing exactly one line: hello from caffe",
+   "role": "developer",
+   "dependencies": [
+    "research"
+   ],
+   "acceptance_criteria": [
+    "hello.txt exists and contains the line 'hello from caffe'"
+   ]
+  }
+ ]
+}
