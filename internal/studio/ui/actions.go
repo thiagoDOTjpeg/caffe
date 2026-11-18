@@ -1,0 +1,207 @@
+package ui
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// Scope is where an action's keys apply: ScopeGlobal everywhere (normal
+// mode), or one screen.
+type Scope string
+
+const ScopeGlobal Scope = "global"
+
+// Action describes something the user can do. It is registered once; keys,
+// the help overlay, the command palette and the leader menu are all derived
+// from the registry, so they cannot disagree (ux-specification.md §3.1).
+type Action struct {
+	ID     string // stable, e.g. "screen.overview"
+	Title  string // what the palette and help show
+	Scope  Scope
+	Keys   []string // as Bubble Tea names them: "q", "ctrl+b", "?"
+	Leader string   // "<group> <key>" under the leader key, e.g. "v b"; "" for none
+}
+
+// Registry holds every action. The zero value is empty and usable.
+type Registry struct {
+	actions []Action
+	groups  map[string]string // leader group key → title
+}
+
+func (r *Registry) Add(a ...Action) { r.actions = append(r.actions, a...) }
+
+// Group names a leader group (shown in the leader menu).
+func (r *Registry) Group(key, title string) {
+	if r.groups == nil {
+		r.groups = map[string]string{}
+	}
+	r.groups[key] = title
+}
+
+func (r *Registry) Actions() []Action { return append([]Action(nil), r.actions...) }
+
+// Validate rejects ambiguous registries: duplicate ids, a key bound twice in
+// one scope, a screen key that shadows a global one, two actions on the same
+// leader sequence, or a leader sequence in an unnamed group.
+func (r *Registry) Validate() error {
+	var errs []string
+	ids := map[string]bool{}
+	bound := map[Scope]map[string]string{} // scope → key → action id
+	leaders := map[string]string{}
+	for _, a := range r.actions {
+		if a.ID == "" || a.Title == "" {
+			errs = append(errs, fmt.Sprintf("action %q has no id or title", a.ID))
+		}
+		if ids[a.ID] {
+			errs = append(errs, fmt.Sprintf("duplicate action id %q", a.ID))
+		}
+		ids[a.ID] = true
+		if bound[a.Scope] == nil {
+			bound[a.Scope] = map[string]string{}
+		}
+		for _, k := range a.Keys {
+			if other, dup := bound[a.Scope][k]; dup {
+				errs = append(errs, fmt.Sprintf("key %q is bound to both %s and %s in scope %s", k, other, a.ID, a.Scope))
+			}
+			bound[a.Scope][k] = a.ID
+		}
+		if a.Leader != "" {
+			if other, dup := leaders[a.Leader]; dup {
+				errs = append(errs, fmt.Sprintf("leader %q is bound to both %s and %s", a.Leader, other, a.ID))
+			}
+			leaders[a.Leader] = a.ID
+			if group, _, _ := strings.Cut(a.Leader, " "); r.groups[group] == "" {
+				errs = append(errs, fmt.Sprintf("leader group %q of %s has no title", group, a.ID))
+			}
+		}
+	}
+	for scope, keys := range bound {
+		if scope == ScopeGlobal {
+			continue
+		}
+		for k, id := range keys {
+			if global, ok := bound[ScopeGlobal][k]; ok {
+				errs = append(errs, fmt.Sprintf("key %q of %s (scope %s) shadows global %s", k, id, scope, global))
+			}
+		}
+	}
+	sort.Strings(errs)
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid key bindings: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+// Match finds the action bound to key in scope, screen bindings first.
+func (r *Registry) Match(scope Scope, key string) (Action, bool) {
+	for _, want := range []Scope{scope, ScopeGlobal} {
+		for _, a := range r.actions {
+			if a.Scope == want && contains(a.Keys, key) {
+				return a, true
+			}
+		}
+	}
+	return Action{}, false
+}
+
+// MatchLeader finds the action of a leader sequence ("v b").
+func (r *Registry) MatchLeader(seq string) (Action, bool) {
+	for _, a := range r.actions {
+		if a.Leader == seq {
+			return a, true
+		}
+	}
+	return Action{}, false
+}
+
+// Help lists the actions that apply in scope: the scope's own, then global.
+func (r *Registry) Help(scope Scope) []Action {
+	var own, global []Action
+	for _, a := range r.actions {
+		switch a.Scope {
+		case scope:
+			if scope != ScopeGlobal {
+				own = append(own, a)
+			}
+		case ScopeGlobal:
+			global = append(global, a)
+		}
+	}
+	return append(own, global...)
+}
+
+// LeaderGroup lists the actions of one leader group, and the group title.
+func (r *Registry) LeaderGroup(group string) (string, []Action) {
+	var out []Action
+	for _, a := range r.actions {
+		if g, _, _ := strings.Cut(a.Leader, " "); g == group && a.Leader != "" {
+			out = append(out, a)
+		}
+	}
+	return r.groups[group], out
+}
+
+// LeaderGroups returns the named groups, sorted by key.
+func (r *Registry) LeaderGroups() [][2]string {
+	var out [][2]string
+	for k, title := range r.groups {
+		out = append(out, [2]string{k, title})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i][0] < out[j][0] })
+	return out
+}
+
+// Filter is the palette search: actions whose title or id match query,
+// substring matches before subsequence ("fuzzy") ones, registry order within
+// each. An empty query lists everything.
+func (r *Registry) Filter(query string) []Action {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return r.Actions()
+	}
+	var exact, fuzzy []Action
+	for _, a := range r.actions {
+		hay := strings.ToLower(a.Title + " " + a.ID)
+		switch {
+		case strings.Contains(hay, q):
+			exact = append(exact, a)
+		case subsequence(q, hay):
+			fuzzy = append(fuzzy, a)
+		}
+	}
+	return append(exact, fuzzy...)
+}
+
+func subsequence(needle, hay string) bool {
+	hr := []rune(hay)
+	i := 0
+	for _, c := range needle {
+		for i < len(hr) && hr[i] != c {
+			i++
+		}
+		if i == len(hr) {
+			return false
+		}
+		i++
+	}
+	return true
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
+// KeyLabel is how an action's keys are shown: "ctrl+b", "1", "space v b".
+func KeyLabel(a Action) string {
+	keys := append([]string(nil), a.Keys...)
+	if a.Leader != "" {
+		keys = append(keys, "space "+a.Leader)
+	}
+	return strings.Join(keys, ", ")
+}
