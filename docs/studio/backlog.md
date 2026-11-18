@@ -325,11 +325,12 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · S · Depends:** CC-05 · **Acceptance:** every state in ux-specification §6 has a golden render.
 - **Done.** Goldens `state-*` (plus `layout-50x12` for too small). `caffe studio` outside a project opens a full-screen message instead of failing; the header shows `✗ database` while stale and the adapter's own error when the runtime is unreachable; interrupted runs show the resume/cancel commands; a Seq gap in the feed (cannot normally happen) is logged and the feed reloaded from a fresh snapshot. The empty state says `caffe run "…"` only: the `n` key comes with CC-14, and "live output/attach disabled with the reason" with CC-15/CC-16.
 
-### CC-19 · End-to-end Studio test on the fake runtime
+### [x] CC-19 · End-to-end Studio test on the fake runtime
 - **P0 · M · Depends:** CC-06 … CC-11
 - **Description:** drive a full fake run in another goroutine and assert
   Studio's model reaches the expected screens/states.
 - **Tests:** this is the test; plus import-boundary test for `internal/studio`.
+- **Done.** `internal/studio/e2e_test.go`: a real orchestrator (real Git + SQLite, fake runtime) runs an impl → review plan in a goroutine; Studio's model runs on the real service and watcher through a small Bubble Tea-like pump (no v2 `teatest` was needed). Asserts the empty state, then impl running / review waiting / developer card while the agent is held, then the completed run on the board, the inspector's claim label, the Runs screen, the report and an ordered, deduped feed. Stable over `-race -count=5`. Engine imports are in the test only; `boundary_test.go` still guards Studio's code.
 
 ## M1b / M1c — Run controls and live agents
 
