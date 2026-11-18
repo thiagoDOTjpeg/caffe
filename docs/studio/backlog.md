@@ -317,8 +317,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P0 · S · Depends:** CC-04 · **Acceptance:** default "Cancel"; dialog text names target and consequence.
 - **Done.** `model.ask(title, action, body, handler)` opens a centred dialog that captures every key; `h/l/tab` move, `enter`/`space` choose, `esc q n` cancel; the handler runs only on an explicit choice of the action button. Toasts: `notify` (expires after 5 s) and `failed` (stays; `esc` dismisses errors before closing a view), newest shown in the status bar. No action uses the dialog yet: the first consumers are CC-14's cancel and clean.
 
-### CC-17 · Report view
+### [x] CC-17 · Report view
 - **P1 · S · Depends:** CC-05 · **Acceptance:** renders `service.Report` Markdown as plain text sections.
+- **Done.** `r` on Overview or `space r o`; `j/k ctrl+d ctrl+u g/G` scroll, `esc` closes. `markdownText` covers what `core.BuildReport` writes (headings, tables → aligned columns, lists, `**`/`` ` `` dropped), not Markdown in general.
 
 ### CC-18 · Empty, loading, error, disconnected states
 - **P0 · S · Depends:** CC-05 · **Acceptance:** every state in ux-specification §6 has a golden render.

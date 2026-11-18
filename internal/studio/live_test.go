@@ -24,6 +24,7 @@ type fakeSource struct {
 	err    error
 	afters []int64 // EventsSince calls
 
+	report    string
 	execs     map[string]*service.ExecutionDetail
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
@@ -96,6 +97,15 @@ func (f *fakeSource) EventsBefore(_ context.Context, before int64, runID string,
 		}
 	}
 	return out, f.err
+}
+
+func (f *fakeSource) Report(_ context.Context, runID string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.report == "" {
+		return "", service.ErrNotFound
+	}
+	return f.report, nil
 }
 
 func (f *fakeSource) set(fn func(f *fakeSource)) {

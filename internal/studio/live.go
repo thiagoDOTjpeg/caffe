@@ -18,6 +18,7 @@ type source interface {
 	EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error)
 	EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error)
 	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
+	Report(ctx context.Context, runID string) (string, error)
 	Execution(ctx context.Context, id string) (*service.ExecutionDetail, error)
 	ReadPrompt(ctx context.Context, executionID string, max int64) (*service.ArtifactContent, error)
 	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)

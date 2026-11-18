@@ -82,7 +82,7 @@ func (m model) openInspector(id string) (model, tea.Cmd) {
 	if id == "" || m.src == nil {
 		return m, nil
 	}
-	m.inspect = &inspector{id: id}
+	m.inspect, m.report = &inspector{id: id}, nil
 	return m, loadExecution(m.src, id)
 }
 

@@ -35,7 +35,8 @@ type model struct {
 	runs     runsView
 	tasks    tasksView
 	agents   agentsView
-	inspect  *inspector // nil: closed
+	inspect  *inspector  // nil: closed
+	report   *reportView // nil: closed
 	events   eventsPanel
 	confirm  *confirmDialog // set while overlayConfirm is open
 	toasts   []toast
@@ -96,6 +97,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateInspector(msg)
 	case olderMsg:
 		return m.updateOlder(msg)
+	case reportMsg:
+		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
 	case healthMsg, healthTickMsg:
@@ -133,6 +136,8 @@ func (m model) view() tea.View {
 			h--
 		}
 		switch {
+		case m.report != nil:
+			main = m.reportScreen(l.Main.W, h)
 		case m.inspect != nil:
 			main = m.inspectorScreen(l.Main.W, h)
 		case m.screen == screenOverview:

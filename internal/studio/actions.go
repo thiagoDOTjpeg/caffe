@@ -37,6 +37,7 @@ func actions() (*ui.Registry, map[string]handler) {
 	g := ui.ScopeGlobal
 	r.Group("g", "go to screen")
 	r.Group("v", "view")
+	r.Group("r", "run")
 
 	add(ui.Action{ID: "app.quit", Title: "Quit Caffè Studio", Scope: g, Keys: []string{"ctrl+q", "ctrl+c"}},
 		func(m model) (model, tea.Cmd) { return m, tea.Quit })
@@ -58,7 +59,7 @@ func actions() (*ui.Registry, map[string]handler) {
 			if next, had := m.dismissErrors(); had {
 				return next, nil
 			}
-			m.inspect = nil
+			m.inspect, m.report = nil, nil
 			return m, nil
 		})
 	add(ui.Action{ID: "layout.sidebar", Title: "Toggle the sidebar", Scope: g, Keys: []string{"ctrl+b"}, Leader: "v b"},
@@ -73,7 +74,10 @@ func actions() (*ui.Registry, map[string]handler) {
 		}
 		add(ui.Action{ID: "screen." + strings.ToLower(name), Title: "Go to " + name, Scope: g,
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
-			func(m model) (model, tea.Cmd) { m.screen, m.overlay, m.inspect = s, overlayNone, nil; return m, nil })
+			func(m model) (model, tea.Cmd) {
+				m.screen, m.overlay, m.inspect, m.report = s, overlayNone, nil, nil
+				return m, nil
+			})
 	}
 	rs := ui.Scope("runs")
 	move := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.runsMove(d), nil } }
@@ -133,6 +137,16 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "inspector.up", Title: "Scroll up", Scope: is, Keys: []string{"k", "up"}}, scroll(-1))
 	add(ui.Action{ID: "inspector.pagedown", Title: "Scroll a page down", Scope: is, Keys: []string{"ctrl+d", "pgdown"}}, scroll(10))
 	add(ui.Action{ID: "inspector.pageup", Title: "Scroll a page up", Scope: is, Keys: []string{"ctrl+u", "pgup"}}, scroll(-10))
+	add(ui.Action{ID: "run.report", Title: "Open the run's report", Scope: ui.Scope("overview"), Keys: []string{"r"}, Leader: "r o"},
+		func(m model) (model, tea.Cmd) { return m.openReport() })
+	rs2 := ui.Scope("report")
+	rscroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.reportScroll(d), nil } }
+	add(ui.Action{ID: "report.down", Title: "Scroll down", Scope: rs2, Keys: []string{"j", "down"}}, rscroll(1))
+	add(ui.Action{ID: "report.up", Title: "Scroll up", Scope: rs2, Keys: []string{"k", "up"}}, rscroll(-1))
+	add(ui.Action{ID: "report.pagedown", Title: "Scroll a page down", Scope: rs2, Keys: []string{"ctrl+d", "pgdown"}}, rscroll(10))
+	add(ui.Action{ID: "report.pageup", Title: "Scroll a page up", Scope: rs2, Keys: []string{"ctrl+u", "pgup"}}, rscroll(-10))
+	add(ui.Action{ID: "report.top", Title: "Top of the report", Scope: rs2, Keys: []string{"g", "home"}}, rscroll(-1<<30))
+	add(ui.Action{ID: "report.bottom", Title: "End of the report", Scope: rs2, Keys: []string{"G", "end"}}, rscroll(1<<30))
 	focus := func(m model) (model, tea.Cmd) {
 		m.events.focused = !m.events.focused && m.layout().Panel.Visible()
 		return m, nil
@@ -176,6 +190,9 @@ func (m model) toggleOverlay(o overlay) model {
 func (m model) scope() ui.Scope {
 	if m.events.focused && m.layout().Panel.Visible() {
 		return "events"
+	}
+	if m.report != nil {
+		return "report"
 	}
 	if m.inspect != nil {
 		return "inspector"
