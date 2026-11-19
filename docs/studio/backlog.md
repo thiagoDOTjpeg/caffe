@@ -384,7 +384,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Done.** `space w f`, or `f` in the explorer/viewer. Fuzzy subsequence match over the explorer's list (matched from the end, so file names win; gaps and directory matches cost), 200 best shown; `enter` opens.
 - **P1 · S · Depends:** WS-02 · **Description:** fuzzy match over `ls-files`.
 
-### WS-08 · Content search
+### [x] WS-08 · Content search
+- **Done.** `service.Search`: literal, smart case; `rg --json` (lenient: unknown types and broken lines skipped, `bytes` paths and lines decoded; test on recorded rg 15.2 output), else `git grep -z -n --untracked --exclude-standard`; stops at the limit (500) and kills the search. `space w g`: type, `enter` searches, `enter` opens the hit at its line.
 - **P1 · M · Depends:** WS-01 · **Description:** `rg --json` lenient parser, fallback `git grep -n`. **Tests:** parser on recorded output incl. `bytes` fields and unknown types.
 
 ### [x] WS-09 · `$EDITOR` hand-off

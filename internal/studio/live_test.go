@@ -63,6 +63,21 @@ func (f *fakeSource) TaskDiff(_ context.Context, id string) (*service.Diff, erro
 	return nil, service.ErrNotFound
 }
 
+func (f *fakeSource) Search(_ context.Context, ws, q string, _ int) (*service.SearchResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var hits []service.SearchHit
+	for k, text := range f.files {
+		w, p, _ := strings.Cut(k, ":")
+		for i, l := range strings.Split(text, "\n") {
+			if w == ws && strings.Contains(l, q) {
+				hits = append(hits, service.SearchHit{Path: p, Line: i + 1, Text: l})
+			}
+		}
+	}
+	return &service.SearchResult{Hits: hits, Engine: "fake"}, nil
+}
+
 func (f *fakeSource) Files(_ context.Context, ws string) (*service.FileList, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

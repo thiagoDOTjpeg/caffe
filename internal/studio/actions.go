@@ -21,6 +21,7 @@ const (
 	overlayNewRun
 	overlayWorkspaces
 	overlayFinder
+	overlayGrep
 )
 
 // handler performs an action. Every registered action has exactly one;
@@ -173,6 +174,8 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "workspace.find", Title: "Find a file in the workspace", Scope: g, Leader: "w f"}, find)
 	add(ui.Action{ID: "explorer.find", Title: "Find a file", Scope: xs, Keys: []string{"f"}}, find)
 	add(ui.Action{ID: "viewer.find", Title: "Find a file", Scope: ws, Keys: []string{"f"}}, find)
+	add(ui.Action{ID: "workspace.grep", Title: "Search text in the workspace", Scope: g, Leader: "w g"},
+		func(m model) (model, tea.Cmd) { return m.openGrep() })
 	add(ui.Action{ID: "workspace.diff", Title: "Diff of the selected task workspace", Scope: g, Leader: "w d"},
 		func(m model) (model, tea.Cmd) { return m.openWorkspaceDiff() })
 	add(ui.Action{ID: "explorer.diff", Title: "Diff of this task workspace", Scope: xs, Keys: []string{"d"}},
@@ -318,6 +321,8 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.workspacesKey(k)
 	case overlayFinder:
 		return m.finderKey(msg)
+	case overlayGrep:
+		return m.grepKey(msg)
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)

@@ -45,6 +45,7 @@ type model struct {
 	output   agentOutput       // the Agent Room's output pane
 	ws       workspaces
 	find     finder
+	grep     grep      // content search
 	diff     *diffView // nil: closed
 	tree     explorer
 	fileGen  int     // identifies the open file's watch chain
@@ -123,6 +124,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
 		return m.actionDone(msg)
+	case grepMsg:
+		return m.updateGrep(msg), nil
 	case diffMsg:
 		return m.updateDiff(msg), nil
 	case editorDoneMsg:
@@ -217,6 +220,8 @@ func (m model) view() tea.View {
 		mode, main = "WORKSPACE", m.workspacesView()
 	case overlayFinder:
 		mode, main = "FIND", m.finderView(l.Main.H)
+	case overlayGrep:
+		mode, main = "SEARCH", m.grepView(l.Main.W, l.Main.H)
 	default:
 		mode, main = m.overlayView()
 	}
