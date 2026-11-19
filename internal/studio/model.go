@@ -20,9 +20,10 @@ const (
 	screenRuns
 	screenWorkspace
 	screenTerminals
+	screenIntegration
 )
 
-var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace", "Terminals"}
+var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace", "Terminals", "Integration"}
 
 type model struct {
 	src      source
@@ -51,6 +52,7 @@ type model struct {
 	split    *viewer
 	terms    terminals
 	ed       editing
+	integ    integration
 	rt       rtObs
 	watcher  pauser
 	toastSeq int
@@ -142,6 +144,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
+	case integrationMsg, previewMsg, integratedMsg:
+		return m.updateIntegration(msg)
 	case leaseMsg, leaseTickMsg, leaseRenewMsg, savedMsg, manualMsg:
 		return m.updateEditing(msg)
 	case sessionMsg, termStartedMsg, termEndedMsg, termLinkMsg, shellReadyMsg, shellDoneMsg:
@@ -203,6 +207,8 @@ func (m model) view() tea.View {
 			main = m.workspaceScreen(l.Main.W, h)
 		case m.screen == screenTerminals:
 			main = m.terminalsScreen(l.Main.W, h)
+		case m.screen == screenIntegration:
+			main = m.integrationScreen(l.Main.W)
 		}
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main

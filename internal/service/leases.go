@@ -27,8 +27,8 @@ type Lease struct {
 	HeartbeatAt time.Time
 }
 
-func (s *Service) WithLeases(store *persistence.Store) *Service {
-	s.leases = store
+func (s *Service) WithWriter(store *persistence.Store) *Service {
+	s.w = store
 	return s
 }
 
@@ -41,7 +41,7 @@ func (l *Lease) row() *persistence.Lease {
 }
 
 func (s *Service) leaseRoot(ctx context.Context, workspaceID string) (string, error) {
-	if s.leases == nil || s.git == nil {
+	if s.w == nil || s.git == nil {
 		return "", fmt.Errorf("leases: %w", ErrUnsupported)
 	}
 	if workspaceID == "" || workspaceID == MainWorkspace {
@@ -61,14 +61,14 @@ func (s *Service) AcquireLease(ctx context.Context, workspaceID, holderID string
 	}
 	l := &persistence.Lease{Path: root, HolderKind: persistence.LeaseHuman, HolderID: holderID, RunID: t.RunID, TaskID: t.ID}
 	for range 2 {
-		err := s.leases.AcquireLease(ctx, l)
+		err := s.w.AcquireLease(ctx, l)
 		if err == nil {
 			return toLease(workspaceID, l), nil
 		}
 		if !errors.Is(err, persistence.ErrLeaseHeld) {
 			return nil, err
 		}
-		cur, err := s.leases.GetLease(ctx, root)
+		cur, err := s.w.GetLease(ctx, root)
 		if errors.Is(err, persistence.ErrNotFound) {
 			continue
 		}
@@ -81,7 +81,7 @@ func (s *Service) AcquireLease(ctx context.Context, workspaceID, holderID string
 		if !cur.Expired(persistence.Now(), core.HumanLeaseTTL) {
 			return nil, fmt.Errorf("another Caffè Studio is editing %s: %w", root, ErrLeaseHeld)
 		}
-		if _, err := s.leases.ExpireLease(ctx, root, persistence.Now().Add(-core.HumanLeaseTTL)); err != nil {
+		if _, err := s.w.ExpireLease(ctx, root, persistence.Now().Add(-core.HumanLeaseTTL)); err != nil {
 			return nil, err
 		}
 	}
@@ -89,11 +89,11 @@ func (s *Service) AcquireLease(ctx context.Context, workspaceID, holderID string
 }
 
 func (s *Service) RenewLease(ctx context.Context, l *Lease) error {
-	if s.leases == nil {
+	if s.w == nil {
 		return fmt.Errorf("leases: %w", ErrUnsupported)
 	}
 	row := l.row()
-	if err := s.leases.RenewLease(ctx, row); err != nil {
+	if err := s.w.RenewLease(ctx, row); err != nil {
 		if errors.Is(err, persistence.ErrLeaseHeld) {
 			return fmt.Errorf("the lease of %s was lost: %w", l.Path, ErrLeaseHeld)
 		}
@@ -104,7 +104,7 @@ func (s *Service) RenewLease(ctx context.Context, l *Lease) error {
 }
 
 func (s *Service) ReleaseLease(ctx context.Context, l *Lease) error {
-	if s.leases == nil {
+	if s.w == nil {
 		return fmt.Errorf("leases: %w", ErrUnsupported)
 	}
 	dirty, err := s.git.IsDirty(ctx, l.Path)
@@ -114,7 +114,7 @@ func (s *Service) ReleaseLease(ctx context.Context, l *Lease) error {
 	if dirty {
 		return fmt.Errorf("commit or discard the manual changes in %s first: %w", l.Path, ErrDirty)
 	}
-	return s.leases.ReleaseLease(ctx, l.row())
+	return s.w.ReleaseLease(ctx, l.row())
 }
 
 func (s *Service) held(ctx context.Context, l *Lease) error {

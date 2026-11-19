@@ -29,7 +29,7 @@ type Service struct {
 	exe   string
 
 	engine Engine
-	leases *persistence.Store
+	w      *persistence.Store
 }
 
 func New(cfg *config.Config, store *persistence.Store, rt runtime.Runtime, gm *git.Manager) *Service {

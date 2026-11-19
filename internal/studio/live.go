@@ -48,6 +48,11 @@ type source interface {
 	CommitManual(ctx context.Context, l *service.Lease, message string) (bool, error)
 	DiscardManual(ctx context.Context, l *service.Lease) error
 	SaveFile(ctx context.Context, workspaceID string, req service.SaveRequest) (*service.FileContent, error)
+
+	Integration(ctx context.Context, runID string) ([]service.IntegrationItem, error)
+	Decide(ctx context.Context, taskID, decision, note string) error
+	PreviewMerge(ctx context.Context, taskID string) (*service.MergePreview, error)
+	Merge(ctx context.Context, taskID string) (*service.MergePreview, error)
 }
 
 var (

@@ -5,7 +5,7 @@
   4 Runs             [38;2;169;149;131m│[m [Report]  Prompt  Output  Artifacts  Events   (h/l tab · j/k scroll · esc close)                 
   5 Workspace        [38;2;169;149;131m│[m                                                                                                  
   6 Terminals        [38;2;169;149;131m│[m [38;2;141;181;128m✓ approved (reviewer recommendation)[m                                                             
-                     [38;2;169;149;131m│[m Summary  Read changes.diff and checked it against the worktree                                   
+  7 Integration      [38;2;169;149;131m│[m Summary  Read changes.diff and checked it against the worktree                                   
                      [38;2;169;149;131m│[m Tests                                                                                            
                      [38;2;169;149;131m│[m  go test ./... → exit 0 · claimed by the agent, not verified                                     
                      [38;2;169;149;131m│[m Findings                                                                                         

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"caffe/internal/service"
 	"caffe/internal/studio/edit"
 	"caffe/internal/studio/ui"
 )
@@ -84,6 +85,9 @@ func actions() (*ui.Registry, map[string]handler) {
 				m.screen, m.overlay, m.inspect, m.report, m.diff = s, overlayNone, nil, nil, nil
 				if s == screenWorkspace {
 					return m.loadTree()
+				}
+				if s == screenIntegration {
+					return m.loadIntegration()
 				}
 				return m, nil
 			})
@@ -245,6 +249,19 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "editor.save", Title: "Save", Scope: es2, Keys: []string{"ctrl+s"}},
 		func(m model) (model, tea.Cmd) { return m.save(false) })
 	add(ui.Action{ID: "editor.commit", Title: "Commit the manual changes", Scope: es2, Keys: []string{"C"}}, commit)
+	is2 := ui.Scope("integration")
+	add(ui.Action{ID: "integration.down", Title: "Next branch", Scope: is2, Keys: []string{"j", "down"}},
+		func(m model) (model, tea.Cmd) { return m.integMove(1), nil })
+	add(ui.Action{ID: "integration.up", Title: "Previous branch", Scope: is2, Keys: []string{"k", "up"}},
+		func(m model) (model, tea.Cmd) { return m.integMove(-1), nil })
+	add(ui.Action{ID: "integration.approve", Title: "Approve the branch", Scope: is2, Keys: []string{"a"}},
+		func(m model) (model, tea.Cmd) { return m.integDecide(service.DecisionApprove) })
+	add(ui.Action{ID: "integration.reject", Title: "Reject the branch", Scope: is2, Keys: []string{"r"}},
+		func(m model) (model, tea.Cmd) { return m.integDecide(service.DecisionReject) })
+	add(ui.Action{ID: "integration.merge", Title: "Merge the approved branch (preview first)", Scope: is2, Keys: []string{"m"}},
+		func(m model) (model, tea.Cmd) { return m.integMerge() })
+	add(ui.Action{ID: "integration.diff", Title: "Diff of the branch", Scope: is2, Keys: []string{"d"}},
+		func(m model) (model, tea.Cmd) { return m.integDiff() })
 	xt := ui.Scope("terminals")
 	xo := ui.Scope("termout")
 	tmv := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.termMove(d), nil } }
@@ -420,6 +437,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.ed.commit != nil {
 		return m.commitKey(msg)
+	}
+	if m.screen == screenIntegration && m.integ.note != nil {
+		return m.integNoteKey(msg)
 	}
 	if m.editing() && m.ed.search != nil {
 		return m.searchKey(msg)

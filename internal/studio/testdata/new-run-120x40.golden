@@ -5,7 +5,7 @@
   4 Runs             [38;2;169;149;131m│[m Plan file  plan.json[38;2;197;162;123m▏[m[38;2;169;149;131m  (optional: a plan JSON instead of the planner)[m                            
   5 Workspace        [38;2;169;149;131m│[m                                                                                                  
   6 Terminals        [38;2;169;149;131m│[m enter starts · tab switches field · esc cancels                                                  
-                     [38;2;169;149;131m│[m The run is its own process: quitting Studio does not stop it.                                    
+  7 Integration      [38;2;169;149;131m│[m The run is its own process: quitting Studio does not stop it.                                    
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  

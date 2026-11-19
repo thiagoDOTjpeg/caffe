@@ -20,7 +20,7 @@ func TestHumanLeaseEditCommitAndRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer w.Close()
-	svc.WithLeases(w)
+	svc.WithWriter(w)
 	top := tasks["top"]
 
 	if _, err := svc.AcquireLease(ctx, MainWorkspace, "studio-1"); !errors.Is(err, ErrUnsupported) {
@@ -89,7 +89,7 @@ func TestSaveFileIsSafe(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer w.Close()
-	svc.WithLeases(w)
+	svc.WithWriter(w)
 	top := tasks["top"]
 	f, err := svc.ReadFile(ctx, top.ID, "top.txt", 1<<20)
 	must(t, err)

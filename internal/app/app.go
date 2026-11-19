@@ -99,7 +99,7 @@ func Open(ctx context.Context, dir string, verbose bool) (*App, error) {
 	if err != nil {
 		return nil, errors.Join(err, store.Close(), logFile.Close())
 	}
-	a := &App{Cfg: cfg, Svc: service.New(cfg, ro, rt, gm).WithEngine(orch).WithLeases(store), Orch: orch, store: store, roStore: ro, logFile: logFile}
+	a := &App{Cfg: cfg, Svc: service.New(cfg, ro, rt, gm).WithEngine(orch).WithWriter(store), Orch: orch, store: store, roStore: ro, logFile: logFile}
 	if a.Interrupted, err = orch.Recover(ctx); err != nil {
 		return nil, errors.Join(err, a.Close())
 	}

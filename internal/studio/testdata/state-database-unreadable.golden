@@ -5,7 +5,7 @@
   4 Runs             [38;2;169;149;131m│[m Started  14:09:29 (2m 01s)          Phase  [38;2;197;162;123m↻ reviewing    [m Base  7f5d944                         
   5 Workspace        [38;2;169;149;131m│[m                                                                                                  
   6 Terminals        [38;2;169;149;131m│[m TASKS  ■■□□  2 completed · 1 running · 1 pending                                                 
-                     [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m research     researcher  55s                                                       
+  7 Integration      [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m research     researcher  55s                                                       
                      [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m impl         developer   39s      caffe/0112dd6a/impl                              
                      [38;2;169;149;131m│[m  [38;2;197;162;123m● running   [m review       reviewer    12s      agent c8eccebbd                                  
                      [38;2;169;149;131m│[m  [38;2;169;149;131m◌ pending   [m validate     validator            waiting on review (running)                      

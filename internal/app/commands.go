@@ -251,6 +251,9 @@ func NewRootCommand() *cobra.Command {
 				return err
 			}
 			fmt.Fprint(cmd.OutOrStdout(), report)
+			if items, err := a.Svc.Integration(cmd.Context(), snap.Run.ID); err == nil {
+				printDecisions(cmd.OutOrStdout(), items)
+			}
 			if !showEvents {
 				return nil
 			}
@@ -383,6 +386,7 @@ func NewRootCommand() *cobra.Command {
 			return nil
 		}),
 	})
+	root.AddCommand(integrateCmd(with))
 	return root
 }
 

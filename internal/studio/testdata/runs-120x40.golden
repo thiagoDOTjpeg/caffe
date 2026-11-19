@@ -5,7 +5,7 @@
 [1;38;2;197;162;123m▸ 4 Runs             [m[38;2;169;149;131m│[m   531fd2a9  [38;2;141;181;128m✓ completed  [m today 14:06       1m 17s    Create slow.txt                            
   5 Workspace        [38;2;169;149;131m│[m   9c41aa02  [38;2;224;168;79m⏸ interrupted[m yesterday 18:11   —         Refactor config loading                    
   6 Terminals        [38;2;169;149;131m│[m                                                                                                  
-                     [38;2;169;149;131m│[m [enter] open  [n] new  [c] cancel  [R] resume  [x] clean  [/] filter  [a] active only            
+  7 Integration      [38;2;169;149;131m│[m [enter] open  [n] new  [c] cancel  [R] resume  [x] clean  [/] filter  [a] active only            
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  

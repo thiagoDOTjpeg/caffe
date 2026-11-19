@@ -225,6 +225,22 @@ Agent sessions do **not** appear here; they live in the Agent Room.
 and returns on exit; until M3b, shells are not rows of this list. `enter`
 moves a cursor through the output; `enter` on a `file:line` opens it.
 
+### 2.7b Integration
+
+```text
+│ Integration · run 0112dd6a                                                     │
+│   branches are merged into main in the main checkout, only when approved       │
+│   TASK      CHANGES                          REVIEW    CHECKS   MANUAL DECISION │
+│ ▸ impl      2 files changed, 9 insertions(+) approved  passed   1      approve  │
+│   ui        1 file changed, 3 insertions(+)  rejected  none     0      —        │
+│ a approve · r reject · m merge (preview first) · d diff                        │
+```
+
+`m` previews with `git merge-tree`; the confirmation names the exact command
+and the target branch. A merge is refused (with the reasons) unless the task
+is approved, the run finished, the main checkout is clean and nothing
+conflicts. Nothing is pushed. `caffe integrate` offers the same on the CLI.
+
 ### 2.8 Debugger (M5)
 
 ```text

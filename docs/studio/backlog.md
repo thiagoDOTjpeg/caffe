@@ -450,17 +450,17 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M4 — Integration
 
-### IN-01 · Integration decisions model
+### [x] IN-01 · Integration decisions model
 - **P1 · M · Depends:** F-07 · **Description:** table (task, decision approve/reject, note, author, time); service API; shown in `caffe inspect`.
 
-### IN-02 · Integration screen
+### [x] IN-02 · Integration screen
 - **P1 · M · Depends:** IN-01, WS-05
 
-### IN-03 · Merge preview and confirmed merge
+### [x] IN-03 · Merge preview and confirmed merge
 - **P1 · L · Depends:** IN-01, WS-15 · **Description:** `git merge-tree --write-tree` preview; exact command shown; executes only on confirmation, only on a clean main checkout; never pushes.
   **Tests:** conflicting and clean branches; dirty checkout refusal.
 
-### IN-04 · `caffe integrate` CLI parity
+### [x] IN-04 · `caffe integrate` CLI parity
 - **P2 · S · Depends:** IN-03
 
 ## M5 — Code intelligence

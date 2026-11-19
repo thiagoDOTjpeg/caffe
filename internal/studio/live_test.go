@@ -49,6 +49,10 @@ type fakeSource struct {
 	saveErr    error
 	commits    []string
 	dirty      map[string]bool
+	integ      []service.IntegrationItem
+	decisions  []string
+	preview    *service.MergePreview
+	merged     []string
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -551,4 +555,40 @@ func (f *fakeSource) SaveFile(_ context.Context, ws string, req service.SaveRequ
 	}
 	f.dirty[ws] = true
 	return &service.FileContent{Path: "/" + req.Path, Text: req.Text, Size: int64(len(req.Text))}, nil
+}
+
+func (f *fakeSource) Integration(_ context.Context, runID string) ([]service.IntegrationItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.integ, nil
+}
+
+func (f *fakeSource) Decide(_ context.Context, taskID, decision, note string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.decisions = append(f.decisions, taskID+" "+decision+" "+note)
+	for i := range f.integ {
+		if f.integ[i].Task.ID == taskID {
+			f.integ[i].Decision = &service.Decision{Decision: decision, Note: note}
+		}
+	}
+	return nil
+}
+
+func (f *fakeSource) PreviewMerge(_ context.Context, taskID string) (*service.MergePreview, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.preview == nil {
+		return nil, service.ErrNotFound
+	}
+	p := *f.preview
+	return &p, nil
+}
+
+func (f *fakeSource) Merge(_ context.Context, taskID string) (*service.MergePreview, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.merged = append(f.merged, taskID)
+	p := *f.preview
+	return &p, nil
 }

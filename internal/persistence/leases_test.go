@@ -103,3 +103,21 @@ func TestLeaseAcquireRace(t *testing.T) {
 		}
 	}
 }
+
+func TestDecisionsAreAHistory(t *testing.T) {
+	s, _ := open(t)
+	ctx := context.Background()
+	for _, d := range []*Decision{
+		{RunID: "r1", TaskID: "t1", Decision: DecisionReject, Note: "too big", Author: "me"},
+		{RunID: "r1", TaskID: "t1", Decision: DecisionApprove},
+		{RunID: "r2", TaskID: "t9", Decision: DecisionApprove},
+	} {
+		if err := s.AddDecision(ctx, d); err != nil || d.ID == 0 {
+			t.Fatal(d.ID, err)
+		}
+	}
+	got, err := s.ListDecisions(ctx, "r1")
+	if err != nil || len(got) != 2 || got[0].Note != "too big" || got[1].Decision != DecisionApprove || got[0].CreatedAt.IsZero() {
+		t.Fatalf("%+v %v", got, err)
+	}
+}
