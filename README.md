@@ -121,7 +121,12 @@ How the adapter works, and the runtime behaviours it has to account for:
 
 ## Installation
 
-There are no packaged releases. Build from a clone:
+Download the archive for your system from the
+[releases](https://github.com/thiagoDOTjpeg/caff-/releases) (Linux, macOS and
+Windows, amd64 and arm64; `checksums.txt` has the SHA-256 of each), extract it
+and put `caffe` on your `PATH`. `caffe --version` prints the version.
+
+Or build from a clone:
 
 ```sh
 make build            # produces bin/caffe
@@ -129,11 +134,9 @@ make build            # produces bin/caffe
 go build -o bin/caffe ./cmd/caffe
 ```
 
-Put `bin/caffe` on your `PATH`.
-
 Requirements:
 
-- Go 1.27+ (build only; no cgo) — what `go.mod` requires
+- Go 1.27+ to build from source (no cgo) — what `go.mod` requires
 - Git
 - Herdr with a running server (`herdr status server`)
 - at least one agent CLI that Herdr can start, installed **and signed in**
@@ -271,6 +274,25 @@ No test in `make check` needs a runtime, a network or an agent: the Herdr
 adapter is tested against a fake executable and everything above it against an
 in-memory runtime. See [docs/development.md](docs/development.md).
 
+CI (`.github/workflows/ci.yml`) runs the same checks on Linux and Windows for
+every push and pull request.
+
+### Releases
+
+Versions come from the commit messages
+([Conventional Commits](https://www.conventionalcommits.org/)), through
+[release-please](https://github.com/googleapis/release-please):
+
+1. Every push to `main` updates a release pull request with the next version
+   and the changelog. Before 1.0, `feat:` bumps the minor version and
+   `fix:` the patch; `feat!:` or a `BREAKING CHANGE:` footer is a breaking
+   change.
+2. Merging that pull request tags `vX.Y.Z`, publishes the GitHub release with
+   `CHANGELOG.md`, and `.github/workflows/release.yml` attaches the binaries
+   and `checksums.txt`.
+
+Nothing else is needed: no manual tags, no version file to edit.
+
 ## Current limitations
 
 - Merging is manual (`caffe integrate`, Studio's Integration screen) and
@@ -295,7 +317,6 @@ Not commitments; the order reflects what is known to be missing.
    from earlier runs when the code did not change.
 3. Corrections triggered by failed validation, not only by rejected reviews.
 4. A Herdr socket API adapter, replacing polling with status events.
-5. Packaged releases.
 
 ## Contributing
 

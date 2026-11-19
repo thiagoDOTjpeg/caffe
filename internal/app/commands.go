@@ -24,6 +24,8 @@ import (
 
 var ErrRunNotCompleted = errors.New("run did not complete")
 
+var Version = "dev"
+
 func NewRootCommand() *cobra.Command {
 	var dir string
 	var verbose bool
@@ -33,7 +35,8 @@ func NewRootCommand() *cobra.Command {
 		Long: "Caffè — brew better software.\n\n" +
 			"A local-first orchestrator for autonomous coding agents. Caffè plans a request into a task graph,\n" +
 			"delegates the tasks to specialized agents running in an external agent runtime, isolates their\n" +
-			"changes in Git worktrees and validates the results. It never merges: that decision stays with you.",
+			"changes in Git worktrees and validates the results. It merges only the branches you approve.",
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

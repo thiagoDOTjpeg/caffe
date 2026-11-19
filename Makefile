@@ -1,7 +1,10 @@
 .PHONY: build test race vet fmt check e2e windows-kit
 
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X caffe/internal/app.Version=$(VERSION)
+
 build:
-	go build -o bin/caffe ./cmd/caffe
+	go build -ldflags "$(LDFLAGS)" -o bin/caffe ./cmd/caffe
 
 fmt:
 	gofmt -l -w .
