@@ -11,6 +11,16 @@ import (
 
 var linkRe = regexp.MustCompile(`((?:[A-Za-z]:)?[\w.\-/\\]*[\w\-]\.[A-Za-z]\w*):(\d+)(?::(\d+))?`)
 
+var failRe = regexp.MustCompile(`--- FAIL: (Test\w+|Benchmark\w+|Fuzz\w+|Example\w*)`)
+
+func failedTest(s string) (string, bool) {
+	m := failRe.FindStringSubmatch(s)
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
 type link struct {
 	path      string
 	line, col int

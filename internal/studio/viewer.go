@@ -91,7 +91,7 @@ func (m model) updateFile(msg fileMsg) (model, tea.Cmd) {
 	if msg.err != nil {
 		return m, nil
 	}
-	return m, watchFile(m.fileGen)
+	return m, tea.Batch(watchFile(m.fileGen), m.lspSync(v, msg.file.Text))
 }
 
 func (m model) viewerScroll(delta int) model {
@@ -119,6 +119,13 @@ func (m model) viewerScreen(v *viewer, width, height int) string {
 		title += " · changed on disk, reloaded"
 	case "deleted":
 		title += " · deleted on disk"
+	}
+	if s := diagSummary(m.fileDiags(v)); s != "" {
+		title += " · " + s + " (! list)"
+	} else if why := m.code.down[v.ws]; why != "" && v.file != nil && m.code.mgr != nil {
+		if _, ok := m.code.mgr.ConfigFor(v.file.Path); ok {
+			title += " · no language server"
+		}
 	}
 	if v.loaded && v.err == nil {
 		if ro := m.readOnlyReason(v); ro != "" {
@@ -151,7 +158,7 @@ func (m model) viewerScreen(v *viewer, width, height int) string {
 	gutter := len(fmt.Sprint(len(v.lines)))
 	text := max(width-gutter-4, 1)
 	for i, l := range highlight(v.lexer, visible, text, m.theme) {
-		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d │", gutter, scroll+i+1))
+		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d", gutter, scroll+i+1)) + m.gutterMark(m.fileDiags(v), scroll+i) + m.theme.Render(ui.ToneMuted, "│")
 		out = append(out, " "+num+" "+l)
 	}
 	return strings.Join(out, "\n")

@@ -214,14 +214,27 @@ func (m model) termOpenLink() (model, tea.Cmd) {
 	if m.terms.cursor >= len(lines) {
 		return m, nil
 	}
-	l, ok := findLink(lines[m.terms.cursor])
-	if !ok {
-		return m, nil
-	}
 	src, ws := m.src, m.terms.ws[s.Info().ID]
 	id := ws.ID
 	if id == "" {
 		id = service.MainWorkspace
+	}
+	l, ok := findLink(lines[m.terms.cursor])
+	if !ok {
+		name, found := failedTest(lines[m.terms.cursor])
+		if !found {
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			res, err := src.Search(context.Background(), id, "func "+name+"(", 5)
+			if err == nil && len(res.Hits) == 0 {
+				err = fmt.Errorf("no func %s in the workspace", name)
+			}
+			if err != nil {
+				return termLinkMsg{err: err}
+			}
+			return termLinkMsg{ws: ws, path: res.Hits[0].Path, line: res.Hits[0].Line}
+		}
 	}
 	return m, func() tea.Msg {
 		p, err := resolveLink(context.Background(), src, id, l)

@@ -474,13 +474,13 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### [x] CI-02 · Server manager
 - **P2 · M · Depends:** CI-01, WS-01 · **Acceptance:** one server per (language, root), LRU cap, clean shutdown.
 
-### CI-03 · Document sync and diagnostics panel
+### [x] CI-03 · Document sync and diagnostics panel
 - **P2 · M · Depends:** CI-02, WS-03
 
-### CI-04 · Definition, references, symbols
+### [x] CI-04 · Definition, references, symbols
 - **P2 · M · Depends:** CI-03 · **Acceptance:** locations outside the workspace are flagged, not opened silently.
 
-### CI-05 · Go test-failure navigation
+### [x] CI-05 · Go test-failure navigation
 - **P2 · S · Depends:** EX-04
 
 ## M6 — Debugging

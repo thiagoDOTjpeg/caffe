@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -62,7 +63,11 @@ func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*s
 	if !ok {
 		return nil, service.ErrNotFound
 	}
-	return &service.FileContent{Path: "/" + path, Text: text, Size: int64(len(text))}, nil
+	abs := "/" + path
+	if f.dir != "" {
+		abs = filepath.Join(f.dir, filepath.FromSlash(path))
+	}
+	return &service.FileContent{Path: abs, Text: text, Size: int64(len(text))}, nil
 }
 
 func (f *fakeSource) TaskDiff(_ context.Context, id string) (*service.Diff, error) {

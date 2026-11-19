@@ -1,62 +1,23 @@
 package lsp
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"caffe/internal/lsp/lsptest"
 )
 
 func TestMain(m *testing.M) {
-	if mode := os.Getenv("CAFFE_LSP_FAKE"); mode != "" {
-		fakeServer(mode)
+	if mode := os.Getenv(lsptest.Env); mode != "" {
+		lsptest.Serve(mode)
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
-}
-
-func fakeServer(mode string) {
-	r := bufio.NewReader(os.Stdin)
-	out := func(v any) { writeMessage(os.Stdout, v) }
-	for {
-		body, err := readMessage(r)
-		if err != nil {
-			return
-		}
-		var m message
-		json.Unmarshal(body, &m)
-		reply := func(result any) { out(map[string]any{"jsonrpc": "2.0", "id": m.ID, "result": result}) }
-		switch m.Method {
-		case "initialize":
-			out(map[string]any{"jsonrpc": "2.0", "id": 99, "method": "workspace/configuration", "params": map[string]any{"items": []any{1, 2}}})
-			reply(map[string]any{"capabilities": map[string]any{}})
-		case "textDocument/didOpen":
-			if mode == "crash" {
-				os.Exit(3)
-			}
-			var p struct {
-				TextDocument struct{ URI string } `json:"textDocument"`
-			}
-			json.Unmarshal(m.Params, &p)
-			out(map[string]any{"jsonrpc": "2.0", "method": "textDocument/publishDiagnostics", "params": map[string]any{
-				"uri": p.TextDocument.URI, "diagnostics": []any{map[string]any{"range": map[string]any{"start": map[string]int{"line": 2, "character": 1}, "end": map[string]int{"line": 2, "character": 4}}, "severity": 1, "message": "undefined: x"}}}})
-		case "textDocument/definition":
-			reply(map[string]any{"uri": "file:///w/a.go", "range": map[string]any{"start": map[string]int{"line": 7}}})
-		case "textDocument/references":
-			reply([]any{map[string]any{"uri": "file:///w/a.go"}, map[string]any{"targetUri": "file:///w/b.go", "targetSelectionRange": map[string]any{"start": map[string]int{"line": 3}}}})
-		case "textDocument/documentSymbol":
-			reply([]any{map[string]any{"name": "T", "kind": 23, "selectionRange": map[string]any{"start": map[string]int{"line": 1}}, "children": []any{map[string]any{"name": "M", "kind": 6}}}})
-		case "shutdown":
-			reply(nil)
-		case "exit":
-			return
-		}
-	}
 }
 
 func fake(mode string) ServerConfig {
@@ -76,7 +37,7 @@ func TestClientAgainstAFakeServer(t *testing.T) {
 	}
 	select {
 	case d := <-c.Diagnostics():
-		if URIToPath(d.URI) != path || len(d.Diagnostics) != 1 || d.Diagnostics[0].Message != "undefined: x" || d.Diagnostics[0].Range.Start.Line != 2 {
+		if URIToPath(d.URI) != path || len(d.Diagnostics) != 2 || d.Diagnostics[0].Message != "undefined: x" || d.Diagnostics[0].Range.Start.Line != 2 {
 			t.Fatalf("diagnostics %+v", d)
 		}
 	case <-time.After(5 * time.Second):
@@ -87,11 +48,11 @@ func TestClientAgainstAFakeServer(t *testing.T) {
 		t.Fatalf("definition %+v %v", def, err)
 	}
 	refs, err := c.References(ctx, path, Position{})
-	if err != nil || len(refs) != 2 || refs[1].URI != "file:///w/b.go" || refs[1].Range.Start.Line != 3 {
+	if err != nil || len(refs) != 2 || refs[1].URI != "file:///elsewhere/b.go" || refs[1].Range.Start.Line != 3 {
 		t.Fatalf("references %+v %v", refs, err)
 	}
 	syms, err := c.DocumentSymbols(ctx, path)
-	if err != nil || len(syms) != 2 || syms[0].Name != "T" || syms[1].Depth != 1 || syms[0].Range.Start.Line != 1 {
+	if err != nil || len(syms) != 2 || syms[0].Name != "T" || syms[1].Depth != 1 || syms[1].Range.Start.Line != 3 {
 		t.Fatalf("symbols %+v %v", syms, err)
 	}
 	if err := c.Shutdown(ctx); err != nil {

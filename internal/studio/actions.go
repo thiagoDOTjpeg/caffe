@@ -215,6 +215,16 @@ func actions() (*ui.Registry, map[string]handler) {
 		add(ui.Action{ID: "keys." + string(sc) + ".release", Title: "Release the worktree to agents", Scope: sc, Keys: []string{"L"}}, release)
 	}
 	es2 := ui.Scope("editor")
+	diagsH := func(m model) (model, tea.Cmd) { return m.openDiagnostics() }
+	symsH := func(m model) (model, tea.Cmd) { return m.symbols() }
+	for _, sc := range []ui.Scope{ws, es2} {
+		add(ui.Action{ID: "code." + string(sc) + ".diagnostics", Title: "Diagnostics of the file", Scope: sc, Keys: []string{"!"}}, diagsH)
+		add(ui.Action{ID: "code." + string(sc) + ".symbols", Title: "Symbols of the file", Scope: sc, Keys: []string{"S"}}, symsH)
+	}
+	add(ui.Action{ID: "editor.definition", Title: "Go to the definition", Scope: es2, Keys: []string{"ctrl+]"}},
+		func(m model) (model, tea.Cmd) { return m.navigate(false, nil) })
+	add(ui.Action{ID: "editor.references", Title: "References of the name", Scope: es2, Keys: []string{"R"}},
+		func(m model) (model, tea.Cmd) { return m.navigate(true, nil) })
 	bop := func(fn func(b *edit.Buffer)) handler {
 		return func(m model) (model, tea.Cmd) { return m.bufOp(fn), nil }
 	}
@@ -434,6 +444,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)
+	}
+	if m.code.list != nil {
+		return m.listKey(k)
 	}
 	if m.ed.commit != nil {
 		return m.commitKey(msg)

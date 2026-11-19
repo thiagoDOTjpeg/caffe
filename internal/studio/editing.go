@@ -383,7 +383,7 @@ func (m model) saved(msg savedMsg) (model, tea.Cmd) {
 	m, cmd := m.notify("saved " + msg.path)
 	m.tree.loaded = false
 	m, tree := m.loadTree()
-	return m, tea.Batch(cmd, tree)
+	return m, tea.Batch(cmd, tree, m.lspSync(&nv, msg.text))
 }
 
 func (m model) unsaved() []string {
@@ -557,7 +557,7 @@ func (m model) editorLines(v *viewer, width, room int) []string {
 			}
 			l = clip(string(r[:at]), text) + mark + clip(rest, max(text-at-1, 0))
 		}
-		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d │", gutter, scroll+i+1))
+		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d", gutter, scroll+i+1)) + m.gutterMark(m.fileDiags(v), scroll+i) + m.theme.Render(ui.ToneMuted, "│")
 		out = append(out, " "+num+" "+l)
 	}
 	return out

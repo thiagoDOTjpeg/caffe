@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"caffe/internal/lsp"
 	"caffe/internal/service"
 	"caffe/internal/studio/ui"
 )
@@ -51,6 +52,14 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	m.noProject = opts.NoProject
 	m.ed.holder = "studio-" + uuid.NewString()
 	m.editor = opts.Editor
+	if svc != nil {
+		m.code = newCode(lsp.Go)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			m.code.mgr.Shutdown(ctx)
+		}()
+	}
 	if svc != nil {
 		m.terms = newTerminals(filepath.Join(opts.Dir, "sessions"))
 

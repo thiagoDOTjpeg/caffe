@@ -54,6 +54,7 @@ type model struct {
 	ed       editing
 	editor   string
 	integ    integration
+	code     codeIntel
 	rt       rtObs
 	watcher  pauser
 	toastSeq int
@@ -86,7 +87,7 @@ func (m model) Init() tea.Cmd {
 	if m.src == nil {
 		return nil
 	}
-	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src), liveTick(0), waitSession(m.terms.notes))
+	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src), liveTick(0), waitSession(m.terms.notes), waitDiag(m.code.notes))
 }
 
 func (m model) Update(msg tea.Msg) (next tea.Model, cmd tea.Cmd) {
@@ -145,6 +146,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
+	case diagMsg, lspOpenMsg, lspListMsg:
+		return m.updateCode(msg)
 	case integrationMsg, previewMsg, integratedMsg:
 		return m.updateIntegration(msg)
 	case leaseMsg, leaseTickMsg, leaseRenewMsg, savedMsg, manualMsg:
@@ -223,7 +226,6 @@ func (m model) view() tea.View {
 		}
 	}
 	switch m.overlay {
-	case overlayNone:
 	case overlayConfirm:
 		mode, main = "CONFIRM", m.confirmView(l.Main.W, l.Main.H)
 	case overlayNewRun:
@@ -234,6 +236,10 @@ func (m model) view() tea.View {
 		mode, main = "FIND", m.finderView(l.Main.H)
 	case overlayGrep:
 		mode, main = "SEARCH", m.grepView(l.Main.W, l.Main.H)
+	case overlayNone:
+		if m.code.list != nil {
+			mode, main = "CODE", m.listView(l.Main.H)
+		}
 	default:
 		mode, main = m.overlayView()
 	}
