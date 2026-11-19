@@ -204,16 +204,44 @@ func (m *Manager) CommittedChanges(ctx context.Context, dir, base string) (map[s
 	return ch, nil
 }
 
-// Uncommitted lists the files with uncommitted changes, untracked included.
-func (m *Manager) Uncommitted(ctx context.Context, dir string) ([]string, error) {
-	out, err := m.git(ctx, dir, "status", "-z", "--porcelain=v1", "--no-renames", "--untracked-files=all")
-	var files []string
+// StatusEntry is one file of `git status --porcelain=v2`.
+type StatusEntry struct {
+	XY   string // index and worktree status ("M.", ".M", "??", "UU", …)
+	Path string
+}
+
+// WorkStatus is a checkout's branch and uncommitted files, untracked
+// included.
+type WorkStatus struct {
+	Branch  string // "(detached)" when detached
+	Entries []StatusEntry
+}
+
+// Status2 parses `git status --porcelain=v2 --branch -z`. Renames are off,
+// so every entry has a single path.
+func (m *Manager) Status2(ctx context.Context, dir string) (*WorkStatus, error) {
+	out, err := m.git(ctx, dir, "status", "-z", "--porcelain=v2", "--branch", "--no-renames", "--untracked-files=all")
+	if err != nil {
+		return nil, err
+	}
+	ws := &WorkStatus{}
 	for _, e := range splitZ(out) {
-		if len(e) > 3 {
-			files = append(files, e[3:])
+		switch {
+		case strings.HasPrefix(e, "# branch.head "):
+			ws.Branch = strings.TrimPrefix(e, "# branch.head ")
+		case strings.HasPrefix(e, "1 "):
+			if f := strings.SplitN(e, " ", 9); len(f) == 9 {
+				ws.Entries = append(ws.Entries, StatusEntry{f[1], f[8]})
+			}
+		case strings.HasPrefix(e, "u "):
+			if f := strings.SplitN(e, " ", 11); len(f) == 11 {
+				ws.Entries = append(ws.Entries, StatusEntry{f[1], f[10]})
+			}
+		case strings.HasPrefix(e, "? "):
+			ws.Entries = append(ws.Entries, StatusEntry{"??", e[2:]})
 		}
 	}
-	return files, err
+	return ws, nil
 }
 
 func splitZ(s string) []string {

@@ -101,6 +101,10 @@ type FileList struct {
 	// overridden by MarkManual for uncommitted files.
 	Marks map[string]string
 	Base  string // the diff base the marks are relative to; "" for main
+
+	// git status of the checkout (WS-06).
+	Branch                                  string
+	Staged, Unstaged, Untracked, Conflicted int
 }
 
 // Files lists a workspace (git ls-files: tracked and untracked, not
@@ -136,12 +140,26 @@ func (s *Service) Files(ctx context.Context, workspaceID string) (*FileList, err
 			}
 		}
 	}
-	manual, err := s.git.Uncommitted(ctx, root)
+	st, err := s.git.Status2(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	for _, p := range manual {
-		fl.Marks[p] = MarkManual
+	fl.Branch = st.Branch
+	for _, e := range st.Entries {
+		fl.Marks[e.Path] = MarkManual
+		switch {
+		case e.XY == "??":
+			fl.Untracked++
+		case e.XY[0] == 'U' || e.XY[1] == 'U' || e.XY == "AA" || e.XY == "DD":
+			fl.Conflicted++
+		default:
+			if e.XY[0] != '.' {
+				fl.Staged++
+			}
+			if e.XY[1] != '.' {
+				fl.Unstaged++
+			}
+		}
 	}
 	listed := make(map[string]bool, len(paths))
 	for _, p := range paths {

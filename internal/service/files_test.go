@@ -65,6 +65,9 @@ func TestFilesAndMarks(t *testing.T) {
 			t.Errorf("%s: mark %q, want %q (all: %v)", p, fl.Marks[p], m, fl.Marks)
 		}
 	}
+	if fl.Branch != tasks["top"].BranchName || fl.Unstaged != 1 || fl.Untracked != 1 || fl.Staged != 0 {
+		t.Errorf("status: branch %q staged %d unstaged %d untracked %d", fl.Branch, fl.Staged, fl.Unstaged, fl.Untracked)
+	}
 	got := strings.Join(fl.Paths, ",")
 	for _, p := range []string{"base.txt", "top.txt", "new file.txt", "README.md"} {
 		if !strings.Contains(got, p) {

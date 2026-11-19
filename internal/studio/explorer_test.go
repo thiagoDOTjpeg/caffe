@@ -79,3 +79,18 @@ func TestExplorerLargeListingStaysResponsive(t *testing.T) {
 		t.Errorf("100 k files: load %v, 50 frames %v", load, frames)
 	}
 }
+
+func TestExplorerGitBlock(t *testing.T) {
+	m := explorerModel(t, &service.FileList{Paths: []string{"a.go"}, Marks: map[string]string{}, Branch: "main"})
+	if v := plain(m.View().Content); !strings.Contains(v, "GIT · main") || !strings.Contains(v, "  clean") {
+		t.Errorf("clean checkout:\n%s", v)
+	}
+	m = explorerModel(t, &service.FileList{Paths: []string{"a.go", "b.go", "c.go"}, Branch: "caffe/r/impl", Base: "7f5d944aa",
+		Marks: map[string]string{"a.go": service.MarkAdded, "b.go": service.MarkManual, "c.go": service.MarkManual}, Unstaged: 1, Untracked: 1})
+	v := plain(m.View().Content)
+	for _, want := range []string{"GIT · caffe/r/impl", "1 modified · 1 untracked", "1 committed vs 7f5d944a"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("missing %q:\n%s", want, v)
+		}
+	}
+}

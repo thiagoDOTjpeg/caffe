@@ -2,6 +2,7 @@ package studio
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"sort"
 	"strings"
@@ -227,11 +228,9 @@ func (m model) explorerLines(width, height int) []string {
 	case len(t.kids[""]) == 0:
 		out = append(out, "  no files")
 	}
-	if t.list != nil && t.list.Base != "" {
-		out = append(out, m.theme.Render(ui.ToneMuted, "  changes vs "+short(t.list.Base)))
-	}
+	git := m.gitLines(width)
 	rows := t.rows()
-	room := max(height-len(out), 1)
+	room := max(height-len(out)-len(git), 1)
 	scroll := max(0, t.cursor-room+1)
 	for i := scroll; i < min(len(rows), scroll+room); i++ {
 		r := rows[i]
@@ -260,10 +259,47 @@ func (m model) explorerLines(width, height int) []string {
 		}
 		out = append(out, clipStyled(line, width))
 	}
-	for len(out) < height {
+	for len(out) < height-len(git) {
 		out = append(out, "")
 	}
-	return out[:height]
+	return append(out, git...)[:height]
+}
+
+// gitLines is the GIT block under the tree (WS-06): branch, uncommitted
+// files by kind, and a task's committed changes against its diff base.
+func (m model) gitLines(width int) []string {
+	l := m.tree.list
+	if l == nil {
+		return nil
+	}
+	out := []string{m.theme.Render(ui.ToneMuted, clip(" GIT · "+l.Branch, width))}
+	var parts []string
+	for _, p := range []struct {
+		n    int
+		what string
+	}{{l.Conflicted, "conflicted"}, {l.Staged, "staged"}, {l.Unstaged, "modified"}, {l.Untracked, "untracked"}} {
+		if p.n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.what))
+		}
+	}
+	switch {
+	case len(parts) == 0:
+		out = append(out, "  clean")
+	case l.Conflicted > 0:
+		out = append(out, "  "+m.theme.Render(ui.ToneError, clip(strings.Join(parts, " · "), width-3)))
+	default:
+		out = append(out, "  "+m.theme.Render(ui.ToneWarn, clip(strings.Join(parts, " · "), width-3)))
+	}
+	if l.Base != "" {
+		committed := 0
+		for _, mk := range l.Marks {
+			if mk != service.MarkManual {
+				committed++
+			}
+		}
+		out = append(out, clip(fmt.Sprintf("  %d committed vs %s", committed, short(l.Base)), width))
+	}
+	return out
 }
 
 // clipStyled clips a line that may hold colour codes.
