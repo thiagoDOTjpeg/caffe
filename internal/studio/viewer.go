@@ -90,6 +90,9 @@ func (m model) viewerScreen(width, height int) string {
 	case v.err == nil && v.lexer == nil && v.file.Size > plainSize:
 		title += " · plain (large file)"
 	}
+	if v.loaded && v.err == nil {
+		title += "   (e $EDITOR · h tree)"
+	}
 	out := []string{m.theme.Render(ui.ToneAccent, clip(title, width-1)), ""}
 	switch {
 	case v.err != nil:

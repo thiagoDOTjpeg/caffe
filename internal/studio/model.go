@@ -120,6 +120,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
 		return m.actionDone(msg)
+	case editorDoneMsg:
+		return m.editorDone(msg)
 	case filesMsg:
 		return m.updateFiles(msg), nil
 	case fileMsg:

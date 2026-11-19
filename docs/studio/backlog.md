@@ -384,7 +384,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### WS-08 · Content search
 - **P1 · M · Depends:** WS-01 · **Description:** `rg --json` lenient parser, fallback `git grep -n`. **Tests:** parser on recorded output incl. `bytes` fields and unknown types.
 
-### WS-09 · `$EDITOR` hand-off
+### [x] WS-09 · `$EDITOR` hand-off
+- **Done.** `e` in the viewer: `$VISUAL`, else `$EDITOR` (split on spaces, no shell), else `vi`/`notepad`; at the top visible line (`+N`, or `file:N` for code/subl/hx/zed). Watcher paused during the hand-off; on return the file and the tree reload (expansion kept). Refused while the workspace's task is running (until leases, WS-11).
 - **P0 · S · Depends:** WS-03 · **Acceptance:** opens at line; buffer reloads if changed.
 
 ### WS-10 · File watching for open buffers

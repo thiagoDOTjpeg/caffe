@@ -57,7 +57,11 @@ func (m model) loadTree() (model, tea.Cmd) {
 	if m.src == nil || (m.tree.ws == id && m.tree.loaded && m.tree.err == nil) {
 		return m, nil
 	}
-	m.tree = explorer{ws: id, focused: true}
+	if m.tree.ws == id { // a reload: keep what is expanded and where the cursor is
+		m.tree.loaded = false
+	} else {
+		m.tree = explorer{ws: id, focused: true}
+	}
 	src := m.src
 	return m, func() tea.Msg {
 		l, err := src.Files(context.Background(), id)
@@ -69,7 +73,10 @@ func (m model) updateFiles(msg filesMsg) model {
 	if msg.ws != m.tree.ws {
 		return m
 	}
-	t := explorer{ws: msg.ws, list: msg.list, err: msg.err, loaded: true, focused: m.tree.focused, open: map[string]bool{}}
+	t := explorer{ws: msg.ws, list: msg.list, err: msg.err, loaded: true, focused: m.tree.focused, open: m.tree.open, cursor: m.tree.cursor}
+	if t.open == nil {
+		t.open = map[string]bool{}
+	}
 	if msg.err == nil {
 		t.kids, t.dirMark = index(msg.list)
 	}
@@ -213,7 +220,7 @@ func (m model) explorerLines(width, height int) []string {
 	}
 	out := []string{title}
 	switch {
-	case !t.loaded:
+	case !t.loaded && t.list == nil:
 		out = append(out, "  loading…")
 	case t.err != nil:
 		out = append(out, " "+m.theme.Render(ui.ToneError, t.err.Error()))

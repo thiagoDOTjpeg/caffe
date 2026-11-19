@@ -152,6 +152,8 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "viewer.pageup", Title: "Scroll half a page up", Scope: ws, Keys: []string{"ctrl+u", "pgup"}}, vscroll(-20))
 	add(ui.Action{ID: "viewer.top", Title: "Top of the file", Scope: ws, Keys: []string{"g", "home"}}, vscroll(-1<<30))
 	add(ui.Action{ID: "viewer.bottom", Title: "End of the file", Scope: ws, Keys: []string{"G", "end"}}, vscroll(1<<30))
+	add(ui.Action{ID: "viewer.edit", Title: "Open the file in $EDITOR", Scope: ws, Keys: []string{"e"}},
+		func(m model) (model, tea.Cmd) { return m.editFile() })
 	add(ui.Action{ID: "viewer.explorer", Title: "Back to the explorer", Scope: ws, Keys: []string{"h", "left"}},
 		func(m model) (model, tea.Cmd) { m.tree.focused = true; return m, nil })
 	xs := ui.Scope("explorer")
