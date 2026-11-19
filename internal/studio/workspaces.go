@@ -77,9 +77,6 @@ func (m model) workspacesKey(k string) (tea.Model, tea.Cmd) {
 		if w.Kind != "task" {
 			m.ws.selected = service.Workspace{}
 		}
-		if m.file != nil && m.file.ws != m.wsID() {
-			m.file = nil // it belongs to the workspace left
-		}
 		if m.screen == screenWorkspace {
 			return m.loadTree()
 		}

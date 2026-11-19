@@ -1,7 +1,6 @@
 package studio
 
 import (
-	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -72,11 +71,7 @@ func (m model) updateFileWatch(msg tea.Msg) (model, tea.Cmd) {
 			nv := *v
 			nv.disk = "reloaded"
 			m.file = &nv
-			src, ws, p := m.src, v.ws, v.path
-			return m, func() tea.Msg { // keeps the old text on screen until the new one is read
-				f, err := src.ReadFile(context.Background(), ws, p, maxFileRead)
-				return fileMsg{ws, p, f, err}
-			}
+			return m, m.readFile(v.ws, v.path)
 		}
 		return m, watchFile(msg.gen)
 	}

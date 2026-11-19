@@ -291,9 +291,6 @@ func (m model) diffOpenFile() (model, tea.Cmd) {
 	t := d.task
 	m.ws.selected = service.Workspace{ID: t.ID, Kind: "task", Branch: t.BranchName, RunID: t.RunID, TaskID: t.ID, TaskKey: t.Key, TaskStatus: t.Status}
 	m.diff, m.screen = nil, screenWorkspace
-	if m.file != nil && m.file.ws != t.ID {
-		m.file = nil
-	}
 	m, tree := m.loadTree()
 	m, read := m.openFile(t.ID, f.path)
 	m.file.scroll = line - 1

@@ -351,6 +351,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M2a — Workspace (view)
 
+**Done (2026-11-19):** WS-01 … WS-10. Manual checks of the roadmap (100 k-file repository, 50 MB log, scratch-repo branches) still to do on a real project.
+
 ### [x] WS-01 · Workspaces query and selector
 - **Done.** `service.Workspaces` (main + recorded task worktrees, `Missing`, `Dirty`); lease field deferred to WS-11. Selector: `ctrl+w` or `space w s`; removed worktrees cannot be selected. Status bar always shows `ws:`; the header shows it for a task workspace.
 - **P0 · M · Depends:** F-07 · **Description:** `service.Workspaces`
@@ -369,7 +371,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   visible-region tokenisation, large-file plain mode (NFR-P4), `ResolvePath`.
   **Tests:** path escape and symlink tests; golden renders.
 
-### WS-04 · Tabs and splits
+### [x] WS-04 · Tabs and splits
+- **Done.** Buffers keyed by (workspace, path): opening an open file activates its tab. Tab bar over the viewer, `workspace:name` when the buffer is not in the selected workspace; buffers survive switching workspace. Keys in the viewer: `[`/`]` tabs, `x` close, `|` split (previous tab on the left), `\` switch side. One split only.
 - **P1 · M · Depends:** WS-03 · **Acceptance:** buffers keyed by (workspace, path); tabs show workspace when it differs.
 
 ### [x] WS-05 · Diff view

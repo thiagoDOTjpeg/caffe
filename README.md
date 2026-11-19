@@ -187,7 +187,7 @@ Before the first run, know that:
 | `caffe resume <run>` | Continue an interrupted run. |
 | `caffe clean [--failed]` | Remove worktrees of completed runs. Branches are kept. |
 | `caffe config` | Print the effective, validated configuration. |
-| `caffe studio` | Open Caffè Studio, the terminal UI. **Early preview:** it starts and quits cleanly; screens arrive milestone by milestone ([docs/studio/](docs/studio/)). |
+| `caffe studio` | Open Caffè Studio, the terminal UI. **Preview:** follows runs live, starts/cancels/resumes them, attaches to agents, and browses workspaces (explorer, viewer, diff, search, `$EDITOR`); more arrives milestone by milestone ([docs/studio/](docs/studio/)). |
 
 Global flags: `-C <dir>` (the project directory or any directory below it) and
 `-v` (debug logs to stderr). Run ids can be shortened to any unambiguous

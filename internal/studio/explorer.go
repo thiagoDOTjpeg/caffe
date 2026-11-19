@@ -200,7 +200,7 @@ func (m model) workspaceScreen(width, height int) string {
 	left := m.explorerLines(ew, height)
 	right := []string{"", "  enter on a file opens it here"}
 	if m.file != nil {
-		right = strings.Split(m.viewerScreen(width-ew-1, height), "\n")
+		right = strings.Split(m.buffersScreen(width-ew-1, height), "\n")
 	}
 	out := make([]string, height)
 	for i := range out {

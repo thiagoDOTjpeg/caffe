@@ -34,7 +34,8 @@ type viewer struct {
 	scroll int
 	// disk: what the watcher saw happen to the file after it was shown
 	// ("" nothing; "reloaded"; "deleted").
-	disk string
+	disk  string
+	label string // the workspace's name when the buffer was opened
 }
 
 type fileMsg struct {
@@ -47,9 +48,22 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	if m.src == nil {
 		return m, nil
 	}
-	m.file, m.tree.focused = &viewer{ws: ws, path: path}, false
+	m.tree.focused = false
+	for _, t := range m.tabs {
+		if t.ws == ws && t.path == path { // buffers are keyed by (workspace, path)
+			m.file = t
+			m.fileGen++
+			return m, watchFile(m.fileGen)
+		}
+	}
+	m.file = &viewer{ws: ws, path: path, label: m.ws.label()}
+	return m, m.readFile(ws, path)
+}
+
+// readFile (re)reads a buffer; the text on screen stays until it arrives.
+func (m model) readFile(ws, path string) tea.Cmd {
 	src := m.src
-	return m, func() tea.Msg {
+	return func() tea.Msg {
 		f, err := src.ReadFile(context.Background(), ws, path, maxFileRead)
 		return fileMsg{ws, path, f, err}
 	}
@@ -59,7 +73,7 @@ func (m model) updateFile(msg fileMsg) (model, tea.Cmd) {
 	if m.file == nil || m.file.ws != msg.ws || m.file.path != msg.path {
 		return m, nil // a later open replaced it
 	}
-	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk}
+	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk, label: m.file.label}
 	if msg.err == nil && !msg.file.Binary {
 		v.lines = strings.Split(strings.ReplaceAll(strings.TrimSuffix(msg.file.Text, "\n"), "\t", "    "), "\n")
 		if msg.file.Size <= plainSize {
@@ -86,8 +100,7 @@ func (m model) viewerScroll(delta int) model {
 
 // viewerScreen renders the visible rows only: highlighting cost does not
 // grow with the file.
-func (m model) viewerScreen(width, height int) string {
-	v := m.file
+func (m model) viewerScreen(v *viewer, width, height int) string {
 	title := " " + v.path
 	switch {
 	case !v.loaded:

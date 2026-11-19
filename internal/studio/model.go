@@ -48,10 +48,12 @@ type model struct {
 	grep     grep      // content search
 	diff     *diffView // nil: closed
 	tree     explorer
-	fileGen  int     // identifies the open file's watch chain
-	file     *viewer // the Workspace screen's open file; nil: none
-	rt       rtObs   // last runtime status of the agents on screen
-	watcher  pauser  // paused while the terminal is handed over
+	fileGen  int       // identifies the open file's watch chain
+	file     *viewer   // the active buffer; always one of tabs
+	tabs     []*viewer // open buffers, in tab order
+	split    *viewer   // shown left of the active buffer; nil: no split // the Workspace screen's open file; nil: none
+	rt       rtObs     // last runtime status of the agents on screen
+	watcher  pauser    // paused while the terminal is handed over
 	toastSeq int
 	now      func() time.Time
 	project  Project
@@ -91,6 +93,9 @@ func (m model) Init() tea.Cmd {
 // before Bubble Tea restores the terminal.
 func (m model) Update(msg tea.Msg) (next tea.Model, cmd tea.Cmd) {
 	m.guard.protect(func() { next, cmd = m.update(msg) })
+	if n, ok := next.(model); ok {
+		next = n.syncTabs()
+	}
 	return next, cmd
 }
 

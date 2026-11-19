@@ -156,6 +156,16 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "viewer.bottom", Title: "End of the file", Scope: ws, Keys: []string{"G", "end"}}, vscroll(1<<30))
 	add(ui.Action{ID: "viewer.edit", Title: "Open the file in $EDITOR", Scope: ws, Keys: []string{"e"}},
 		func(m model) (model, tea.Cmd) { return m.editFile() })
+	add(ui.Action{ID: "tabs.next", Title: "Next tab", Scope: ws, Keys: []string{"]"}},
+		func(m model) (model, tea.Cmd) { return m.nextTab(1) })
+	add(ui.Action{ID: "tabs.prev", Title: "Previous tab", Scope: ws, Keys: []string{"["}},
+		func(m model) (model, tea.Cmd) { return m.nextTab(-1) })
+	add(ui.Action{ID: "tabs.close", Title: "Close the tab", Scope: ws, Keys: []string{"x"}},
+		func(m model) (model, tea.Cmd) { return m.closeTab() })
+	add(ui.Action{ID: "tabs.split", Title: "Split: show the previous tab alongside", Scope: ws, Keys: []string{"|"}},
+		func(m model) (model, tea.Cmd) { return m.toggleSplit() })
+	add(ui.Action{ID: "tabs.swap", Title: "Switch to the other side of the split", Scope: ws, Keys: []string{"\\"}},
+		func(m model) (model, tea.Cmd) { return m.swapSplit() })
 	add(ui.Action{ID: "viewer.explorer", Title: "Back to the explorer", Scope: ws, Keys: []string{"h", "left"}},
 		func(m model) (model, tea.Cmd) { m.tree.focused = true; return m, nil })
 	xs := ui.Scope("explorer")

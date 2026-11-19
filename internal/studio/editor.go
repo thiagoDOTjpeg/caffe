@@ -73,9 +73,7 @@ func (m model) editorDone(msg editorDoneMsg) (model, tea.Cmd) {
 	if m.file == nil {
 		return m, nil
 	}
-	scroll := m.file.scroll
-	m, read := m.openFile(m.file.ws, m.file.path)
-	m.file.scroll = scroll
+	read := m.readFile(m.file.ws, m.file.path)
 	m.tree.loaded = false // marks may have changed (●)
 	m, tree := m.loadTree()
 	return m, tea.Batch(read, tree)
