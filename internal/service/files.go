@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	c "caffe/internal/contracts"
 )
@@ -53,6 +54,7 @@ type FileContent struct {
 	Size      int64
 	Truncated bool
 	Binary    bool // a NUL byte in the first 8 KiB; Text is empty
+	ModTime   time.Time
 }
 
 // ReadFile reads up to max bytes of a file inside a workspace.
@@ -77,7 +79,7 @@ func (s *Service) ReadFile(ctx context.Context, workspaceID, p string, max int64
 	if err != nil {
 		return nil, err
 	}
-	fc := &FileContent{Path: path, Size: fi.Size(), Truncated: fi.Size() > max}
+	fc := &FileContent{Path: path, Size: fi.Size(), Truncated: fi.Size() > max, ModTime: fi.ModTime()}
 	if bytes.IndexByte(buf[:min(len(buf), 8<<10)], 0) >= 0 {
 		fc.Binary = true
 		return fc, nil

@@ -32,6 +32,9 @@ type viewer struct {
 	err    error
 	loaded bool
 	scroll int
+	// disk: what the watcher saw happen to the file after it was shown
+	// ("" nothing; "reloaded"; "deleted").
+	disk string
 }
 
 type fileMsg struct {
@@ -52,11 +55,11 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	}
 }
 
-func (m model) updateFile(msg fileMsg) model {
+func (m model) updateFile(msg fileMsg) (model, tea.Cmd) {
 	if m.file == nil || m.file.ws != msg.ws || m.file.path != msg.path {
-		return m // a later open replaced it
+		return m, nil // a later open replaced it
 	}
-	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll}
+	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk}
 	if msg.err == nil && !msg.file.Binary {
 		v.lines = strings.Split(strings.ReplaceAll(strings.TrimSuffix(msg.file.Text, "\n"), "\t", "    "), "\n")
 		if msg.file.Size <= plainSize {
@@ -64,7 +67,11 @@ func (m model) updateFile(msg fileMsg) model {
 		}
 	}
 	m.file = v
-	return m
+	m.fileGen++
+	if msg.err != nil {
+		return m, nil
+	}
+	return m, watchFile(m.fileGen)
 }
 
 func (m model) viewerScroll(delta int) model {
@@ -89,6 +96,12 @@ func (m model) viewerScreen(width, height int) string {
 		title += fmt.Sprintf(" · first %d MB of %d MB", maxFileRead>>20, v.file.Size>>20)
 	case v.err == nil && v.lexer == nil && v.file.Size > plainSize:
 		title += " · plain (large file)"
+	}
+	switch v.disk {
+	case "reloaded":
+		title += " · changed on disk, reloaded"
+	case "deleted":
+		title += " · deleted on disk"
 	}
 	if v.loaded && v.err == nil {
 		title += "   (e $EDITOR · h tree)"

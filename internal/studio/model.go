@@ -47,6 +47,7 @@ type model struct {
 	find     finder
 	diff     *diffView // nil: closed
 	tree     explorer
+	fileGen  int     // identifies the open file's watch chain
 	file     *viewer // the Workspace screen's open file; nil: none
 	rt       rtObs   // last runtime status of the agents on screen
 	watcher  pauser  // paused while the terminal is handed over
@@ -129,7 +130,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case filesMsg:
 		return m.updateFiles(msg), nil
 	case fileMsg:
-		return m.updateFile(msg), nil
+		return m.updateFile(msg)
+	case fileTickMsg, fileStatMsg:
+		return m.updateFileWatch(msg)
 	case workspacesMsg:
 		return m.updateWorkspaces(msg), nil
 	case reportMsg:
