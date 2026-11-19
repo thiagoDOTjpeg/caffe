@@ -1,13 +1,13 @@
 //go:build windows
 
-package core
+package ptest
 
 import "golang.org/x/sys/windows"
 
 const stillActive = 259 // STILL_ACTIVE
 
-// alive reports whether pid is a running process.
-func alive(pid int) bool {
+// Alive reports whether pid is a running process.
+func Alive(pid int) bool {
 	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
 		return false
@@ -20,7 +20,8 @@ func alive(pid int) bool {
 	return code == stillActive
 }
 
-func kill(pid int) {
+// Kill kills pid.
+func Kill(pid int) {
 	if h, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, uint32(pid)); err == nil {
 		windows.TerminateProcess(h, 1)
 		windows.CloseHandle(h)

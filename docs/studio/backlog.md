@@ -424,7 +424,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M3a / M3b — Execution
 
-### EX-01 · `internal/session`: command sessions
+### [x] EX-01 · `internal/session`: command sessions
 - **P1 · L · Depends:** — · **Description:** argv sessions, process group, ring buffer, log file, batched output messages, stop (TERM→KILL). **Tests:** orphan check; buffer bound; batching.
 
 ### EX-02 · Terminal Manager screen

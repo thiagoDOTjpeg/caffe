@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"caffe/internal/proctree/ptest"
 )
 
 func grandchildPid(t *testing.T, pidFile string) int {
@@ -30,9 +32,9 @@ func grandchildPid(t *testing.T, pidFile string) int {
 func expectDead(t *testing.T, pid int) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
-	for alive(pid) {
+	for ptest.Alive(pid) {
 		if time.Now().After(deadline) {
-			kill(pid) // do not leak it from the test itself
+			ptest.Kill(pid) // do not leak it from the test itself
 			t.Fatalf("grandchild %d survived", pid)
 		}
 		time.Sleep(20 * time.Millisecond)

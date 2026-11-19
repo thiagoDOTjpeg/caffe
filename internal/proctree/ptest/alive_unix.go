@@ -1,6 +1,7 @@
 //go:build unix
 
-package core
+// Package ptest has process helpers for tests.
+package ptest
 
 import (
 	"errors"
@@ -10,8 +11,8 @@ import (
 	"syscall"
 )
 
-// alive reports whether pid is a running (not zombie) process.
-func alive(pid int) bool {
+// Alive reports whether pid is a running (not zombie) process.
+func Alive(pid int) bool {
 	if err := syscall.Kill(pid, 0); errors.Is(err, syscall.ESRCH) {
 		return false
 	}
@@ -24,4 +25,5 @@ func alive(pid int) bool {
 	return true
 }
 
-func kill(pid int) { _ = syscall.Kill(pid, syscall.SIGKILL) }
+// Kill kills pid.
+func Kill(pid int) { _ = syscall.Kill(pid, syscall.SIGKILL) }

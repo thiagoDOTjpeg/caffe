@@ -1,6 +1,6 @@
 //go:build windows
 
-package core
+package proctree
 
 import (
 	"os/exec"
@@ -11,10 +11,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// procTree is a command and every process it starts: on Windows, a job
+// Tree is a command and every process it starts: on Windows, a job
 // object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. Children of a process in a
 // job are in the job too, so terminating (or closing) the job ends the tree.
-type procTree struct {
+type Tree struct {
 	once sync.Once
 	// job is set right after Start, while Cancel may already run on another
 	// goroutine: hence atomic. 0 if the job could not be set up.
@@ -22,8 +22,10 @@ type procTree struct {
 	cmd *exec.Cmd
 }
 
-func startTree(cmd *exec.Cmd) (*procTree, error) {
-	t := &procTree{cmd: cmd}
+// Start starts cmd inside a new kill-on-close job; cancelling cmd's context
+// terminates the whole job instead of the command only.
+func Start(cmd *exec.Cmd) (*Tree, error) {
+	t := &Tree{cmd: cmd}
 	cmd.Cancel = func() error {
 		if job := windows.Handle(t.job.Load()); job != 0 {
 			return windows.TerminateJobObject(job, 1)
@@ -69,9 +71,13 @@ func newKillOnCloseJob(pid int) windows.Handle {
 	return job
 }
 
-// kill ends every process still in the job (background children) and
+// Terminate stops the whole job. Console-less processes have no gentle stop
+// signal on Windows, so this is Kill.
+func (t *Tree) Terminate() { t.Kill() }
+
+// Kill ends every process still in the job (background children) and
 // releases it. Safe to call once the command exited.
-func (t *procTree) kill() {
+func (t *Tree) Kill() {
 	t.once.Do(func() {
 		if job := windows.Handle(t.job.Swap(0)); job != 0 {
 			_ = windows.TerminateJobObject(job, 1)

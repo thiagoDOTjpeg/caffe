@@ -17,6 +17,7 @@ import (
 	c "caffe/internal/contracts"
 	"caffe/internal/git"
 	"caffe/internal/persistence"
+	"caffe/internal/proctree"
 	"caffe/internal/runtime"
 )
 
@@ -359,10 +360,10 @@ func runCommand(ctx context.Context, timeout time.Duration, dir string, argv []s
 	// group on Unix, a job object on Windows), killed as a whole on
 	// timeout/cancel and after the command exits: `go test` and friends spawn
 	// children that would otherwise outlive the validation.
-	tree, err := startTree(cmd)
+	tree, err := proctree.Start(cmd)
 	if err == nil {
 		err = cmd.Wait()
-		tree.kill()
+		tree.Kill()
 	}
 	// A command we killed has no result of its own. Its exit status is an
 	// artefact of how it was killed (-1 after SIGKILL on Unix, the code given
