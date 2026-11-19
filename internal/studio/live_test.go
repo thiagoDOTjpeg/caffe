@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -33,6 +34,7 @@ type fakeSource struct {
 	outErr    error
 	rtObs     map[string]service.RuntimeObservation
 	outCalls  int
+	attachArg []string // nil: the runtime cannot attach
 	execs     map[string]*service.ExecutionDetail
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
@@ -186,6 +188,18 @@ func (f *fakeSource) AgentRuntimeStatus(_ context.Context, agents []service.Agen
 		}
 	}
 	return out
+}
+
+func (f *fakeSource) CanAttach() bool { return f.attachArg != nil }
+
+func (f *fakeSource) AttachAgent(_ context.Context, id string) (*exec.Cmd, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, "attach "+id)
+	if f.cmdErr != nil {
+		return nil, f.cmdErr
+	}
+	return exec.Command(f.attachArg[0], f.attachArg[1:]...), nil
 }
 
 func (f *fakeSource) set(fn func(f *fakeSource)) {

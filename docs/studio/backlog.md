@@ -345,8 +345,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **P1 · M · Depends:** F-15, CC-10 · **Acceptance:** focused agent at 1 Hz, labelled source, paused when hidden.
 - **Done.** `o` (or `space a o`) opens the output pane in the lower half of the Agent Room for the card under the cursor: read once a second only while the room is visible, titled with its source (`live, refreshed 1s ago` / `captured at end` / `no output saved` / the runtime's error). The same tick reads the runtime status of unfinished agents on the Overview or Agent Room every 2 s and re-derives their visual state with it (Working, Waiting, Blocked, Lost), advisory only: finished executions keep their stored state, and status older than 6 s is ignored. Test helper `drive` now runs commands concurrently and settles after 50 ms of quiet.
 
-### CC-16 · Attach hand-off
+### [x] CC-16 · Attach hand-off
 - **P1 · S · Depends:** F-14, CC-10 · **Acceptance:** `ExecProcess` of the attach argv; full refresh on return; hidden when unsupported.
+- **Done.** `a` (or `space a a`) on an unfinished agent's card: `service.AttachAgent` builds the runtime's attach argv (`ErrUnsupported` without `runtime.Attacher`, `ErrConflict` for a stopped agent), Studio pauses the watcher, hands the terminal over with `tea.ExecProcess`, and on return resumes the watcher, re-reads the run and runtime health and reports the result. `[a] attach` is only offered when `service.CanAttach()`. Not yet exercised against a real Herdr attach (kit step 3 territory).
 
 ## M2a — Workspace (view)
 

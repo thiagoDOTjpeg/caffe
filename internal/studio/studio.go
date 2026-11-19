@@ -63,7 +63,7 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 		if err != nil {
 			m.live.watchErr = fmt.Errorf("watching for changes: %w", err)
 		} else {
-			m.changes = w.Changes()
+			m.changes, m.watcher = w.Changes(), w
 		}
 	}
 	m.theme = ui.ThemeByName(opts.Theme, os.Getenv("NO_COLOR") != "")

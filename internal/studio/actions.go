@@ -135,6 +135,8 @@ func actions() (*ui.Registry, map[string]handler) {
 			m.output = agentOutput{on: !m.output.on}
 			return m, nil
 		})
+	add(ui.Action{ID: "agents.attach", Title: "Attach to the agent's terminal", Scope: as, Keys: []string{"a"}, Leader: "a a"},
+		func(m model) (model, tea.Cmd) { return m.attach() })
 	is := ui.Scope("inspector")
 	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
 	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }

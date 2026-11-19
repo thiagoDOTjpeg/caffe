@@ -187,7 +187,11 @@ func (m model) agentsScreen(width, height int) string {
 		out = append(out, fmt.Sprintf(" … %d more agents", hidden))
 	}
 	if !m.output.on {
-		out = append(out, " [o] output  [i] inspect")
+		hint := " [o] output  [i] inspect"
+		if m.canAttach() { // hidden when the runtime cannot attach
+			hint += "  [a] attach"
+		}
+		out = append(out, hint)
 	}
 	return strings.Join(append(out, pane...), "\n")
 }

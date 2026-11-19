@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	c "caffe/internal/contracts"
 	"caffe/internal/persistence"
+	"caffe/internal/runtime"
 )
 
 type fakeEngine struct {
@@ -59,5 +61,36 @@ func TestCancelRunAndClean(t *testing.T) {
 	}
 	if lines, err := f.svc.Clean(ctx, true); err != nil || len(lines) != 1 || !e.cleaned[0] {
 		t.Errorf("clean: %v %v", lines, err)
+	}
+}
+
+type attachRuntime struct{ *runtime.Fake }
+
+func (attachRuntime) AttachCommand(agent string) ([]string, error) {
+	return []string{"herdr", "agent", "attach", agent}, nil
+}
+
+func TestAttachAgent(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	if f.svc.CanAttach() {
+		t.Fatal("the fake runtime cannot attach")
+	}
+	if _, err := f.svc.AttachAgent(ctx, "ag-dev"); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("unsupported: %v", err)
+	}
+	f.svc.rt = attachRuntime{runtime.NewFake()}
+	if !f.svc.CanAttach() {
+		t.Fatal("CanAttach false with an Attacher")
+	}
+	cmd, err := f.svc.AttachAgent(ctx, "ag-dev")
+	if err != nil || strings.Join(cmd.Args, " ") != "herdr agent attach c3-developer" {
+		t.Fatalf("attach: %v %v", cmd, err)
+	}
+	if _, err := f.svc.AttachAgent(ctx, "ag-res"); !errors.Is(err, ErrConflict) { // stopped
+		t.Errorf("stopped agent: %v", err)
+	}
+	if _, err := f.svc.AttachAgent(ctx, "nope"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing agent: %v", err)
 	}
 }

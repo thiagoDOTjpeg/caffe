@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 
 	c "caffe/internal/contracts"
 	"caffe/internal/persistence"
+	"caffe/internal/runtime"
 )
 
 // Commands that change state go through the engine (architecture §4). New
@@ -69,4 +71,33 @@ func short8(id string) string {
 		return id[:8]
 	}
 	return id
+}
+
+// CanAttach reports whether the runtime can connect a terminal to an
+// agent's (runtime.Attacher); views hide attaching when it cannot.
+func (s *Service) CanAttach() bool {
+	_, ok := s.rt.(runtime.Attacher)
+	return ok
+}
+
+// AttachAgent returns the command that attaches the caller's terminal to a
+// live agent. The caller runs it with its terminal handed over and gets the
+// terminal back when the user detaches.
+func (s *Service) AttachAgent(ctx context.Context, agentID string) (*exec.Cmd, error) {
+	at, ok := s.rt.(runtime.Attacher)
+	if !ok {
+		return nil, fmt.Errorf("attach: the runtime cannot attach to agents: %w", ErrUnsupported)
+	}
+	a, err := s.store.GetAgent(ctx, agentID)
+	if err != nil {
+		return nil, notFound(err)
+	}
+	if a.Status == "stopped" || a.Name == "" {
+		return nil, fmt.Errorf("agent %s has stopped: %w", short8(a.ID), ErrConflict)
+	}
+	argv, err := at.AttachCommand(a.Name)
+	if err != nil {
+		return nil, err
+	}
+	return exec.Command(argv[0], argv[1:]...), nil
 }

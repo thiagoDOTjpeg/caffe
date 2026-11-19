@@ -3,6 +3,7 @@ package studio
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -22,6 +23,9 @@ type source interface {
 
 	AgentOutput(ctx context.Context, agentID string, lines int) (*service.AgentOutput, error)
 	AgentRuntimeStatus(ctx context.Context, agents []service.AgentView) map[string]service.RuntimeObservation
+
+	CanAttach() bool
+	AttachAgent(ctx context.Context, agentID string) (*exec.Cmd, error)
 
 	StartRun(ctx context.Context, req service.StartRunRequest) (string, error)
 	ResumeRun(ctx context.Context, runID string) error

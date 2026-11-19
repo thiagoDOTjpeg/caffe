@@ -44,6 +44,7 @@ type model struct {
 	form     *newRunForm       // set while overlayNewRun is open
 	output   agentOutput       // the Agent Room's output pane
 	rt       rtObs             // last runtime status of the agents on screen
+	watcher  pauser            // paused while the terminal is handed over
 	toastSeq int
 	now      func() time.Time
 	project  Project
@@ -110,6 +111,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateInspector(msg)
 	case olderMsg:
 		return m.updateOlder(msg)
+	case attachReadyMsg, attachDoneMsg:
+		return m.updateAttach(msg)
 	case liveTickMsg, outputMsg, rtStatusMsg:
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
