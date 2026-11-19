@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/thiagoDOTjpeg/caffe/compare/v1.0.0...v1.0.1) (2026-11-19)
+
+
+### Documentation
+
+* bring every document up to date and translate the Windows kit guide ([cefaf68](https://github.com/thiagoDOTjpeg/caffe/commit/cefaf68813c222e2fc8dab279755481e14f2d23e))
+* bring every document up to date and translate the Windows kit guide ([281033b](https://github.com/thiagoDOTjpeg/caffe/commit/281033b026faa24f1e216cf9c9d2c20b1ec264c9))
+
 ## 1.0.0 (2026-11-19)
 
 
