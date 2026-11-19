@@ -187,7 +187,8 @@ Before the first run, know that:
 | `caffe resume <run>` | Continue an interrupted run. |
 | `caffe clean [--failed]` | Remove worktrees of completed runs. Branches are kept. |
 | `caffe config` | Print the effective, validated configuration. |
-| `caffe studio` | Open Caffè Studio, the terminal UI. **Preview:** follows runs live, starts/cancels/resumes them, attaches to agents, and browses workspaces (explorer, viewer, diff, search, `$EDITOR`); more arrives milestone by milestone ([docs/studio/](docs/studio/)). |
+| `caffe integrate <run> [<task> approve\|reject [note] \| <task> merge [--yes]]` | List a run's branches with review, validation and decisions; record a decision; merge an approved branch into the current branch of the main checkout after a `git merge-tree` preview. Never pushes. |
+| `caffe studio` | Open Caffè Studio, the terminal UI: follow runs live, start/cancel/resume them, attach to agents, review and edit worktrees, run commands, and integrate branches. See the [user guide](docs/studio/user-guide.md). |
 
 Global flags: `-C <dir>` (the project directory or any directory below it) and
 `-v` (debug logs to stderr). Run ids can be shortened to any unambiguous
@@ -230,13 +231,13 @@ persistence:
   driver: sqlite
   path: .caffe/caffe.db
 security:
-  require_confirmation_for_merge: true   # reserved: Caffè never merges
+  require_confirmation_for_merge: true   # caffe integrate … merge asks first (Studio always asks)
   preserve_failed_worktrees: true
-studio:                       # reserved for Caffè Studio (docs/studio/): validated, not used yet
+studio:                       # Caffè Studio (docs/studio/user-guide.md)
   theme: caffe                # caffe | high-contrast | mono
-  mouse: false
-  reduce_motion: false
-  avatars: true
+  mouse: false                  # reserved, not used yet
+  reduce_motion: false          # reserved, not used yet
+  avatars: true                 # reserved, not used yet
   editor: ""                  # empty: $VISUAL, then $EDITOR
 ```
 
@@ -272,7 +273,8 @@ in-memory runtime. See [docs/development.md](docs/development.md).
 
 ## Current limitations
 
-- No merging and no conflict resolution between branches. A developer task
+- Merging is manual (`caffe integrate`, Studio's Integration screen) and
+  never resolves conflicts: a conflicting branch is refused. A developer task
   that depends on another starts from that task's branch; with several
   developer dependencies it starts from the nearest one only.
 - One runtime adapter (Herdr, through its CLI).

@@ -154,7 +154,7 @@ func NewRootCommand() *cobra.Command {
 		defer logFile.Close()
 		return studio.Run(cmd.Context(), a.Svc,
 			studio.Project{Name: a.Cfg.Project.Name, Root: a.Cfg.Project.Path},
-			studio.Options{Dir: dir, Theme: a.Cfg.Studio.Theme, Log: zerolog.New(logFile).With().Timestamp().Logger()})
+			studio.Options{Dir: dir, Theme: a.Cfg.Studio.Theme, Editor: a.Cfg.Studio.Editor, Log: zerolog.New(logFile).With().Timestamp().Logger()})
 	})
 
 	root.AddCommand(&cobra.Command{

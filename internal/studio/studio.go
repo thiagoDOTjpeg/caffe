@@ -31,8 +31,9 @@ type Options struct {
 
 	Dir string
 
-	Theme string
-	Log   zerolog.Logger
+	Theme  string
+	Editor string
+	Log    zerolog.Logger
 
 	NoProject bool
 }
@@ -49,6 +50,7 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	m := newModel(src, p, guard)
 	m.noProject = opts.NoProject
 	m.ed.holder = "studio-" + uuid.NewString()
+	m.editor = opts.Editor
 	if svc != nil {
 		m.terms = newTerminals(filepath.Join(opts.Dir, "sessions"))
 

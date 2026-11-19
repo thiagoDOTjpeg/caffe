@@ -510,4 +510,4 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 | PO-04 | Layout customization (persisted per project) | P2 · M | CC-02 | stored outside `config.yaml` (UI state file) |
 | PO-05 | Performance pass (large logs, large repos, many tasks) | P2 · M | M2a, M3a | NFR-P targets measured and met |
 | PO-06 | Buffer crash-recovery files | P2 · M | WS-14 | unsaved edits recoverable after a crash |
-| PO-07 | User documentation for Studio | P1 · M | M1a | README section + `docs/studio/user-guide.md` |
+| [x] PO-07 | User documentation for Studio | P1 · M | M1a | README section + `docs/studio/user-guide.md` |

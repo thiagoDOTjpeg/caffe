@@ -52,6 +52,7 @@ type model struct {
 	split    *viewer
 	terms    terminals
 	ed       editing
+	editor   string
 	integ    integration
 	rt       rtObs
 	watcher  pauser

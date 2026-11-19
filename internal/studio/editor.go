@@ -55,7 +55,16 @@ func (m model) runEditor() (model, tea.Cmd) {
 	if m.watcher != nil {
 		m.watcher.Pause()
 	}
-	cmd := editorCmd(os.Getenv, v.file.Path, v.scroll+1)
+	env := os.Getenv
+	if m.editor != "" {
+		env = func(k string) string {
+			if k == "VISUAL" {
+				return m.editor
+			}
+			return os.Getenv(k)
+		}
+	}
+	cmd := editorCmd(env, v.file.Path, v.scroll+1)
 	return m, tea.ExecProcess(cmd, func(err error) tea.Msg { return editorDoneMsg{err} })
 }
 
