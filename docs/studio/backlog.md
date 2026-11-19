@@ -190,7 +190,7 @@ behaviour changes.
 Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ### [x] W-01 · Portable test fakes
-- **Done.** Herdr adapter tests pass as a Windows binary under Wine. Side fix: fakes set `GORACE=atexit_sleep_ms=0` (a `-race` child otherwise sleeps 1 s per exit; the adapter suite went 12 s → 1.7 s).
+- **Done.** Herdr adapter tests pass as a Windows binary under Wine, and on real Windows. **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** Side fix: fakes set `GORACE=atexit_sleep_ms=0` (a `-race` child otherwise sleeps 1 s per exit; the adapter suite went 12 s → 1.7 s).
 - **P0 · M · Depends:** —
 - **Description:** the Herdr adapter tests use a `#!/bin/sh` script as fake
   `herdr`, and the orchestrator tests use `sh check.sh` as validation
@@ -210,7 +210,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Acceptance:** `TestCollectContext` passes on Windows.
 
 ### [x] W-03 · Kill process trees on Windows
-- **Done; validated under Wine, not yet on real Windows (W-05).** Job object with kill-on-close; the test is now one portable file, and with the job disabled it fails (control run). Found and fixed on the way: a *cancelled* command was recorded with the exit code of its killing (1 on Windows) instead of no result; `runCommand` now returns −1 + "cancelled" on both platforms. Known gap: a child spawned in the instant between `Start` and the job assignment escapes (needs `CREATE_SUSPENDED`, which `os/exec` cannot resume).
+- **Done; validated on real Windows:** **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** Job object with kill-on-close; the test is now one portable file, and with the job disabled it fails (control run). Found and fixed on the way: a *cancelled* command was recorded with the exit code of its killing (1 on Windows) instead of no result; `runCommand` now returns −1 + "cancelled" on both platforms. Known gap: a child spawned in the instant between `Start` and the job assignment escapes (needs `CREATE_SUSPENDED`, which `os/exec` cannot resume).
 - **P0 · M · Depends:** F-13
 - **Description:** `procgroup_windows.go` is a no-op today. Assign each
   validation command to a job object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`
@@ -225,7 +225,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   console and Ctrl-C in it; fix the flags if not.
 - **Acceptance:** launcher tests have a Windows version; manual check of
   closing the console.
-- **Progress (2026-11-18):** launcher tests are portable (`service/launcher_test.go`); on Windows the child must have no console (`GetConsoleWindow() == 0`). Passes under Wine, **but a control build without `DETACHED_PROCESS` passes too there** — Wine cannot tell; the assertion is first exercised by `run-tests.ps1` on real Windows. Manual console-close check: kit step 4.
+- **Progress (2026-11-18):** launcher tests are portable (`service/launcher_test.go`); on Windows the child must have no console (`GetConsoleWindow() == 0`). Passes under Wine, **but a control build without `DETACHED_PROCESS` passes too there** — Wine cannot tell; the assertion is first exercised by `run-tests.ps1` on real Windows. Manual console-close check: kit step 4. **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** The no-console assertion now holds on real Windows; still pending: the manual console-close / Ctrl-C check (kit step 4).
 
 ### W-05 · CI on Linux and Windows
 - **P0 · S · Depends:** W-01, W-02 · **Requires a decision:** where the CI runs
