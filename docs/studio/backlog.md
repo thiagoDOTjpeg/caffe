@@ -372,7 +372,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### WS-04 · Tabs and splits
 - **P1 · M · Depends:** WS-03 · **Acceptance:** buffers keyed by (workspace, path); tabs show workspace when it differs.
 
-### WS-05 · Diff view
+### [x] WS-05 · Diff view
+- **Done.** `d` on a developer task (Task Board), in a task workspace (explorer/viewer) or `space w d`. Changed files with `A`/`M`/`D` and +/− counts on the left; unified, or side by side (`s`, terminal ≥ 120 columns); `n`/`p` next/previous file. `enter` opens the file at the hunk in the task's worktree and selects that workspace (no question: M2a has no unsaved buffers). Stored diffs (worktree removed) show, but cannot open files.
 - **P0 · L · Depends:** F-12, WS-03 · **Acceptance:** unified and side-by-side; file list; open file at hunk in its worktree.
 
 ### WS-06 · Git status panel

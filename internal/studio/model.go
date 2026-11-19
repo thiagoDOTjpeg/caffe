@@ -44,6 +44,7 @@ type model struct {
 	form     *newRunForm       // set while overlayNewRun is open
 	output   agentOutput       // the Agent Room's output pane
 	ws       workspaces
+	diff     *diffView // nil: closed
 	tree     explorer
 	file     *viewer // the Workspace screen's open file; nil: none
 	rt       rtObs   // last runtime status of the agents on screen
@@ -120,6 +121,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
 		return m.actionDone(msg)
+	case diffMsg:
+		return m.updateDiff(msg), nil
 	case editorDoneMsg:
 		return m.editorDone(msg)
 	case filesMsg:
@@ -172,6 +175,8 @@ func (m model) view() tea.View {
 			h--
 		}
 		switch {
+		case m.diff != nil:
+			main = m.diffScreen(l.Main.W, h)
 		case m.report != nil:
 			main = m.reportScreen(l.Main.W, h)
 		case m.inspect != nil:

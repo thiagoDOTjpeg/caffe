@@ -63,7 +63,7 @@ func actions() (*ui.Registry, map[string]handler) {
 			if next, had := m.dismissErrors(); had {
 				return next, nil
 			}
-			m.inspect, m.report = nil, nil
+			m.inspect, m.report, m.diff = nil, nil, nil
 			return m, nil
 		})
 	add(ui.Action{ID: "workspace.select", Title: "Select the workspace", Scope: g, Keys: []string{"ctrl+w"}, Leader: "w s"},
@@ -81,7 +81,7 @@ func actions() (*ui.Registry, map[string]handler) {
 		add(ui.Action{ID: "screen." + strings.ToLower(name), Title: "Go to " + name, Scope: g,
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
 			func(m model) (model, tea.Cmd) {
-				m.screen, m.overlay, m.inspect, m.report = s, overlayNone, nil, nil
+				m.screen, m.overlay, m.inspect, m.report, m.diff = s, overlayNone, nil, nil, nil
 				if s == screenWorkspace {
 					return m.loadTree()
 				}
@@ -168,6 +168,34 @@ func actions() (*ui.Registry, map[string]handler) {
 		func(m model) (model, tea.Cmd) { return m.treeLeft(), nil })
 	add(ui.Action{ID: "explorer.viewer", Title: "Back to the open file", Scope: xs, Keys: []string{"o"}},
 		func(m model) (model, tea.Cmd) { m.tree.focused = m.file == nil; return m, nil })
+	add(ui.Action{ID: "workspace.diff", Title: "Diff of the selected task workspace", Scope: g, Leader: "w d"},
+		func(m model) (model, tea.Cmd) { return m.openWorkspaceDiff() })
+	add(ui.Action{ID: "explorer.diff", Title: "Diff of this task workspace", Scope: xs, Keys: []string{"d"}},
+		func(m model) (model, tea.Cmd) { return m.openWorkspaceDiff() })
+	add(ui.Action{ID: "viewer.diff", Title: "Diff of this task workspace", Scope: ws, Keys: []string{"d"}},
+		func(m model) (model, tea.Cmd) { return m.openWorkspaceDiff() })
+	add(ui.Action{ID: "tasks.diff", Title: "Diff of the developer task", Scope: ts, Keys: []string{"d"}},
+		func(m model) (model, tea.Cmd) {
+			if t, ok := m.cursorTask(); ok {
+				return m.openDiff(t)
+			}
+			return m, nil
+		})
+	ds := ui.Scope("diff")
+	dscroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.diffScroll(d), nil } }
+	dfile := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.diffFile(d), nil } }
+	add(ui.Action{ID: "diff.down", Title: "Scroll down", Scope: ds, Keys: []string{"j", "down"}}, dscroll(1))
+	add(ui.Action{ID: "diff.up", Title: "Scroll up", Scope: ds, Keys: []string{"k", "up"}}, dscroll(-1))
+	add(ui.Action{ID: "diff.pagedown", Title: "Scroll half a page down", Scope: ds, Keys: []string{"ctrl+d", "pgdown"}}, dscroll(20))
+	add(ui.Action{ID: "diff.pageup", Title: "Scroll half a page up", Scope: ds, Keys: []string{"ctrl+u", "pgup"}}, dscroll(-20))
+	add(ui.Action{ID: "diff.top", Title: "Top of the diff", Scope: ds, Keys: []string{"g", "home"}}, dscroll(-1<<30))
+	add(ui.Action{ID: "diff.bottom", Title: "End of the diff", Scope: ds, Keys: []string{"G", "end"}}, dscroll(1<<30))
+	add(ui.Action{ID: "diff.next", Title: "Next file", Scope: ds, Keys: []string{"n", "l", "right"}}, dfile(1))
+	add(ui.Action{ID: "diff.prev", Title: "Previous file", Scope: ds, Keys: []string{"p", "h", "left"}}, dfile(-1))
+	add(ui.Action{ID: "diff.side", Title: "Toggle side by side", Scope: ds, Keys: []string{"s"}},
+		func(m model) (model, tea.Cmd) { return m.diffToggleSide() })
+	add(ui.Action{ID: "diff.open", Title: "Open the file in its worktree", Scope: ds, Keys: []string{"enter", "o"}},
+		func(m model) (model, tea.Cmd) { return m.diffOpenFile() })
 	is := ui.Scope("inspector")
 	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
 	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }
@@ -244,6 +272,9 @@ func (m model) toggleOverlay(o overlay) model {
 func (m model) scope() ui.Scope {
 	if m.events.focused && m.layout().Panel.Visible() {
 		return "events"
+	}
+	if m.diff != nil {
+		return "diff"
 	}
 	if m.report != nil {
 		return "report"

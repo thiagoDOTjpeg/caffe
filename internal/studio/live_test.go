@@ -41,6 +41,7 @@ type fakeSource struct {
 	ws        []service.Workspace
 	files     map[string]string // "workspace:path" → text
 	lists     map[string]*service.FileList
+	diffs     map[string]*service.Diff
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -51,6 +52,15 @@ func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*s
 		return nil, service.ErrNotFound
 	}
 	return &service.FileContent{Path: "/" + path, Text: text, Size: int64(len(text))}, nil
+}
+
+func (f *fakeSource) TaskDiff(_ context.Context, id string) (*service.Diff, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if d, ok := f.diffs[id]; ok {
+		return d, nil
+	}
+	return nil, service.ErrNotFound
 }
 
 func (f *fakeSource) Files(_ context.Context, ws string) (*service.FileList, error) {

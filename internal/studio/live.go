@@ -36,6 +36,7 @@ type source interface {
 	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)
 
 	Workspaces(ctx context.Context) ([]service.Workspace, error)
+	TaskDiff(ctx context.Context, taskID string) (*service.Diff, error)
 	Files(ctx context.Context, workspaceID string) (*service.FileList, error)
 	ReadFile(ctx context.Context, workspaceID, path string, max int64) (*service.FileContent, error)
 }
