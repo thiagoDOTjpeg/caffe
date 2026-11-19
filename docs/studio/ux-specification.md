@@ -1,6 +1,10 @@
 # Caffè Studio — UX Specification
 
-Status: **Proposed.** Wireframes are terminal-cell sketches, not pixel-exact.
+Status: **Implemented**, except embedded shells (M3b, blocked on a Windows
+run of the ADR-004 criteria) and the polish items PO-01 to PO-06 (see
+[backlog.md](backlog.md)). Where the implementation differs from the
+original design, this document says so.
+Wireframes are terminal-cell sketches, not pixel-exact.
 Names of data fields refer to the existing model (`internal/contracts`).
 
 ---
@@ -275,7 +279,7 @@ all generated from it, so they cannot disagree.
 | `?` | help for the focused view (from the registry) |
 | `:` / `ctrl+p` | command palette |
 | `space` | leader menu |
-| `1`…`6` | Overview, Tasks, Agents, Runs, Workspace, Terminals |
+| `1`…`8` | Overview, Tasks, Agents, Runs, Workspace, Terminals, Integration, Debug |
 | `tab` / `shift+tab` | next / previous pane |
 | `ctrl+w` | workspace selector |
 | `` ` `` | toggle bottom panel |
@@ -283,33 +287,41 @@ all generated from it, so they cannot disagree.
 | `esc` | leave mode / close overlay |
 | `q` | close view or overlay (never quits from a screen) |
 | `ctrl+q` | quit (confirms if buffers are unsaved or sessions are running) |
-| `ctrl+g` | escape chord inside a focused interactive shell |
+| `ctrl+g` | escape chord inside a focused interactive shell (with embedded shells, M3b; not implemented) |
 
 ### 3.3 Leader groups
 
 | Sequence | Group |
 |---|---|
+| `space g` | go to: `o` Overview, `t` Tasks, `a` Agents, `r` Runs, `w` Workspace, `x` Terminals, `i` Integration, `d` Debug |
 | `space r` | run: `n` new, `c` cancel, `R` resume, `x` clean, `o` open report |
-| `space w` | workspace: `s` select, `f` find file, `g` grep, `d` diff, `c` commit |
-| `space t` | terminal: `c` command, `s` shell, `v` validation commands, `k` stop |
-| `space a` | agent: `o` output, `a` attach, `i` inspect |
-| `space c` | code: `d` definition, `r` references, `s` symbols, `e` diagnostics |
-| `space d` | debug: `t` debug test, `b` toggle breakpoint, `x` stop |
+| `space w` | workspace: `s` select, `f` find file, `g` grep, `d` diff, `c` commit, `x` discard, `l` release the lease |
+| `space a` | agent: `o` output, `a` attach |
+| `space v` | view: `b` sidebar, `p` bottom panel |
+
+Terminal, code and debug actions are screen keys instead of leader groups
+(Terminals: `n v s c x`; viewer and editor: `! S b T`, `ctrl+]` and `R` in
+the editor; Debug: `c n s o x`), and every action is in the palette.
 
 ### 3.4 List and editor keys
 
 Lists and trees: `j`/`k` or arrows, `g`/`G` top/bottom, `enter` open, `/`
-filter, `h`/`l` collapse/expand. Viewer: `j`/`k`, `ctrl+d`/`ctrl+u`, `/` search,
-`n`/`N`, `:<line>` go to line, `e` open in `$EDITOR`.
+filter (runs, events), `h`/`l` collapse/expand. Viewer: `j`/`k`,
+`ctrl+d`/`ctrl+u`, `g`/`G`, `e` open in `$EDITOR`, `i` edit; search inside a
+file is in the editor.
 
-Built-in editor (M2b) has two modes, **normal** (viewer keys) and **insert**
-(`i` to enter, `esc` to leave); standard keys in insert mode (`ctrl+s` save,
-`ctrl+z` undo, `ctrl+y` redo). Full Vim emulation is a non-goal.
+Built-in editor (M2b) has two modes. **Normal**: `h j k l`, `0`/`$`, `g`/`G`,
+`x` delete a character, `D` delete the line, `u` undo, `ctrl+r` redo, `/`
+find, `n`/`N`, `ctrl+s` save, `esc`/`q` leave. **Insert** (`i a A o O`):
+typing, `enter`, `backspace`, `tab`, arrows, `ctrl+s` save, `esc` back to
+normal. One insert session is one undo step. Full Vim emulation is a
+non-goal.
 
 ### 3.5 Mouse
 
-Optional and off by default (`studio.mouse: true`). When on: click to focus a
-pane, select list items, scroll, click tabs. No drag-to-resize in M1.
+Planned, not implemented: `studio.mouse` is accepted in the configuration
+but nothing reads it yet. When it is: click to focus a pane, select list
+items, scroll, click tabs; no drag-to-resize.
 
 ### 3.6 Focus behaviour
 

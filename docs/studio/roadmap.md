@@ -1,8 +1,10 @@
 # Caffè Studio — Roadmap
 
-Status: **Proposed.** Effort is relative (S < M < L < XL), not calendar time;
-the repository gives no basis for reliable estimates. Task ids refer to
-[backlog.md](backlog.md).
+Status: **Delivered** through M6 (2026-11-19). Open: M3b embedded shells
+(spike EX-07 passed on Linux; blocked on a Windows run), the M7 polish items
+PO-01 to PO-06, and the manual Windows checks F-17, W-04 and W-06 (the
+[Windows kit](../../scripts/windows/README.md)). Effort is relative
+(S < M < L < XL), not calendar time. Task ids refer to [backlog.md](backlog.md).
 
 ---
 
