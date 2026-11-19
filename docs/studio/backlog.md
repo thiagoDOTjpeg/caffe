@@ -442,10 +442,12 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### [x] EX-06 · Session cleanup on quit and signals
 - **P1 · S · Depends:** EX-01 · **Acceptance:** quit confirms when sessions run; nothing survives.
 
-### EX-07 · Spike: embedded PTY pane
+### [x] EX-07 · Spike: embedded PTY pane
 - **P2 · M · Depends:** EX-01 · **Description:** ADR-004 criteria with `go-pty`/`x/xpty` + `x/vt`. **Acceptance:** go/no-go recorded in ADR-004.
+- **Outcome (2026-11-19):** go on Linux (every criterion passes, `spikes/pty`); Windows not run. EX-08 waits for a Windows run of the criteria.
 
 ### EX-08 · Embedded shells
+- **Blocked:** needs the ADR-004 criteria checked on Windows first.
 - **P2 · XL · Depends:** EX-07 (go) · **Acceptance:** criteria of ADR-004 met in production code.
 
 ## M4 — Integration

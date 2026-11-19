@@ -204,6 +204,28 @@ runtime sessions.
 are never PTY sessions of Studio; they are reached through the runtime
 (ADR-005).
 
+**Spike EX-07 (2026-11-19, `spikes/pty`, `aymanbagabas/go-pty` v0.2.3 +
+`charmbracelet/x/vt` v0.1.0).** `go run ./spikes/pty` (own module) checks
+each criterion automatically. Linux results:
+
+| Criterion | Linux |
+|---|---|
+| user's shell (`bash -i`) renders and takes input | pass |
+| resize propagates (`stty size` sees 24×80, then 40×120) | pass |
+| `less` pages in the alternate screen | pass |
+| `vim` (nvim here; vim not installed) edits and saves | pass |
+| `htop` (top here; htop not installed) draws a full-screen UI | pass |
+| 10 MB of output stays responsive | pass in 5 of 6 runs on a loaded machine (load 18 on 12 cores): slowest frame 5–42 ms, once 61 ms; the emulator itself parses ~2.6 MB/s, so 10 MB takes 3–9 s to drain while frames keep coming |
+| no orphan after closing | pass, but only after a fix: an interactive shell puts background jobs in their own process groups, so killing the shell's group is not enough. Closing the PTY first (hang-up), then killing every process of the shell's session (from `/proc`) works |
+
+**Outcome: go on Linux, Windows pending.** Windows was not run: the spike
+uses `bash`, `less`, `top` and `/proc`, none of which apply there; a Windows
+run needs its own checks (`cmd.exe`, PowerShell, ConPTY resize, a job object
+for cleanup). Until that run exists, EX-08 does not start and the hand-off
+shell stays the solution. Risks recorded for EX-08: `x/vt` is v0.1.0 and
+experimental, and its parse rate bounds how fast a pane can catch up after a
+burst.
+
 ---
 
 ## ADR-005 — Runtime-specific features
