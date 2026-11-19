@@ -235,9 +235,9 @@ security:
   preserve_failed_worktrees: true
 studio:                       # Caffè Studio (docs/studio/user-guide.md)
   theme: caffe                # caffe | high-contrast | mono
-  mouse: false                  # reserved, not used yet
-  reduce_motion: false          # reserved, not used yet
-  avatars: true                 # reserved, not used yet
+  mouse: false                # reserved, not used yet
+  reduce_motion: false        # reserved, not used yet
+  avatars: true               # reserved, not used yet
   editor: ""                  # empty: $VISUAL, then $EDITOR
 ```
 
