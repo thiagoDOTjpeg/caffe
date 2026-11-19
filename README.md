@@ -284,9 +284,8 @@ Versions come from the commit messages
 [release-please](https://github.com/googleapis/release-please):
 
 1. Every push to `main` updates a release pull request with the next version
-   and the changelog. Before 1.0, `feat:` bumps the minor version and
-   `fix:` the patch; `feat!:` or a `BREAKING CHANGE:` footer is a breaking
-   change.
+   and the changelog: `fix:` bumps the patch version, `feat:` the minor,
+   and `feat!:` (or a `BREAKING CHANGE:` footer) the major.
 2. Merging that pull request tags `vX.Y.Z`, publishes the GitHub release with
    `CHANGELOG.md`, and `.github/workflows/release.yml` attaches the binaries
    and `checksums.txt`.
