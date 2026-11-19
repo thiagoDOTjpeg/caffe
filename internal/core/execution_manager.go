@@ -86,14 +86,16 @@ func (s *session) runDeveloper(ctx context.Context, t *c.Task) error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	ar := &agentRun{owner: t, role: c.RoleDeveloper, cwd: wt, tracked: true}
-	ar.data.Branch = snap.BranchName
-	// Any attempt after the first inherits a worktree in an unknown state.
-	ar.data.Interrupted, ar.data.PriorError = snap.Attempts > 1, snap.Error
-	if _, err := s.runAgent(ctx, ar); err != nil {
-		return err
-	}
-	return s.collectChanges(ctx, t, wt)
+	return s.withLease(ctx, t, t, wt, func() error {
+		ar := &agentRun{owner: t, role: c.RoleDeveloper, cwd: wt, tracked: true}
+		ar.data.Branch = snap.BranchName
+		// Any attempt after the first inherits a worktree in an unknown state.
+		ar.data.Interrupted, ar.data.PriorError = snap.Attempts > 1, snap.Error
+		if _, err := s.runAgent(ctx, ar); err != nil {
+			return err
+		}
+		return s.collectChanges(ctx, t, wt)
+	})
 }
 
 func (s *session) diffPath(dev *c.Task) string {
@@ -176,7 +178,13 @@ func (s *session) runReviewer(ctx context.Context, t *c.Task) error {
 	wt := s.sched.Snapshot(dev).WorktreePath
 	lock := s.wtLock(wt)
 	for round := 0; ; round++ {
-		rep, err := s.reviewOnce(ctx, t, dev, wt)
+		// The review commits leftovers and discards the reviewer's own edits:
+		// it writes too, so it holds the lease like a correction does.
+		var rep *c.Report
+		err := s.withLease(ctx, t, dev, wt, func() (err error) {
+			rep, err = s.reviewOnce(ctx, t, dev, wt)
+			return err
+		})
 		if err != nil {
 			return err
 		}
@@ -187,7 +195,8 @@ func (s *session) runReviewer(ctx context.Context, t *c.Task) error {
 		if round >= s.Cfg.Orchestration.MaxReviewRounds {
 			return Permanent(fmt.Errorf("changes of task %s still rejected after %d correction rounds: %s", dev.Key, round, rep.Summary))
 		}
-		if err := s.correct(ctx, dev, wt, rep.Findings, lock.Lock, lock.Unlock); err != nil {
+		err = s.withLease(ctx, t, dev, wt, func() error { return s.correct(ctx, dev, wt, rep.Findings, lock.Lock, lock.Unlock) })
+		if err != nil {
 			return Permanent(fmt.Errorf("correction of task %s failed: %w", dev.Key, err))
 		}
 	}

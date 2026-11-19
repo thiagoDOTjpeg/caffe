@@ -16,6 +16,8 @@ import (
 func (o *Orchestrator) Recover(ctx context.Context) ([]string, error) {
 	ids, err := o.Store.MarkStaleRunsInterrupted(ctx, StaleAfter)
 	for _, id := range ids {
+		// Its agents are gone: their worktree leases must not lock humans out.
+		err = errors.Join(err, o.Store.ReleaseAgentLeases(ctx, id))
 		o.Log.Warn().Str("run_id", id).Str("event_type", "run.interrupted").Msg("run was interrupted; inspect it and use `caffe resume` to continue")
 	}
 	return ids, err

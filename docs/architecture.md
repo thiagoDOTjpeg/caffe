@@ -145,6 +145,19 @@ sends at most twice.
 A read/write lock per worktree keeps a correction from rewriting a tree that a
 reviewer or validator is reading, and makes concurrent writers impossible.
 
+**Worktree lease (across processes).** The lock above is in-memory. A human
+editing a worktree in Caffè Studio is another process, so ownership is also a
+row in `worktree_leases` (holder `agent` or `human`, acquired by
+compare-and-swap). The engine holds the agent lease of a developer worktree
+around the developer execution, each review (it commits leftovers and
+discards the reviewer's edits) and each correction; every agent of the run on
+that worktree is the same holder, so the engine never waits for itself. While
+a human holds it, the dispatched task goes `running → blocked` ("worktree
+held by a manual edit session") and retries every `runtime.poll_interval`. A
+human lease without a heartbeat for 15 s is taken over only if the worktree
+is clean. Without human leases nothing changes. Studio releases its lease
+only on a clean worktree, so no agent commit can contain manual edits.
+
 **Review loop.** A reviewer report must contain `approved`. On rejection (with
 at least one finding) the developer task goes `completed → reviewing`, a new
 developer agent gets the findings in the same worktree, the diff is collected
@@ -189,7 +202,8 @@ Every run starts with `VACUUM INTO .caffe/backups/…` (newest five kept).
 
 A run's owning process writes a heartbeat every 2 s. On startup every command
 runs `Recover`: runs in a non-terminal state without a heartbeat for 15 s
-become `interrupted`, and their running executions too. That is all it does —
+become `interrupted`, and their running executions too; their agent worktree
+leases are released. That is all it does —
 establishing facts, not restarting anything.
 
 `caffe resume <run>` claims the run with a compare-and-swap (two resumers cannot

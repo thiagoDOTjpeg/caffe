@@ -404,7 +404,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### [x] WS-11 · `worktree_leases` table and store API
 - **P1 · M · Depends:** — · **Description:** migration `002`; acquire (CAS), renew, release, expire. **Tests:** two connections racing to acquire.
 
-### WS-12 · Engine honours leases
+### [x] WS-12 · Engine honours leases
 - **P1 · L · Depends:** WS-11 · **Description:** agent lease around developer executions and corrections; mark task `running` before acquiring; `blocked` while a human holds it (architecture §9.2).
   **Acceptance:** no change in behaviour without human leases; all existing engine tests green.
   **Tests:** correction waits for a human lease; crash with an agent lease → recovery releases it; expired dirty human lease blocks.
