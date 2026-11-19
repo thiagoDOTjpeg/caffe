@@ -465,13 +465,13 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M5 — Code intelligence
 
-### CI-00 · Investigate LSP protocol types
+### [x] CI-00 · Investigate LSP protocol types
 - **P2 · S · Depends:** — · **Description:** module-graph and Go-version impact of `go.lsp.dev/protocol` v1 (ADR-006). **Acceptance:** ADR-006 finalised.
 
-### CI-01 · JSON-RPC LSP client core
+### [x] CI-01 · JSON-RPC LSP client core
 - **P2 · L · Depends:** CI-00 · **Tests:** fake server over pipes: init/shutdown, request/response, notifications, server crash.
 
-### CI-02 · Server manager
+### [x] CI-02 · Server manager
 - **P2 · M · Depends:** CI-01, WS-01 · **Acceptance:** one server per (language, root), LRU cap, clean shutdown.
 
 ### CI-03 · Document sync and diagnostics panel

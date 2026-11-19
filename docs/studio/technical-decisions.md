@@ -252,6 +252,15 @@ acceptable; if both, use it instead of hand-written types.
 **Rationale.** The feature set is small and stable; a dozen structs are cheaper
 to own than a large generated package with toolchain requirements.
 
+**Outcome of CI-00 (2026-11-19).** Go version is not the obstacle (the module
+is on Go 1.27), but `go.lsp.dev/protocol` would bring a large module graph for
+a dozen messages, so it is not used. `sourcegraph/jsonrpc2` is not needed
+either: LSP framing (`Content-Length` header + JSON-RPC 2.0) is a small
+amount of standard-library code. `internal/lsp` therefore has no
+dependencies: own framing, own types for the messages listed above, results
+decoded leniently (`Location`, `Location[]` and `LocationLink[]` for
+definition; `DocumentSymbol[]` or `SymbolInformation[]` for symbols).
+
 ---
 
 ## ADR-007 — DAP architecture
