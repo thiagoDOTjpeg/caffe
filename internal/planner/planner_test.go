@@ -36,6 +36,17 @@ func TestParsePlanAcceptsValidPlan(t *testing.T) {
 	}
 }
 
+func TestParsePlanReportEnvelope(t *testing.T) {
+	withStatus := `{"status":"completed","summary":"s",` + validPlan[1:]
+	if _, err := ParsePlan([]byte(withStatus), 10); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParsePlan([]byte(`{"status":"failed","summary":"repo unreadable"}`), 10)
+	if err == nil || !strings.Contains(err.Error(), "repo unreadable") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestParsePlanRejections(t *testing.T) {
 	task := func(fields string) string { return `{"goal":"g","tasks":[` + fields + `]}` }
 	ok := `"title":"T","description":"D","role":"developer","dependencies":[],"acceptance_criteria":["c"]`

@@ -83,10 +83,20 @@ func ParsePlan(data []byte, maxTasks int) (*contracts.ExecutionPlan, error) {
 	}
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
-	var plan contracts.ExecutionPlan
-	if err := dec.Decode(&plan); err != nil {
+	// The shared report instructions ask every agent for status and summary,
+	// so the planner adds them to its plan; accept them, nothing else.
+	var report struct {
+		contracts.ExecutionPlan
+		Status  string `json:"status"`
+		Summary string `json:"summary"`
+	}
+	if err := dec.Decode(&report); err != nil {
 		return nil, fmt.Errorf("invalid plan: %w", err)
 	}
+	if report.Status == "failed" {
+		return nil, fmt.Errorf("planner failed: %s", report.Summary)
+	}
+	plan := report.ExecutionPlan
 	if err := plan.Validate(); err != nil {
 		return nil, err
 	}
