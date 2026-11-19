@@ -54,6 +54,22 @@ open files on the right.
 - `e` opens the file in your editor (`studio.editor`, else `$VISUAL`, else
   `$EDITOR`) at the line on screen; Studio comes back when it exits.
 
+### Code intelligence
+
+Go files talk to `gopls` (one server per module root, at most three at a
+time). Lines with problems get a `●` in the margin and the title counts them.
+
+| Keys | What they do |
+|---|---|
+| `!` | the file's diagnostics; `enter` jumps to one |
+| `S` | the file's symbols; `enter` jumps, `r` lists references |
+| `ctrl+]` (editor) | go to the definition of the name under the cursor |
+| `R` (editor) | references of the name under the cursor |
+
+Locations outside the workspace (the standard library, the module cache)
+are listed but not opened. In Terminals, `enter` on a `--- FAIL: TestX` line
+opens the test function.
+
 ### Editing a task's worktree
 
 Agents and you never write to a worktree at the same time. Editing takes the
