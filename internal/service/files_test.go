@@ -39,3 +39,39 @@ func TestResolvePathAndReadFile(t *testing.T) {
 		t.Error("a task without a worktree resolved")
 	}
 }
+
+func TestFilesAndMarks(t *testing.T) {
+	ctx := context.Background()
+	svc, gm, tasks := stackedRepo(t)
+	must(t, gm.ExcludeLocally(ctx, ".caffe/"))
+	wt := tasks["top"].WorktreePath
+	must(t, os.Remove(filepath.Join(wt, "README.md")))
+	_, err := gm.CommitAll(ctx, wt, "rm readme")
+	must(t, err)
+	must(t, os.WriteFile(filepath.Join(wt, "top.txt"), []byte("edited"), 0o644))
+	must(t, os.WriteFile(filepath.Join(wt, "new file.txt"), []byte("n"), 0o644))
+
+	fl, err := svc.Files(ctx, "t-top")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// top's base is base's branch: base.txt is not top's change.
+	want := map[string]string{"top.txt": MarkManual, "README.md": MarkDeleted, "new file.txt": MarkManual}
+	if len(fl.Marks) != len(want) {
+		t.Errorf("marks = %v", fl.Marks)
+	}
+	for p, m := range want {
+		if fl.Marks[p] != m {
+			t.Errorf("%s: mark %q, want %q (all: %v)", p, fl.Marks[p], m, fl.Marks)
+		}
+	}
+	got := strings.Join(fl.Paths, ",")
+	for _, p := range []string{"base.txt", "top.txt", "new file.txt", "README.md"} {
+		if !strings.Contains(got, p) {
+			t.Errorf("%s not listed: %s", p, got)
+		}
+	}
+	if main, err := svc.Files(ctx, MainWorkspace); err != nil || len(main.Marks) != 0 || strings.Join(main.Paths, ",") != "README.md" {
+		t.Errorf("main: %+v %v", main, err)
+	}
+}

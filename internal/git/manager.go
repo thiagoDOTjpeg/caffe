@@ -182,6 +182,48 @@ func (m *Manager) ChangedFiles(ctx context.Context, worktree, base string) ([]st
 	return strings.Split(out, "\n"), nil
 }
 
+// ListFiles lists the tracked and untracked, not ignored, files of a
+// checkout, slash-separated and relative to dir.
+func (m *Manager) ListFiles(ctx context.Context, dir string) ([]string, error) {
+	out, err := m.git(ctx, dir, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	return splitZ(out), err
+}
+
+// CommittedChanges maps each file changed between base and HEAD to its
+// status letter (A, M, D, T).
+func (m *Manager) CommittedChanges(ctx context.Context, dir, base string) (map[string]string, error) {
+	out, err := m.git(ctx, dir, "diff", "-z", "--name-status", "--no-renames", base, "HEAD")
+	if err != nil {
+		return nil, err
+	}
+	f := splitZ(out)
+	ch := make(map[string]string, len(f)/2)
+	for i := 0; i+1 < len(f); i += 2 {
+		ch[f[i+1]] = f[i][:1]
+	}
+	return ch, nil
+}
+
+// Uncommitted lists the files with uncommitted changes, untracked included.
+func (m *Manager) Uncommitted(ctx context.Context, dir string) ([]string, error) {
+	out, err := m.git(ctx, dir, "status", "-z", "--porcelain=v1", "--no-renames", "--untracked-files=all")
+	var files []string
+	for _, e := range splitZ(out) {
+		if len(e) > 3 {
+			files = append(files, e[3:])
+		}
+	}
+	return files, err
+}
+
+func splitZ(s string) []string {
+	s = strings.TrimRight(s, "\x00")
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, "\x00")
+}
+
 // MergeBase returns the commit where two refs of a worktree diverged.
 func (m *Manager) MergeBase(ctx context.Context, worktree, a, b string) (string, error) {
 	return m.git(ctx, worktree, "merge-base", a, b)

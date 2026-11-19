@@ -44,7 +44,7 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	if m.src == nil {
 		return m, nil
 	}
-	m.file = &viewer{ws: ws, path: path}
+	m.file, m.tree.focused = &viewer{ws: ws, path: path}, false
 	src := m.src
 	return m, func() tea.Msg {
 		f, err := src.ReadFile(context.Background(), ws, path, maxFileRead)

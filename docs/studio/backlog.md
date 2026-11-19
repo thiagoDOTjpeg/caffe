@@ -357,7 +357,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   (main + task worktrees, missing-on-disk flagged, dirty, lease). Selector
   overlay. **Acceptance:** header/status bar always show the selected workspace.
 
-### WS-02 · Explorer
+### [x] WS-02 · Explorer
+- **Done.** `service.Files`: `git ls-files` (tracked + untracked, not ignored) with marks `A`/`M`/`D` vs the task's diff base (`core.DiffBase`, shared with `TaskDiff`) and `●` for uncommitted files; deleted files are listed. Explorer next to the viewer in the Workspace screen (not in the sidebar: 20 columns is too narrow); index built once, only expanded directories walked (100 k files: test). Keys: `j`/`k`, `enter`/`l` open, `h` collapse/parent; `h` in the viewer returns to the tree.
 - **P0 · M · Depends:** WS-01 · **Description:** lazy tree from `git ls-files
   --cached --others --exclude-standard`; change markers vs task base.
   **Tests:** large listing (100 k entries) stays responsive.

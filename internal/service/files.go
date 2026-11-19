@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	c "caffe/internal/contracts"
 )
 
 // workspaceRoot is the checkout a workspace id names.
@@ -82,4 +84,73 @@ func (s *Service) ReadFile(ctx context.Context, workspaceID, p string, max int64
 	}
 	fc.Text = strings.ToValidUTF8(string(buf), "�")
 	return fc, nil
+}
+
+// Change marks of FileList.Marks.
+const (
+	MarkAdded    = "A"
+	MarkModified = "M"
+	MarkDeleted  = "D"
+	MarkManual   = "●" // uncommitted: a manual edit, or an agent still writing
+)
+
+// FileList is the content of a workspace for the explorer.
+type FileList struct {
+	Paths []string // slash-separated, relative to the workspace; deleted files included
+	// Marks: committed changes of a developer task relative to its diff base,
+	// overridden by MarkManual for uncommitted files.
+	Marks map[string]string
+	Base  string // the diff base the marks are relative to; "" for main
+}
+
+// Files lists a workspace (git ls-files: tracked and untracked, not
+// ignored) with its change marks.
+func (s *Service) Files(ctx context.Context, workspaceID string) (*FileList, error) {
+	if s.git == nil {
+		return nil, fmt.Errorf("listing files needs Git")
+	}
+	root, err := s.workspaceRoot(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	paths, err := s.git.ListFiles(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	fl := &FileList{Paths: paths, Marks: map[string]string{}}
+	if workspaceID != "" && workspaceID != MainWorkspace {
+		task, err := s.store.GetTask(ctx, workspaceID)
+		if err != nil {
+			return nil, notFound(err)
+		}
+		snap, err := s.store.RunSnapshot(ctx, task.RunID)
+		if err != nil {
+			return nil, notFound(err)
+		}
+		if task.Role == c.RoleDeveloper {
+			if fl.Base, err = s.diffBase(ctx, task, snap.Run.Metadata["base_commit"], snap.Tasks); err != nil {
+				return nil, err
+			}
+			if fl.Marks, err = s.git.CommittedChanges(ctx, root, fl.Base); err != nil {
+				return nil, err
+			}
+		}
+	}
+	manual, err := s.git.Uncommitted(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range manual {
+		fl.Marks[p] = MarkManual
+	}
+	listed := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		listed[p] = true
+	}
+	for p := range fl.Marks {
+		if !listed[p] {
+			fl.Paths = append(fl.Paths, p) // deleted: still shown, with its mark
+		}
+	}
+	return fl, nil
 }

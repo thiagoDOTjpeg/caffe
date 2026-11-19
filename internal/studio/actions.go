@@ -82,6 +82,9 @@ func actions() (*ui.Registry, map[string]handler) {
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
 			func(m model) (model, tea.Cmd) {
 				m.screen, m.overlay, m.inspect, m.report = s, overlayNone, nil, nil
+				if s == screenWorkspace {
+					return m.loadTree()
+				}
 				return m, nil
 			})
 	}
@@ -149,6 +152,20 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "viewer.pageup", Title: "Scroll half a page up", Scope: ws, Keys: []string{"ctrl+u", "pgup"}}, vscroll(-20))
 	add(ui.Action{ID: "viewer.top", Title: "Top of the file", Scope: ws, Keys: []string{"g", "home"}}, vscroll(-1<<30))
 	add(ui.Action{ID: "viewer.bottom", Title: "End of the file", Scope: ws, Keys: []string{"G", "end"}}, vscroll(1<<30))
+	add(ui.Action{ID: "viewer.explorer", Title: "Back to the explorer", Scope: ws, Keys: []string{"h", "left"}},
+		func(m model) (model, tea.Cmd) { m.tree.focused = true; return m, nil })
+	xs := ui.Scope("explorer")
+	xmove := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.treeMove(d), nil } }
+	add(ui.Action{ID: "explorer.down", Title: "Next entry", Scope: xs, Keys: []string{"j", "down"}}, xmove(1))
+	add(ui.Action{ID: "explorer.up", Title: "Previous entry", Scope: xs, Keys: []string{"k", "up"}}, xmove(-1))
+	add(ui.Action{ID: "explorer.top", Title: "First entry", Scope: xs, Keys: []string{"g", "home"}}, xmove(-1<<30))
+	add(ui.Action{ID: "explorer.bottom", Title: "Last entry", Scope: xs, Keys: []string{"G", "end"}}, xmove(1<<30))
+	add(ui.Action{ID: "explorer.open", Title: "Open the file or toggle the directory", Scope: xs, Keys: []string{"enter", "l", "right"}},
+		func(m model) (model, tea.Cmd) { return m.treeOpen() })
+	add(ui.Action{ID: "explorer.collapse", Title: "Collapse, or go to the parent directory", Scope: xs, Keys: []string{"h", "left"}},
+		func(m model) (model, tea.Cmd) { return m.treeLeft(), nil })
+	add(ui.Action{ID: "explorer.viewer", Title: "Back to the open file", Scope: xs, Keys: []string{"o"}},
+		func(m model) (model, tea.Cmd) { m.tree.focused = m.file == nil; return m, nil })
 	is := ui.Scope("inspector")
 	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
 	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }
@@ -231,6 +248,9 @@ func (m model) scope() ui.Scope {
 	}
 	if m.inspect != nil {
 		return "inspector"
+	}
+	if m.screen == screenWorkspace && (m.tree.focused || m.file == nil) {
+		return "explorer"
 	}
 	return ui.Scope(strings.ToLower(screenNames[m.screen]))
 }

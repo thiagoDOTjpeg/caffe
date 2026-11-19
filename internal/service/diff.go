@@ -66,10 +66,12 @@ func (s *Service) TaskDiff(ctx context.Context, taskID string) (*Diff, error) {
 	return s.storedDiff(task, latest)
 }
 
-func (s *Service) liveDiff(ctx context.Context, task *c.Task, runBase string, tasks []*c.Task) (*Diff, error) {
+// diffBase is the commit a developer task's changes start from (the
+// engine's rule, core.DiffBase).
+func (s *Service) diffBase(ctx context.Context, task *c.Task, runBase string, tasks []*c.Task) (string, error) {
 	g, err := core.NewGraph(tasks)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	var self *c.Task
 	for _, t := range g.Tasks() {
@@ -77,8 +79,12 @@ func (s *Service) liveDiff(ctx context.Context, task *c.Task, runBase string, ta
 			self = t
 		}
 	}
+	return core.DiffBase(ctx, s.git, task.WorktreePath, g, self, runBase, func(t *c.Task) string { return t.BranchName })
+}
+
+func (s *Service) liveDiff(ctx context.Context, task *c.Task, runBase string, tasks []*c.Task) (*Diff, error) {
 	wt := task.WorktreePath
-	base, err := core.DiffBase(ctx, s.git, wt, g, self, runBase, func(t *c.Task) string { return t.BranchName })
+	base, err := s.diffBase(ctx, task, runBase, tasks)
 	if err != nil {
 		return nil, err
 	}

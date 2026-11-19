@@ -40,6 +40,7 @@ type fakeSource struct {
 	artifacts map[string]string // artifact id → text
 	ws        []service.Workspace
 	files     map[string]string // "workspace:path" → text
+	lists     map[string]*service.FileList
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -50,6 +51,15 @@ func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*s
 		return nil, service.ErrNotFound
 	}
 	return &service.FileContent{Path: "/" + path, Text: text, Size: int64(len(text))}, nil
+}
+
+func (f *fakeSource) Files(_ context.Context, ws string) (*service.FileList, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if l, ok := f.lists[ws]; ok {
+		return l, nil
+	}
+	return nil, service.ErrNotFound
 }
 
 func (f *fakeSource) Workspaces(context.Context) ([]service.Workspace, error) {

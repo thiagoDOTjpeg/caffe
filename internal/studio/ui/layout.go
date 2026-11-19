@@ -217,3 +217,7 @@ func firstRune(s string) string {
 	}
 	return ""
 }
+
+// Fit makes one line exactly w cells wide (see Frame), for screens that lay
+// out columns themselves.
+func Fit(s string, w int) string { return fit(s, w) }
