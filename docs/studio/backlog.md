@@ -379,7 +379,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### WS-06 · Git status panel
 - **P1 · S · Depends:** WS-01 · **Description:** `git status --porcelain=v2` via `internal/git`.
 
-### WS-07 · File finder
+### [x] WS-07 · File finder
+- **Done.** `space w f`, or `f` in the explorer/viewer. Fuzzy subsequence match over the explorer's list (matched from the end, so file names win; gaps and directory matches cost), 200 best shown; `enter` opens.
 - **P1 · S · Depends:** WS-02 · **Description:** fuzzy match over `ls-files`.
 
 ### WS-08 · Content search

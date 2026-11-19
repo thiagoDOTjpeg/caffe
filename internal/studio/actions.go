@@ -20,6 +20,7 @@ const (
 	overlayConfirm
 	overlayNewRun
 	overlayWorkspaces
+	overlayFinder
 )
 
 // handler performs an action. Every registered action has exactly one;
@@ -168,6 +169,10 @@ func actions() (*ui.Registry, map[string]handler) {
 		func(m model) (model, tea.Cmd) { return m.treeLeft(), nil })
 	add(ui.Action{ID: "explorer.viewer", Title: "Back to the open file", Scope: xs, Keys: []string{"o"}},
 		func(m model) (model, tea.Cmd) { m.tree.focused = m.file == nil; return m, nil })
+	find := func(m model) (model, tea.Cmd) { return m.openFinder() }
+	add(ui.Action{ID: "workspace.find", Title: "Find a file in the workspace", Scope: g, Leader: "w f"}, find)
+	add(ui.Action{ID: "explorer.find", Title: "Find a file", Scope: xs, Keys: []string{"f"}}, find)
+	add(ui.Action{ID: "viewer.find", Title: "Find a file", Scope: ws, Keys: []string{"f"}}, find)
 	add(ui.Action{ID: "workspace.diff", Title: "Diff of the selected task workspace", Scope: g, Leader: "w d"},
 		func(m model) (model, tea.Cmd) { return m.openWorkspaceDiff() })
 	add(ui.Action{ID: "explorer.diff", Title: "Diff of this task workspace", Scope: xs, Keys: []string{"d"}},
@@ -311,6 +316,8 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.newRunKey(msg)
 	case overlayWorkspaces:
 		return m.workspacesKey(k)
+	case overlayFinder:
+		return m.finderKey(msg)
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)

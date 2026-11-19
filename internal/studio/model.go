@@ -44,6 +44,7 @@ type model struct {
 	form     *newRunForm       // set while overlayNewRun is open
 	output   agentOutput       // the Agent Room's output pane
 	ws       workspaces
+	find     finder
 	diff     *diffView // nil: closed
 	tree     explorer
 	file     *viewer // the Workspace screen's open file; nil: none
@@ -211,6 +212,8 @@ func (m model) view() tea.View {
 		mode, main = "NEW RUN", m.newRunView(l.Main.W)
 	case overlayWorkspaces:
 		mode, main = "WORKSPACE", m.workspacesView()
+	case overlayFinder:
+		mode, main = "FIND", m.finderView(l.Main.H)
 	default:
 		mode, main = m.overlayView()
 	}
