@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/thiagoDOTjpeg/caffe/compare/v1.0.1...v1.1.0) (2026-11-19)
+
+
+### Features
+
+* add headless process runtime, reject diamond plans, warn on branch conflicts and fail agents that never start ([bc74def](https://github.com/thiagoDOTjpeg/caffe/commit/bc74defbe0ce128f3f96b6518724e099b108db5a))
+
 ## [1.0.1](https://github.com/thiagoDOTjpeg/caffe/compare/v1.0.0...v1.0.1) (2026-11-19)
 
 
