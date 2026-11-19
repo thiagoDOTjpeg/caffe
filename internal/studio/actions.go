@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"caffe/internal/studio/edit"
 	"caffe/internal/studio/ui"
 )
 
@@ -58,6 +59,9 @@ func actions() (*ui.Registry, map[string]handler) {
 			}
 			if next, had := m.dismissErrors(); had {
 				return next, nil
+			}
+			if m.editing() {
+				return m.leaveEditor()
 			}
 			m.inspect, m.report, m.diff = nil, nil, nil
 			return m, nil
@@ -193,6 +197,54 @@ func actions() (*ui.Registry, map[string]handler) {
 			}
 			return m, nil
 		})
+	add(ui.Action{ID: "viewer.editbuf", Title: "Edit the file here", Scope: ws, Keys: []string{"i"}},
+		func(m model) (model, tea.Cmd) { return m.requireLease("buffer") })
+	commit := func(m model) (model, tea.Cmd) { return m.commitManual() }
+	discard := func(m model) (model, tea.Cmd) { return m.discardManual() }
+	release := func(m model) (model, tea.Cmd) { return m.releaseLease() }
+	add(ui.Action{ID: "workspace.commit", Title: "Commit the manual changes", Scope: g, Leader: "w c"}, commit)
+	add(ui.Action{ID: "workspace.discard", Title: "Discard the manual changes", Scope: g, Leader: "w x"}, discard)
+	add(ui.Action{ID: "workspace.release", Title: "Release the worktree to agents", Scope: g, Leader: "w l"}, release)
+	for _, sc := range []ui.Scope{ws, xs} {
+		add(ui.Action{ID: "keys." + string(sc) + ".commit", Title: "Commit the manual changes", Scope: sc, Keys: []string{"C"}}, commit)
+		add(ui.Action{ID: "keys." + string(sc) + ".discard", Title: "Discard the manual changes", Scope: sc, Keys: []string{"X"}}, discard)
+		add(ui.Action{ID: "keys." + string(sc) + ".release", Title: "Release the worktree to agents", Scope: sc, Keys: []string{"L"}}, release)
+	}
+	es2 := ui.Scope("editor")
+	bop := func(fn func(b *edit.Buffer)) handler {
+		return func(m model) (model, tea.Cmd) { return m.bufOp(fn), nil }
+	}
+	ins := func(fn func(b *edit.Buffer)) handler {
+		return func(m model) (model, tea.Cmd) { return m.enterInsert(fn), nil }
+	}
+	add(ui.Action{ID: "editor.left", Title: "Left", Scope: es2, Keys: []string{"h", "left"}}, bop(func(b *edit.Buffer) { b.Move(0, -1, false) }))
+	add(ui.Action{ID: "editor.right", Title: "Right", Scope: es2, Keys: []string{"l", "right"}}, bop(func(b *edit.Buffer) { b.Move(0, 1, false) }))
+	add(ui.Action{ID: "editor.down", Title: "Down", Scope: es2, Keys: []string{"j", "down"}}, bop(func(b *edit.Buffer) { b.Move(1, 0, false) }))
+	add(ui.Action{ID: "editor.up", Title: "Up", Scope: es2, Keys: []string{"k", "up"}}, bop(func(b *edit.Buffer) { b.Move(-1, 0, false) }))
+	add(ui.Action{ID: "editor.pagedown", Title: "Half a page down", Scope: es2, Keys: []string{"ctrl+d", "pgdown"}}, bop(func(b *edit.Buffer) { b.Move(20, 0, false) }))
+	add(ui.Action{ID: "editor.pageup", Title: "Half a page up", Scope: es2, Keys: []string{"ctrl+u", "pgup"}}, bop(func(b *edit.Buffer) { b.Move(-20, 0, false) }))
+	add(ui.Action{ID: "editor.home", Title: "Start of the line", Scope: es2, Keys: []string{"0", "home"}}, bop(func(b *edit.Buffer) { b.LineStart() }))
+	add(ui.Action{ID: "editor.end", Title: "End of the line", Scope: es2, Keys: []string{"$", "end"}}, bop(func(b *edit.Buffer) { b.LineEnd(false) }))
+	add(ui.Action{ID: "editor.top", Title: "First line", Scope: es2, Keys: []string{"g"}}, bop(func(b *edit.Buffer) { b.MoveTo(0, 0, false) }))
+	add(ui.Action{ID: "editor.bottom", Title: "Last line", Scope: es2, Keys: []string{"G"}}, bop(func(b *edit.Buffer) { b.MoveTo(1<<30, 0, false) }))
+	add(ui.Action{ID: "editor.insert", Title: "Insert before the cursor", Scope: es2, Keys: []string{"i"}}, ins(nil))
+	add(ui.Action{ID: "editor.append", Title: "Insert after the cursor", Scope: es2, Keys: []string{"a"}}, ins(func(b *edit.Buffer) { b.Move(0, 1, true) }))
+	add(ui.Action{ID: "editor.appendline", Title: "Insert at the end of the line", Scope: es2, Keys: []string{"A"}}, ins(func(b *edit.Buffer) { b.LineEnd(true) }))
+	add(ui.Action{ID: "editor.openbelow", Title: "New line below", Scope: es2, Keys: []string{"o"}}, ins(func(b *edit.Buffer) { b.OpenLine(true) }))
+	add(ui.Action{ID: "editor.openabove", Title: "New line above", Scope: es2, Keys: []string{"O"}}, ins(func(b *edit.Buffer) { b.OpenLine(false) }))
+	add(ui.Action{ID: "editor.delchar", Title: "Delete the character", Scope: es2, Keys: []string{"x", "delete"}}, bop(func(b *edit.Buffer) { b.DeleteChar() }))
+	add(ui.Action{ID: "editor.delline", Title: "Delete the line", Scope: es2, Keys: []string{"D"}}, bop(func(b *edit.Buffer) { b.DeleteLine() }))
+	add(ui.Action{ID: "editor.undo", Title: "Undo", Scope: es2, Keys: []string{"u"}}, bop(func(b *edit.Buffer) { b.Undo() }))
+	add(ui.Action{ID: "editor.redo", Title: "Redo", Scope: es2, Keys: []string{"ctrl+r"}}, bop(func(b *edit.Buffer) { b.Redo() }))
+	add(ui.Action{ID: "editor.find", Title: "Find in the file", Scope: es2, Keys: []string{"/"}},
+		func(m model) (model, tea.Cmd) { s := ""; m.ed.search = &s; return m, nil })
+	add(ui.Action{ID: "editor.next", Title: "Next match", Scope: es2, Keys: []string{"n"}},
+		func(m model) (model, tea.Cmd) { return m.findNext(true) })
+	add(ui.Action{ID: "editor.prev", Title: "Previous match", Scope: es2, Keys: []string{"N"}},
+		func(m model) (model, tea.Cmd) { return m.findNext(false) })
+	add(ui.Action{ID: "editor.save", Title: "Save", Scope: es2, Keys: []string{"ctrl+s"}},
+		func(m model) (model, tea.Cmd) { return m.save(false) })
+	add(ui.Action{ID: "editor.commit", Title: "Commit the manual changes", Scope: es2, Keys: []string{"C"}}, commit)
 	xt := ui.Scope("terminals")
 	xo := ui.Scope("termout")
 	tmv := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.termMove(d), nil } }
@@ -326,6 +378,9 @@ func (m model) scope() ui.Scope {
 	if m.inspect != nil {
 		return "inspector"
 	}
+	if m.editing() {
+		return "editor"
+	}
 	if m.screen == screenWorkspace && (m.tree.focused || m.file == nil) {
 		return "explorer"
 	}
@@ -362,6 +417,15 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)
+	}
+	if m.ed.commit != nil {
+		return m.commitKey(msg)
+	}
+	if m.editing() && m.ed.search != nil {
+		return m.searchKey(msg)
+	}
+	if m.editing() && m.ed.insert {
+		return m.insertKey(msg)
 	}
 	if m.screen == screenTerminals && m.terms.typing {
 		return m.termInputKey(msg)

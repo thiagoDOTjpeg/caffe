@@ -112,7 +112,9 @@ func (r *Registry) Help(scope Scope) []Action {
 				own = append(own, a)
 			}
 		case ScopeGlobal:
-			global = append(global, a)
+			if len(a.Keys) > 0 {
+				global = append(global, a)
+			}
 		}
 	}
 	return append(own, global...)

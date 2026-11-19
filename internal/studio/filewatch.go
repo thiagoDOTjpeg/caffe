@@ -61,6 +61,12 @@ func (m model) updateFileWatch(msg tea.Msg) (model, tea.Cmd) {
 				m.file = &nv
 			}
 		case msg.err != nil:
+		case (!msg.mod.Equal(v.file.ModTime) || msg.size != v.file.Size) && v.buf != nil:
+			if v.disk != "changed" {
+				nv := *v
+				nv.disk = "changed"
+				m.file = &nv
+			}
 		case !msg.mod.Equal(v.file.ModTime) || msg.size != v.file.Size:
 			nv := *v
 			nv.disk = "reloaded"

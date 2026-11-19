@@ -13,6 +13,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"caffe/internal/service"
@@ -47,6 +48,7 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	}
 	m := newModel(src, p, guard)
 	m.noProject = opts.NoProject
+	m.ed.holder = "studio-" + uuid.NewString()
 	if svc != nil {
 		m.terms = newTerminals(filepath.Join(opts.Dir, "sessions"))
 
@@ -72,7 +74,14 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 		popts = append(popts, tea.WithOutput(opts.Output))
 	}
 	opts.Log.Info().Str("project", p.Root).Msg("studio started")
-	_, err := tea.NewProgram(m, popts...).Run()
+	final, err := tea.NewProgram(m, popts...).Run()
+	if fm, ok := final.(model); ok && svc != nil {
+		for ws, l := range fm.ed.leases {
+			if rerr := svc.ReleaseLease(context.Background(), l); rerr != nil {
+				fmt.Fprintf(os.Stderr, "caffè studio: the lease of %s stays: %v\n", ws, rerr)
+			}
+		}
+	}
 	switch {
 	case err == nil:
 		opts.Log.Info().Msg("studio quit")

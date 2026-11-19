@@ -43,6 +43,12 @@ type fakeSource struct {
 	diffs      map[string]*service.Diff
 	dir        string
 	validation []string
+	leases     map[string]string
+	leaseErr   error
+	saves      []service.SaveRequest
+	saveErr    error
+	commits    []string
+	dirty      map[string]bool
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -477,4 +483,72 @@ func (f *fakeSource) ValidationCommands() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.validation
+}
+
+func (f *fakeSource) AcquireLease(_ context.Context, ws, holder string) (*service.Lease, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.leaseErr != nil {
+		return nil, f.leaseErr
+	}
+	if f.leases == nil {
+		f.leases = map[string]string{}
+	}
+	if h, ok := f.leases[ws]; ok && h != holder {
+		return nil, service.ErrLeaseHeld
+	}
+	f.leases[ws] = holder
+	return &service.Lease{WorkspaceID: ws, Path: "/wt/" + ws, HolderKind: "human", HolderID: holder}, nil
+}
+
+func (f *fakeSource) RenewLease(_ context.Context, l *service.Lease) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.leases[l.WorkspaceID] != l.HolderID {
+		return service.ErrLeaseHeld
+	}
+	return nil
+}
+
+func (f *fakeSource) ReleaseLease(_ context.Context, l *service.Lease) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.dirty[l.WorkspaceID] {
+		return service.ErrDirty
+	}
+	delete(f.leases, l.WorkspaceID)
+	return nil
+}
+
+func (f *fakeSource) CommitManual(_ context.Context, l *service.Lease, msg string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.commits = append(f.commits, l.WorkspaceID+": manual: "+msg)
+	delete(f.dirty, l.WorkspaceID)
+	return true, nil
+}
+
+func (f *fakeSource) DiscardManual(_ context.Context, l *service.Lease) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.dirty, l.WorkspaceID)
+	return nil
+}
+
+func (f *fakeSource) SaveFile(_ context.Context, ws string, req service.SaveRequest) (*service.FileContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.saves = append(f.saves, req)
+	if f.saveErr != nil && !req.Overwrite {
+		return nil, f.saveErr
+	}
+	if f.files == nil {
+		f.files = map[string]string{}
+	}
+	f.files[ws+":"+req.Path] = req.Text
+	if f.dirty == nil {
+		f.dirty = map[string]bool{}
+	}
+	f.dirty[ws] = true
+	return &service.FileContent{Path: "/" + req.Path, Text: req.Text, Size: int64(len(req.Text))}, nil
 }

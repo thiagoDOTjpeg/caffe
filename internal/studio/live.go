@@ -41,6 +41,13 @@ type source interface {
 	ReadFile(ctx context.Context, workspaceID, path string, max int64) (*service.FileContent, error)
 	ResolvePath(ctx context.Context, workspaceID, p string) (string, error)
 	ValidationCommands() []string
+
+	AcquireLease(ctx context.Context, workspaceID, holderID string) (*service.Lease, error)
+	RenewLease(ctx context.Context, l *service.Lease) error
+	ReleaseLease(ctx context.Context, l *service.Lease) error
+	CommitManual(ctx context.Context, l *service.Lease, message string) (bool, error)
+	DiscardManual(ctx context.Context, l *service.Lease) error
+	SaveFile(ctx context.Context, workspaceID string, req service.SaveRequest) (*service.FileContent, error)
 }
 
 var (

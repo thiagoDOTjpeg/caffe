@@ -207,6 +207,9 @@ func (m model) workspaceScreen(width, height int) string {
 func (m model) explorerLines(width, height int) []string {
 	t := m.tree
 	title := " EXPLORER · " + m.ws.label()
+	if m.leaseFor(m.wsID()) != nil {
+		title += " · ✎ leased (C commit · X discard · L release)"
+	}
 	if t.focused || m.file == nil {
 		title = m.theme.Render(ui.ToneAccent, title)
 	}

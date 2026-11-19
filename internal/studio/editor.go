@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
-	c "caffe/internal/contracts"
 )
 
 type editorDoneMsg struct{ err error }
@@ -43,12 +41,16 @@ func editorCmd(env func(string) string, path string, line int) *exec.Cmd {
 }
 
 func (m model) editFile() (model, tea.Cmd) {
+	if m.file != nil && m.file.buf != nil && m.file.buf.Dirty() {
+		return m.failed("edit", errors.New("save the buffer first (ctrl+s)")), nil
+	}
+	return m.requireLease("editor")
+}
+
+func (m model) runEditor() (model, tea.Cmd) {
 	v := m.file
 	if v == nil || !v.loaded || v.err != nil {
 		return m, nil
-	}
-	if m.ws.selected.TaskStatus == c.TaskRunning {
-		return m.failed("edit", errors.New("an agent is writing in this worktree (task running); edit it when the task has finished")), nil
 	}
 	if m.watcher != nil {
 		m.watcher.Pause()

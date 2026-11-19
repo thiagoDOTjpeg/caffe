@@ -107,6 +107,13 @@ func (m model) workspacesView() string {
 		if w.Dirty {
 			tags = append(tags, m.theme.Render(ui.ToneWarn, "● uncommitted changes"))
 		}
+		if w.Lease != nil {
+			who := "an agent"
+			if w.Lease.HolderKind == "human" {
+				who = "a manual edit"
+			}
+			tags = append(tags, m.theme.Render(ui.ToneWarn, "✎ held by "+who))
+		}
 		if w.Missing {
 			tags, where = append(tags, m.theme.Render(ui.ToneMuted, "removed")), ""
 		}

@@ -334,6 +334,9 @@ func (m model) openShell() (model, tea.Cmd) {
 }
 
 func (m model) quit() (model, tea.Cmd) {
+	if u := m.unsaved(); len(u) > 0 {
+		return m.failed("quit", fmt.Errorf("unsaved buffers: %s; save them (ctrl+s) or leave the editor (esc)", strings.Join(u, ", "))), nil
+	}
 	if m.terms.mgr == nil {
 		return m, tea.Quit
 	}

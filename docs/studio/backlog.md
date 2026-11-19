@@ -409,14 +409,14 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   **Acceptance:** no change in behaviour without human leases; all existing engine tests green.
   **Tests:** correction waits for a human lease; crash with an agent lease → recovery releases it; expired dirty human lease blocks.
 
-### WS-13 · Studio human lease
+### [x] WS-13 · Studio human lease
 - **P1 · M · Depends:** WS-11, WS-01 · **Acceptance:** heartbeat; release refused while dirty with the reason.
 
-### WS-14 · Built-in editor model
+### [x] WS-14 · Built-in editor model
 - **P1 · XL · Depends:** WS-03, WS-13 · **Description:** ADR-003 scope: buffer interface, insert/normal, undo/redo, in-buffer search, safe save (temp + rename, changed-on-disk check).
   **Tests:** edit-operation property tests (undo∘do = id); save conflict tests.
 
-### WS-15 · Manual commit and discard
+### [x] WS-15 · Manual commit and discard
 - **P1 · M · Depends:** WS-13 · **Description:** `CommitManual` with the user's identity and `manual:` prefix; discard confirmed. **Acceptance:** manual commits never contain files the agent changed after the lease was taken (they cannot: lease).
 
 ### [x] WS-16 · Clean honours leases

@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"fmt"
 	goruntime "runtime"
 	"strings"
 	"testing"
@@ -67,7 +68,14 @@ func TestEditHandOffReloadsFileAndTree(t *testing.T) {
 	}
 
 	m.ws.selected = service.Workspace{ID: "t1", Kind: "task", TaskKey: "impl", TaskStatus: c.TaskRunning}
-	if m, exec = press(m, "e"); exec != nil || !strings.Contains(plain(m.View().Content), "an agent is writing") {
-		t.Error("editing a running task's worktree was not refused")
+	v2 := *m.file
+	v2.ws = "t1"
+	m.file = &v2
+	m.src.(*fakeSource).set(func(f *fakeSource) {
+		f.leaseErr = fmt.Errorf("an agent is writing in /wt (task impl): %w", service.ErrLeaseHeld)
+	})
+	m, exec = press(m, "e")
+	if m = drive(t, m, exec); !strings.Contains(plain(m.View().Content), "an agent is writing") || p.paused != 1 {
+		t.Error("editing a worktree an agent holds was not refused")
 	}
 }

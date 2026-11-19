@@ -19,6 +19,7 @@ type Workspace struct {
 
 	Missing bool
 	Dirty   bool
+	Lease   *Lease
 }
 
 func (s *Service) Workspaces(ctx context.Context) ([]Workspace, error) {
@@ -48,6 +49,7 @@ func (s *Service) Workspaces(ctx context.Context) ([]Workspace, error) {
 			} else if s.git != nil {
 				w.Dirty, _ = s.git.IsDirty(ctx, w.Path)
 			}
+			s.leaseOf(ctx, &w)
 			all = append(all, w)
 		}
 	}

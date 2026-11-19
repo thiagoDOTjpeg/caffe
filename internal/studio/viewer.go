@@ -11,6 +11,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 
 	"caffe/internal/service"
+	"caffe/internal/studio/edit"
 	"caffe/internal/studio/ui"
 )
 
@@ -31,6 +32,7 @@ type viewer struct {
 
 	disk  string
 	label string
+	buf   *edit.Buffer
 }
 
 type fileMsg struct {
@@ -77,7 +79,7 @@ func (m model) updateFile(msg fileMsg) (model, tea.Cmd) {
 	if m.file == nil || m.file.ws != msg.ws || m.file.path != msg.path {
 		return m, nil
 	}
-	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk, label: m.file.label}
+	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk, label: m.file.label, buf: m.file.buf}
 	if msg.err == nil && !msg.file.Binary {
 		v.lines = strings.Split(strings.ReplaceAll(strings.TrimSuffix(msg.file.Text, "\n"), "\t", "    "), "\n")
 		if msg.file.Size <= plainSize {
@@ -119,9 +121,22 @@ func (m model) viewerScreen(v *viewer, width, height int) string {
 		title += " · deleted on disk"
 	}
 	if v.loaded && v.err == nil {
-		title += "   (e $EDITOR · h tree)"
+		if ro := m.readOnlyReason(v); ro != "" {
+			title += " · " + ro + "   (e $EDITOR · h tree)"
+		} else {
+			title += "   (i edit · e $EDITOR · h tree)"
+		}
+	}
+	if v.buf != nil && v.loaded && v.err == nil {
+		title = m.editorTitle(v)
+		if m.ed.search != nil && m.file == v {
+			title = " / " + *m.ed.search + "▏  (enter finds · esc cancels)"
+		}
 	}
 	out := []string{m.theme.Render(ui.ToneAccent, clip(title, width-1)), ""}
+	if v.buf != nil && v.loaded && v.err == nil {
+		return strings.Join(append(out, m.editorLines(v, width, max(height-len(out), 1))...), "\n")
+	}
 	switch {
 	case v.err != nil:
 		return strings.Join(append(out, " "+m.theme.Render(ui.ToneError, v.err.Error())), "\n")

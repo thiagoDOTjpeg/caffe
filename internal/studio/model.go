@@ -50,6 +50,7 @@ type model struct {
 	tabs     []*viewer
 	split    *viewer
 	terms    terminals
+	ed       editing
 	rt       rtObs
 	watcher  pauser
 	toastSeq int
@@ -141,6 +142,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
+	case leaseMsg, leaseTickMsg, leaseRenewMsg, savedMsg, manualMsg:
+		return m.updateEditing(msg)
 	case sessionMsg, termStartedMsg, termEndedMsg, termLinkMsg, shellReadyMsg, shellDoneMsg:
 		return m.updateTerminals(msg)
 	case healthMsg, healthTickMsg:
