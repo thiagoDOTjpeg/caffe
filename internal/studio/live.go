@@ -34,6 +34,8 @@ type source interface {
 	Execution(ctx context.Context, id string) (*service.ExecutionDetail, error)
 	ReadPrompt(ctx context.Context, executionID string, max int64) (*service.ArtifactContent, error)
 	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)
+
+	Workspaces(ctx context.Context) ([]service.Workspace, error)
 }
 
 // Timings of architecture §7. Variables so tests can shrink them.

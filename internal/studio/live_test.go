@@ -38,6 +38,13 @@ type fakeSource struct {
 	execs     map[string]*service.ExecutionDetail
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
+	ws        []service.Workspace
+}
+
+func (f *fakeSource) Workspaces(context.Context) ([]service.Workspace, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ws, f.err
 }
 
 func (f *fakeSource) Execution(_ context.Context, id string) (*service.ExecutionDetail, error) {

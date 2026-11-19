@@ -72,6 +72,9 @@ func padded(b badge, th ui.Theme, w int) string {
 // headerText is the header line; it names the selected run when there is one.
 func (m model) headerText() string {
 	h := "caffè ─ " + m.project.Name
+	if m.ws.selected.Kind == "task" {
+		h += " ── ws " + m.ws.label()
+	}
 	if m.src != nil && m.live.stale() {
 		h += " ── ✗ database"
 	}

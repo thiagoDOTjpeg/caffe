@@ -43,8 +43,9 @@ type model struct {
 	inflight map[string]string // run id (or cleanTarget) → action in progress
 	form     *newRunForm       // set while overlayNewRun is open
 	output   agentOutput       // the Agent Room's output pane
-	rt       rtObs             // last runtime status of the agents on screen
-	watcher  pauser            // paused while the terminal is handed over
+	ws       workspaces
+	rt       rtObs  // last runtime status of the agents on screen
+	watcher  pauser // paused while the terminal is handed over
 	toastSeq int
 	now      func() time.Time
 	project  Project
@@ -117,6 +118,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
 		return m.actionDone(msg)
+	case workspacesMsg:
+		return m.updateWorkspaces(msg), nil
 	case reportMsg:
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
@@ -191,12 +194,14 @@ func (m model) view() tea.View {
 		mode, main = "CONFIRM", m.confirmView(l.Main.W, l.Main.H)
 	case overlayNewRun:
 		mode, main = "NEW RUN", m.newRunView(l.Main.W)
+	case overlayWorkspaces:
+		mode, main = "WORKSPACE", m.workspacesView()
 	default:
 		mode, main = m.overlayView()
 	}
-	status := fmt.Sprintf(" %s · ws: main · ? help · : commands · space menu · ctrl+q quit", mode)
+	status := fmt.Sprintf(" %s · ws: %s · ? help · : commands · space menu · ctrl+q quit", mode, m.ws.label())
 	if t := m.toastLine(); t != "" {
-		status = " " + mode + " ·" + t
+		status = " " + mode + " · ws: " + m.ws.label() + " ·" + t
 	}
 	v := tea.NewView(ui.Frame(l, ui.Content{
 		Header:     m.headerText(),

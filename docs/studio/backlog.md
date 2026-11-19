@@ -351,7 +351,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M2a — Workspace (view)
 
-### WS-01 · Workspaces query and selector
+### [x] WS-01 · Workspaces query and selector
+- **Done.** `service.Workspaces` (main + recorded task worktrees, `Missing`, `Dirty`); lease field deferred to WS-11. Selector: `W` or `space w s`; removed worktrees cannot be selected. Status bar always shows `ws:`; the header shows it for a task workspace.
 - **P0 · M · Depends:** F-07 · **Description:** `service.Workspaces`
   (main + task worktrees, missing-on-disk flagged, dirty, lease). Selector
   overlay. **Acceptance:** header/status bar always show the selected workspace.

@@ -57,6 +57,11 @@ func (m *Manager) Head(ctx context.Context) (string, error) {
 	return m.git(ctx, m.repo, "rev-parse", "--verify", "HEAD^{commit}")
 }
 
+// Branch returns the branch checked out in dir ("HEAD" when detached).
+func (m *Manager) Branch(ctx context.Context, dir string) (string, error) {
+	return m.git(ctx, dir, "rev-parse", "--abbrev-ref", "HEAD")
+}
+
 func (m *Manager) branchExists(ctx context.Context, branch string) bool {
 	_, err := m.git(ctx, m.repo, "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
 	return err == nil

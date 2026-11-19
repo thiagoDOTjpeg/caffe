@@ -19,6 +19,7 @@ const (
 	overlayLeader
 	overlayConfirm
 	overlayNewRun
+	overlayWorkspaces
 )
 
 // handler performs an action. Every registered action has exactly one;
@@ -40,6 +41,7 @@ func actions() (*ui.Registry, map[string]handler) {
 	r.Group("v", "view")
 	r.Group("r", "run")
 	r.Group("a", "agent")
+	r.Group("w", "workspace")
 
 	add(ui.Action{ID: "app.quit", Title: "Quit Caffè Studio", Scope: g, Keys: []string{"ctrl+q", "ctrl+c"}},
 		func(m model) (model, tea.Cmd) { return m, tea.Quit })
@@ -64,6 +66,8 @@ func actions() (*ui.Registry, map[string]handler) {
 			m.inspect, m.report = nil, nil
 			return m, nil
 		})
+	add(ui.Action{ID: "workspace.select", Title: "Select the workspace", Scope: g, Keys: []string{"W"}, Leader: "w s"},
+		func(m model) (model, tea.Cmd) { return m.openWorkspaces() })
 	add(ui.Action{ID: "layout.sidebar", Title: "Toggle the sidebar", Scope: g, Keys: []string{"ctrl+b"}, Leader: "v b"},
 		func(m model) (model, tea.Cmd) { m.toggles.Sidebar = flip(m.layout().Sidebar.Visible()); return m, nil })
 	add(ui.Action{ID: "layout.panel", Title: "Toggle the bottom panel", Scope: g, Keys: []string{"`"}, Leader: "v p"},
@@ -244,6 +248,8 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.confirmKey(k)
 	case overlayNewRun:
 		return m.newRunKey(msg)
+	case overlayWorkspaces:
+		return m.workspacesKey(k)
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)
