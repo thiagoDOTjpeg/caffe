@@ -401,7 +401,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M2b — Workspace (edit)
 
-### WS-11 · `worktree_leases` table and store API
+### [x] WS-11 · `worktree_leases` table and store API
 - **P1 · M · Depends:** — · **Description:** migration `002`; acquire (CAS), renew, release, expire. **Tests:** two connections racing to acquire.
 
 ### WS-12 · Engine honours leases
