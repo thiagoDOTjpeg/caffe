@@ -90,7 +90,11 @@ func (m model) headerText() string {
 		}
 	}
 	b := m.health.badge()
-	return fmt.Sprintf("%s ─ run %s · %s ── %d/%d tasks ── %s %s", h, short(v.Run.ID), v.Run.Status, done, len(v.Tasks), b.Symbol, b.Label)
+	status := string(v.Run.Status)
+	if a, ok := m.busy(v.Run.ID); ok {
+		status += " (" + a + "…)"
+	}
+	return fmt.Sprintf("%s ─ run %s · %s ── %d/%d tasks ── %s %s", h, short(v.Run.ID), status, done, len(v.Tasks), b.Symbol, b.Label)
 }
 
 // overviewScreen is ux-specification §2.1 for the selected run.

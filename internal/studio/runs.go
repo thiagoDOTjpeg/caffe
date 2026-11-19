@@ -9,6 +9,7 @@ import (
 
 	c "caffe/internal/contracts"
 	"caffe/internal/service"
+	"caffe/internal/studio/ui"
 )
 
 // runsView is the Runs screen state (ux-specification §2.4). The cursor is
@@ -131,11 +132,14 @@ func (m model) runsScreen(width int) string {
 			marker = "▸"
 		}
 		st := runBadge(r.Status)
+		if a, ok := m.busy(r.ID); ok {
+			st = badge{"⋯", a, ui.ToneActive}
+		}
 		status := m.theme.Render(st.Tone, fmt.Sprintf("%-13s", st.Symbol+" "+st.Label))
 		fmt.Fprintf(&b, " %s %-9s %s %-17s %-9s %s\n", marker, short(r.ID), status,
 			when(r.CreatedAt, now), duration(r, now), clip(r.Request, reqW))
 	}
-	b.WriteString("\n [enter] open  [/] filter  [a] active only")
+	b.WriteString("\n [enter] open  [n] new  [c] cancel  [R] resume  [x] clean  [/] filter  [a] active only")
 	return b.String()
 }
 

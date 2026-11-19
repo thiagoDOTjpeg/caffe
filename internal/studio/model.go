@@ -40,6 +40,8 @@ type model struct {
 	events   eventsPanel
 	confirm  *confirmDialog // set while overlayConfirm is open
 	toasts   []toast
+	inflight map[string]string // run id (or cleanTarget) → action in progress
+	form     *newRunForm       // set while overlayNewRun is open
 	toastSeq int
 	now      func() time.Time
 	project  Project
@@ -106,6 +108,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateInspector(msg)
 	case olderMsg:
 		return m.updateOlder(msg)
+	case actionDoneMsg:
+		return m.actionDone(msg)
 	case reportMsg:
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
@@ -178,6 +182,8 @@ func (m model) view() tea.View {
 	case overlayNone:
 	case overlayConfirm:
 		mode, main = "CONFIRM", m.confirmView(l.Main.W, l.Main.H)
+	case overlayNewRun:
+		mode, main = "NEW RUN", m.newRunView(l.Main.W)
 	default:
 		mode, main = m.overlayView()
 	}

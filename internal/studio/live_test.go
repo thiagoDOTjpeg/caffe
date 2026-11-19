@@ -3,6 +3,7 @@ package studio
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -25,6 +26,9 @@ type fakeSource struct {
 	afters []int64 // EventsSince calls
 
 	report    string
+	started   []service.StartRunRequest
+	calls     []string
+	cmdErr    error
 	execs     map[string]*service.ExecutionDetail
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
@@ -108,6 +112,53 @@ func (f *fakeSource) Report(_ context.Context, runID string) (string, error) {
 	return f.report, nil
 }
 
+func (f *fakeSource) StartRun(_ context.Context, req service.StartRunRequest) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.started = append(f.started, req)
+	if f.cmdErr != nil {
+		return "", f.cmdErr
+	}
+	id := "newrun00-1"
+	r := service.RunSummary{ID: id, Request: req.Request, Status: c.RunPlanning}
+	f.runs = append([]service.RunSummary{r}, f.runs...)
+	f.snaps[id] = &service.RunView{Run: r}
+	return id, nil
+}
+
+func (f *fakeSource) ResumeRun(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, "resume "+id)
+	return f.cmdErr
+}
+
+func (f *fakeSource) CancelRun(_ context.Context, id string) (*service.RunSummary, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, "cancel "+id)
+	if f.cmdErr != nil {
+		return nil, f.cmdErr
+	}
+	for i := range f.runs {
+		if f.runs[i].ID == id {
+			f.runs[i].Status = c.RunCancelled
+			if s := f.snaps[id]; s != nil {
+				s.Run.Status = c.RunCancelled
+			}
+			return &f.runs[i], nil
+		}
+	}
+	return nil, service.ErrNotFound
+}
+
+func (f *fakeSource) Clean(_ context.Context, includeFailed bool) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, fmt.Sprintf("clean %v", includeFailed))
+	return []string{"removed /wt/a (branch caffe/x/a kept)", "kept    /wt/b (run failed, task b failed; use --failed to remove)"}, f.cmdErr
+}
+
 func (f *fakeSource) set(fn func(f *fakeSource)) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -147,7 +198,10 @@ func drive(t *testing.T, m model, cmd tea.Cmd) model {
 		if next == nil {
 			continue
 		}
-		msg := next()
+		msg, ok := within(next, 500*time.Millisecond)
+		if !ok {
+			continue // a long timer (toast expiry, health recheck): not part of settling
+		}
 		if batch, ok := msg.(tea.BatchMsg); ok {
 			queue = append(queue, batch...)
 			continue
@@ -160,6 +214,18 @@ func drive(t *testing.T, m model, cmd tea.Cmd) model {
 		queue = append(queue, more)
 	}
 	return m
+}
+
+// within runs cmd, giving up after d.
+func within(cmd tea.Cmd, d time.Duration) (tea.Msg, bool) {
+	ch := make(chan tea.Msg, 1)
+	go func() { ch <- cmd() }()
+	select {
+	case msg := <-ch:
+		return msg, true
+	case <-time.After(d):
+		return nil, false
+	}
 }
 
 func liveModel(src source) model {

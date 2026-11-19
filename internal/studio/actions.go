@@ -18,6 +18,7 @@ const (
 	overlayPalette
 	overlayLeader
 	overlayConfirm
+	overlayNewRun
 )
 
 // handler performs an action. Every registered action has exactly one;
@@ -137,6 +138,20 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "inspector.up", Title: "Scroll up", Scope: is, Keys: []string{"k", "up"}}, scroll(-1))
 	add(ui.Action{ID: "inspector.pagedown", Title: "Scroll a page down", Scope: is, Keys: []string{"ctrl+d", "pgdown"}}, scroll(10))
 	add(ui.Action{ID: "inspector.pageup", Title: "Scroll a page up", Scope: is, Keys: []string{"ctrl+u", "pgup"}}, scroll(-10))
+	ctl := func(fn func(model) (model, tea.Cmd)) handler { return func(m model) (model, tea.Cmd) { return fn(m) } }
+	newRun, cancel, resume, clean := ctl(model.openNewRun), ctl(model.cancelRun), ctl(model.resumeRun), ctl(model.cleanWorktrees)
+	add(ui.Action{ID: "run.new", Title: "Start a new run", Scope: g, Leader: "r n"}, newRun)
+	add(ui.Action{ID: "run.cancel", Title: "Cancel the run", Scope: g, Leader: "r c"}, cancel)
+	add(ui.Action{ID: "run.resume", Title: "Resume the interrupted run", Scope: g, Leader: "r R"}, resume)
+	add(ui.Action{ID: "run.clean", Title: "Clean worktrees of finished runs", Scope: g, Leader: "r x"}, clean)
+	runsScope, ov := ui.Scope("runs"), ui.Scope("overview")
+	add(ui.Action{ID: "runs.new", Title: "Start a new run", Scope: runsScope, Keys: []string{"n"}}, newRun)
+	add(ui.Action{ID: "runs.cancel", Title: "Cancel the run under the cursor", Scope: runsScope, Keys: []string{"c"}}, cancel)
+	add(ui.Action{ID: "runs.resume", Title: "Resume the run under the cursor", Scope: runsScope, Keys: []string{"R"}}, resume)
+	add(ui.Action{ID: "runs.clean", Title: "Clean worktrees of finished runs", Scope: runsScope, Keys: []string{"x"}}, clean)
+	add(ui.Action{ID: "overview.new", Title: "Start a new run", Scope: ov, Keys: []string{"n"}}, newRun)
+	add(ui.Action{ID: "overview.cancel", Title: "Cancel the run", Scope: ov, Keys: []string{"c"}}, cancel)
+	add(ui.Action{ID: "overview.resume", Title: "Resume the interrupted run", Scope: ov, Keys: []string{"R"}}, resume)
 	add(ui.Action{ID: "run.report", Title: "Open the run's report", Scope: ui.Scope("overview"), Keys: []string{"r"}, Leader: "r o"},
 		func(m model) (model, tea.Cmd) { return m.openReport() })
 	rs2 := ui.Scope("report")
@@ -219,6 +234,8 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.leaderKey(k)
 	case overlayConfirm:
 		return m.confirmKey(k)
+	case overlayNewRun:
+		return m.newRunKey(msg)
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)

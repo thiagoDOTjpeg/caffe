@@ -19,6 +19,11 @@ type source interface {
 	EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error)
 	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
 	Report(ctx context.Context, runID string) (string, error)
+
+	StartRun(ctx context.Context, req service.StartRunRequest) (string, error)
+	ResumeRun(ctx context.Context, runID string) error
+	CancelRun(ctx context.Context, runID string) (*service.RunSummary, error)
+	Clean(ctx context.Context, includeFailed bool) ([]string, error)
 	Execution(ctx context.Context, id string) (*service.ExecutionDetail, error)
 	ReadPrompt(ctx context.Context, executionID string, max int64) (*service.ArtifactContent, error)
 	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)

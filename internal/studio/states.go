@@ -11,7 +11,7 @@ import (
 // The states of ux-specification §6 that are not a whole screen of their
 // own are built here, so every screen words them the same way.
 
-const noRunsLine = ` No runs yet. Start one with caffe run "…".`
+const noRunsLine = ` No runs yet. Press n to start one, or caffe run "…".`
 
 // loadingText is a view's frame while its data is on the way: the title
 // carries "loading…", the screen is never blank.

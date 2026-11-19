@@ -48,7 +48,7 @@ func TestGoldenStateNoRuns(t *testing.T) {
 	m := liveModel(f)
 	m = sized(drive(t, m, m.Init()))
 	golden(t, "state-no-runs", m.View().Content)
-	if v := m.View().Content; !strings.Contains(v, "No runs yet. Start one with caffe run") {
+	if v := m.View().Content; !strings.Contains(v, "No runs yet. Press n to start one, or caffe run") {
 		t.Error("no-runs text missing")
 	}
 }

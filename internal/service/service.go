@@ -34,6 +34,8 @@ type Service struct {
 	git   *git.Manager // nil: queries that need Git return an error
 	now   func() time.Time
 	exe   string // caffe binary launched by StartRun/ResumeRun; "" = this executable
+
+	engine Engine // performs CancelRun and Clean; nil: they are unsupported
 }
 
 // New builds a Service. store should come from persistence.OpenReadOnly so

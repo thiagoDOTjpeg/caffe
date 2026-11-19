@@ -334,11 +334,12 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M1b / M1c — Run controls and live agents
 
-### CC-14 · Run controls
+### [x] CC-14 · Run controls
 - **P0 · M · Depends:** F-10, CC-13
 - **Description:** new run (request or plan file), cancel, resume, clean
   through `service.Commands`, with confirmations and in-flight state.
 - **Acceptance:** run survives Studio exit; `ErrConflict` refreshes and informs.
+- **Done.** Keys: `n` new (form: request + optional plan file), `c` cancel, `R` resume, `x` clean on Runs (cursor run) and Overview (selected run), and `space r n/c/R/x` everywhere. Cancel and clean confirm (Cancel is the default); resume refuses non-interrupted runs. In flight: the run shows `⋯ cancelling`/`(cancelling…)`, a second request is refused; every result refreshes at once. New runs use `StartRun` (detached, F-10: survive Studio). Service gained `CancelRun`/`Clean` through an `Engine` (the App passes its orchestrator), `ErrConflict` (lost race or already finished: toast + refresh, no retry) and `ErrUnsupported` (no engine). `clean --failed` is CLI-only for now.
 
 ### CC-15 · Live agent output
 - **P1 · M · Depends:** F-15, CC-10 · **Acceptance:** focused agent at 1 Hz, labelled source, paused when hidden.
