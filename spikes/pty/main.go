@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/aymanbagabas/go-pty"
@@ -17,11 +15,12 @@ import (
 )
 
 type term struct {
-	p   pty.Pty
-	cmd *pty.Cmd
-	mu  sync.Mutex
-	emu *vt.Emulator
-	n   int64
+	p    pty.Pty
+	cmd  *pty.Cmd
+	mu   sync.Mutex
+	emu  *vt.Emulator
+	n    int64
+	kill func()
 }
 
 func start(w, h int, name string, args ...string) (*term, error) {
@@ -37,6 +36,10 @@ func start(w, h int, name string, args ...string) (*term, error) {
 	t.cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	if err := t.cmd.Start(); err != nil {
 		return nil, err
+	}
+	if t.kill, err = track(t.cmd.Process.Pid); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("tracking the process tree: %w", err)
 	}
 	go io.Copy(p, t.emu)
 	go func() {
@@ -83,39 +86,10 @@ func (t *term) resize(w, h int) {
 	t.p.Resize(w, h)
 }
 
-func sessionMembers(sid int) []int {
-	entries, _ := os.ReadDir("/proc")
-	var out []int
-	for _, e := range entries {
-		pid, err := strconv.Atoi(e.Name())
-		if err != nil {
-			continue
-		}
-		stat, err := os.ReadFile("/proc/" + e.Name() + "/stat")
-		if err != nil {
-			continue
-		}
-		f := strings.Fields(string(stat[strings.LastIndexByte(string(stat), ')')+1:]))
-		if len(f) > 3 {
-			if s, _ := strconv.Atoi(f[3]); s == sid {
-				out = append(out, pid)
-			}
-		}
-	}
-	return out
-}
-
 func (t *term) close() {
 	t.p.Close()
-	if t.cmd.Process == nil {
-		return
-	}
-	sid := t.cmd.Process.Pid
 	time.Sleep(200 * time.Millisecond)
-	for _, pid := range sessionMembers(sid) {
-		syscall.Kill(pid, syscall.SIGKILL)
-	}
-	syscall.Kill(-sid, syscall.SIGKILL)
+	t.kill()
 }
 
 var failed bool
@@ -128,31 +102,38 @@ func check(name string, ok bool, detail string) {
 	fmt.Printf("%-34s %s  %s\n", name, mark, detail)
 }
 
+func skip(name, detail string) { fmt.Printf("%-34s SKIP  %s\n", name, detail) }
+
 func shell() {
-	t, err := start(80, 24, "bash", "--norc", "--noprofile", "-i")
+	t, err := start(80, 24, shellCmd[0], shellCmd[1:]...)
 	if err != nil {
 		check("shell", false, err.Error())
 		return
 	}
 	defer t.close()
-	t.send("echo hi-$((40+2))\r")
-	check("shell renders and takes input", t.wait("hi-42", 5*time.Second), "bash --norc -i")
-	t.send("stty size\r")
+	t.send(greet)
+	check("shell renders and takes input", t.wait("hi-42", 10*time.Second), strings.Join(shellCmd, " "))
+	t.send(sizeCmd)
 	ok := t.wait("24 80", 5*time.Second)
 	t.resize(120, 40)
 	time.Sleep(100 * time.Millisecond)
-	t.send("clear; stty size\r")
-	check("resize propagates", ok && t.wait("40 120", 5*time.Second), "24x80 then 40x120 seen by stty")
+	t.send(clearSizeCmd)
+	check("resize propagates", ok && t.wait("40 120", 5*time.Second), "24x80 then 40x120 seen by the shell")
 }
 
 func less(dir string) {
+	name := tool("less")
+	if name == "" {
+		check("less", false, "less not found")
+		return
+	}
 	f := filepath.Join(dir, "lines.txt")
 	var b strings.Builder
 	for i := 1; i <= 200; i++ {
 		fmt.Fprintf(&b, "line %d\n", i)
 	}
 	os.WriteFile(f, []byte(b.String()), 0o644)
-	t, err := start(80, 24, "less", f)
+	t, err := start(80, 24, name, f)
 	if err != nil {
 		check("less", false, err.Error())
 		return
@@ -162,22 +143,22 @@ func less(dir string) {
 	t.send(" ")
 	ok = ok && t.wait("line 40", 5*time.Second)
 	t.send("q")
-	check("less pages in the alternate screen", ok, "200 lines, page down")
+	check("less pages in the alternate screen", ok, name)
 }
 
 func editor(dir string) {
-	name := "vim"
-	if _, err := exec.LookPath(name); err != nil {
-		name = "nvim"
+	name := tool("vim")
+	if name == "" {
+		name = tool("nvim")
 	}
-	if _, err := exec.LookPath(name); err != nil {
-		check("vim", false, "neither vim nor nvim installed")
+	if name == "" {
+		check("vim", false, "neither vim nor nvim found")
 		return
 	}
 	f := filepath.Join(dir, "edit.txt")
 	t, err := start(80, 24, name, "-u", "NONE", "-i", "NONE", f)
 	if err != nil {
-		check(name, false, err.Error())
+		check("vim", false, err.Error())
 		return
 	}
 	defer t.close()
@@ -186,32 +167,36 @@ func editor(dir string) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		if b, _ := os.ReadFile(f); strings.Contains(string(b), "hello from the pane") {
-			check(name+" edits and saves", ok, "insert, :wq")
+			check("vim edits and saves", ok, name)
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	check(name+" edits and saves", false, "file not written; screen:\n"+t.screen())
+	check("vim edits and saves", false, "file not written; screen:\n"+t.screen())
 }
 
 func top() {
-	name := "htop"
-	if _, err := exec.LookPath(name); err != nil {
-		name = "top"
+	name := tool("htop")
+	if name == "" {
+		name = tool("top")
+	}
+	if name == "" {
+		skip("full-screen UI (htop/top)", "neither htop nor top found")
+		return
 	}
 	t, err := start(100, 30, name)
 	if err != nil {
-		check(name, false, err.Error())
+		check("top", false, err.Error())
 		return
 	}
 	defer t.close()
 	ok := t.wait("PID", 10*time.Second)
 	t.send("q")
-	check(name+" draws a full-screen UI", ok, "header with PID")
+	check("top draws a full-screen UI", ok, name+": header with PID")
 }
 
 func flood() {
-	t, err := start(100, 30, "sh", "-c", "head -c 10000000 /dev/zero | tr '\\0' x | fold -w 99; echo DONE-FLOOD")
+	t, err := start(100, 30, floodCmd[0], floodCmd[1:]...)
 	if err != nil {
 		check("10 MB of output", false, err.Error())
 		return
@@ -235,19 +220,19 @@ func flood() {
 	n := t.n
 	t.mu.Unlock()
 	check("10 MB of output stays responsive", ok && worst < 50*time.Millisecond,
-		fmt.Sprintf("%.1f MB in %s; slowest frame %s", float64(n)/1e6, took.Round(time.Millisecond), worst.Round(time.Millisecond)))
+		fmt.Sprintf("%.1f MB read from the PTY in %s; slowest frame %s", float64(n)/1e6, took.Round(time.Millisecond), worst.Round(time.Millisecond)))
 }
 
 func orphans(dir string) {
 	pidFile := filepath.Join(dir, "child.pid")
-	t, err := start(80, 24, "bash", "--norc", "--noprofile", "-i")
+	t, err := start(80, 24, shellCmd[0], shellCmd[1:]...)
 	if err != nil {
 		check("no orphan after closing", false, err.Error())
 		return
 	}
-	t.send("sleep 300 & echo $! > " + pidFile + "\r")
+	t.send(background(pidFile))
 	var pid int
-	for i := 0; i < 100 && pid == 0; i++ {
+	for i := 0; i < 250 && pid == 0; i++ {
 		b, _ := os.ReadFile(pidFile)
 		pid, _ = strconv.Atoi(strings.TrimSpace(string(b)))
 		time.Sleep(20 * time.Millisecond)
@@ -255,18 +240,13 @@ func orphans(dir string) {
 	t.close()
 	dead := false
 	for i := 0; i < 100 && !dead; i++ {
-		dead = syscall.Kill(pid, 0) != nil
-		if !dead {
-			if st, _ := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat"); strings.Contains(string(st), ") Z") {
-				dead = true
-			}
-		}
+		dead = !alive(pid)
 		time.Sleep(50 * time.Millisecond)
 	}
 	if !dead && pid > 0 {
-		syscall.Kill(pid, syscall.SIGKILL)
+		killPid(pid)
 	}
-	check("no orphan after closing", pid > 0 && dead, fmt.Sprintf("background sleep %d", pid))
+	check("no orphan after closing", pid > 0 && dead, fmt.Sprintf("background process %d", pid))
 }
 
 func main() {

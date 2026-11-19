@@ -98,3 +98,19 @@ C:\caffe-kit\caffe.exe -C C:\caffe-test run --detach --plan C:\caffe-kit\plans\s
 
 **Send back:** what `status` and `runs` showed in both cases, and
 `.caffe\artifacts\<id>\console.log` if something fails.
+
+## 5. Embedded PTY spike (EX-07)
+
+In PowerShell, in **Windows Terminal**, inside the kit folder:
+
+```powershell
+.\pty-spike.exe | Tee-Object pty-results.txt
+```
+
+It runs everything by itself (about a minute) inside a ConPTY and prints one
+line per criterion of ADR-004: PowerShell renders and takes input, resize
+propagates, `less` and `vim` (from Git for Windows) work, 10 MB of output stays
+responsive, and no process survives closing the pane. `htop`/`top` are
+skipped on Windows. Do not touch the window while it runs.
+
+**Send back:** `pty-results.txt`.

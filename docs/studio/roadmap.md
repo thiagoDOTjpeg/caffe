@@ -1,9 +1,9 @@
 # Caffè Studio — Roadmap
 
 Status: **Delivered** through M6 (2026-11-19). Open: M3b embedded shells
-(spike EX-07 passed on Linux; blocked on a Windows run), the M7 polish items
-PO-01 to PO-06, and the manual Windows checks F-17, W-04 and W-06 (the
-[Windows kit](../../scripts/windows/README.md)). Effort is relative
+(spike EX-07 passed on Linux; blocked on a Windows run of the PTY criteria, kit step 5)
+and the M7 polish items PO-01 to PO-06. The manual Windows checks F-17, W-04
+and W-06 passed on 2026-11-19 (the [Windows kit](../../scripts/windows/README.md)). Effort is relative
 (S < M < L < XL), not calendar time. Task ids refer to [backlog.md](backlog.md).
 
 ---

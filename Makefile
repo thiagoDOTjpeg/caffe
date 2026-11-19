@@ -30,6 +30,7 @@ windows-kit:
 	mkdir -p $(KIT)/tests $(KIT)/plans dist/linux
 	GOOS=windows GOARCH=amd64 go build -o $(KIT)/caffe.exe ./cmd/caffe
 	cd spikes/tui && GOOS=windows GOARCH=amd64 go build -o ../../$(KIT)/tui-spike.exe . && go build -o ../../dist/linux/tui-spike .
+	cd spikes/pty && GOOS=windows GOARCH=amd64 go build -o ../../$(KIT)/pty-spike.exe .
 	for p in $$(go list ./internal/... ./tests/...); do \
 		n=$$(echo $$p | sed -e 's#^caffe/internal/##' -e 's#^caffe/##' -e 's#/#-#g'); \
 		mkdir -p $(KIT)/tests/$$n; \

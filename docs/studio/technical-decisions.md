@@ -74,7 +74,7 @@ from `internal/studio/...`.
 - **Spike:** `spikes/tui` (own module, Bubble Tea v2.1.1) checks resize,
   `Program.Send` from a goroutine, keys, mouse, `ExecProcess` to an editor and
   a shell, and panic recovery. **Linux: confirmed** on a real terminal
-  (2026-11-18). **Windows: pending** (Windows Terminal and conhost).
+  (2026-11-18). **Windows: confirmed** (2026-11-19, kit step 2).
 - **Investigate (F-17):** a `teatest`-style test helper for v2.
 
 ---
@@ -218,10 +218,12 @@ each criterion automatically. Linux results:
 | 10 MB of output stays responsive | pass in 5 of 6 runs on a loaded machine (load 18 on 12 cores): slowest frame 5–42 ms, once 61 ms; the emulator itself parses ~2.6 MB/s, so 10 MB takes 3–9 s to drain while frames keep coming |
 | no orphan after closing | pass, but only after a fix: an interactive shell puts background jobs in their own process groups, so killing the shell's group is not enough. Closing the PTY first (hang-up), then killing every process of the shell's session (from `/proc`) works |
 
-**Outcome: go on Linux, Windows pending.** Windows was not run: the spike
-uses `bash`, `less`, `top` and `/proc`, none of which apply there; a Windows
-run needs its own checks (`cmd.exe`, PowerShell, ConPTY resize, a job object
-for cleanup). Until that run exists, EX-08 does not start and the hand-off
+**Outcome: go on Linux, Windows pending.** The spike has Windows checks
+(`windows.go`): PowerShell as the shell, ConPTY resize, `less` and `vim` from
+Git for Windows, 10 MB written by PowerShell, and a job object with
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` for cleanup; `htop`/`top` are skipped.
+It is step 5 of the Windows kit (`pty-spike.exe`) and has not been run on
+Windows yet (Wine has no ConPTY). Until that run passes, EX-08 does not start and the hand-off
 shell stays the solution. Risks recorded for EX-08: `x/vt` is v0.1.0 and
 experimental, and its parse rate bounds how fast a pane can catch up after a
 burst.
@@ -359,8 +361,8 @@ Git feature).
 processes (own session/process group, output to
 `.caffe/artifacts/<run>/console.log`) and waits until the run row exists.
 **Rejected:** hosting `Orchestrator.Run` inside Studio (run dies with Studio),
-a daemon (new long-running component). **Required on Windows (W-04):** verify detach flags
-and console behaviour.
+a daemon (new long-running component). **Windows (W-04):** detach flags and console behaviour
+verified on real Windows (2026-11-19).
 
 ---
 

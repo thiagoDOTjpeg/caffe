@@ -1,6 +1,6 @@
 # Caffè Studio — Engineering Backlog
 
-Status: **Proposed.** Each item is meant to be one reviewable change.
+Status: **Delivered**, except EX-08 and PO-01 to PO-06. Each item is meant to be one reviewable change.
 Priorities: **P0** (blocks the first usable release), **P1**, **P2**.
 Effort: **S** < **M** < **L** < **XL** (relative). Milestones and order:
 [roadmap.md](roadmap.md). Design references: [architecture.md](architecture.md)
@@ -173,7 +173,7 @@ behaviour changes.
 - **Packages:** `internal/config`.
 - **Tests:** config table tests.
 
-### F-17 · Spike: TUI stack
+### [x] F-17 · Spike: TUI stack
 - **P0 · S · Depends:** —
 - **Description:** throwaway program on `charm.land/bubbletea/v2`: alt screen,
   resize, `ExecProcess` to `$EDITOR` and back, `Program.Send` from a
@@ -183,7 +183,7 @@ behaviour changes.
 - **Packages:** none committed except ADR changes.
 - **Tests:** manual on **Linux and Windows** (Windows Terminal and the classic console host).
 - **Status:** spike written (`spikes/tui`, in the Windows kit as `tui-spike.exe`, Linux build in `dist/linux/tui-spike`); Finding: Bubble Tea v2.1.1 needs Go 1.26 (ADR-001).
-- **Linux: OK** (2026-11-18, reported by the maintainer on their machine: every check of the spike worked). **Windows: pending** (kit step 2). F-17 closes when Windows is checked too (NFR-T1).
+- **Linux: OK** (2026-11-18, reported by the maintainer on their machine: every check of the spike worked). **Windows: OK** (2026-11-19, kit step 2, reported by the maintainer).
 
 ## M0w — Windows parity
 
@@ -218,14 +218,14 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   already an indirect dependency).
 - **Acceptance:** the grandchild-survival test has a Windows version and passes there.
 
-### W-04 · Detached runs on Windows
+### [x] W-04 · Detached runs on Windows
 - **P0 · M · Depends:** F-10
 - **Description:** verify `detach_windows.go` (`CREATE_NEW_PROCESS_GROUP |
   DETACHED_PROCESS`) on real Windows: the run survives closing the launching
   console and Ctrl-C in it; fix the flags if not.
 - **Acceptance:** launcher tests have a Windows version; manual check of
   closing the console.
-- **Progress (2026-11-18):** launcher tests are portable (`service/launcher_test.go`); on Windows the child must have no console (`GetConsoleWindow() == 0`). Passes under Wine, **but a control build without `DETACHED_PROCESS` passes too there** — Wine cannot tell; the assertion is first exercised by `run-tests.ps1` on real Windows. Manual console-close check: kit step 4. **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** The no-console assertion now holds on real Windows; still pending: the manual console-close / Ctrl-C check (kit step 4).
+- **Progress (2026-11-18):** launcher tests are portable (`service/launcher_test.go`); on Windows the child must have no console (`GetConsoleWindow() == 0`). Passes under Wine, **but a control build without `DETACHED_PROCESS` passes too there** — Wine cannot tell; the assertion is first exercised by `run-tests.ps1` on real Windows. Manual console-close check: kit step 4. **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** The no-console assertion now holds on real Windows; manual console-close / Ctrl-C check (kit step 4) passed on 2026-11-19, reported by the maintainer.
 
 ### [x] W-05 · CI on Linux and Windows
 - **Progress (2026-11-19):** GitHub Actions (`.github/workflows/ci.yml`): gofmt, `go vet`, `go test -race` on `ubuntu-latest` and `windows-latest` for every push and pull request. Both jobs green on PR #1 (2026-11-19), after keeping LF line endings on the Windows checkout.
@@ -235,12 +235,13 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   Windows for every change; Git for Windows available on the runner.
 - **Acceptance:** both jobs green.
 
-### W-06 · Real run through Herdr on Windows
+### [x] W-06 · Real run through Herdr on Windows
 - **P1 · S · Depends:** W-05 · **Manual.**
 - **Description:** the end-to-end flow of `docs/development.md` on Windows
   (Herdr's socket is a named pipe there; agent CLIs installed and signed in).
 - **Acceptance:** one run completes; differences from Linux documented in
   `docs/runtime-integration.md`.
+- **Done (2026-11-19):** kit step 3 passed on Windows, reported by the maintainer; no differences from Linux reported.
 
 ## M1a — Command Center (read-only)
 
@@ -445,10 +446,10 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ### [x] EX-07 · Spike: embedded PTY pane
 - **P2 · M · Depends:** EX-01 · **Description:** ADR-004 criteria with `go-pty`/`x/xpty` + `x/vt`. **Acceptance:** go/no-go recorded in ADR-004.
-- **Outcome (2026-11-19):** go on Linux (every criterion passes, `spikes/pty`); Windows not run. EX-08 waits for a Windows run of the criteria.
+- **Outcome (2026-11-19):** go on Linux (every criterion passes, `spikes/pty`); Windows not run. The spike now has Windows checks (PowerShell, `less`/`vim` from Git for Windows, a job object for cleanup) and is step 5 of the Windows kit; EX-08 waits for that run.
 
 ### EX-08 · Embedded shells
-- **Blocked:** needs the ADR-004 criteria checked on Windows first.
+- **Blocked:** needs the ADR-004 criteria checked on Windows first (kit step 5).
 - **P2 · XL · Depends:** EX-07 (go) · **Acceptance:** criteria of ADR-004 met in production code.
 
 ## M4 — Integration
