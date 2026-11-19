@@ -10,25 +10,20 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// olderPage is how many events one scroll-back load reads.
 const olderPage = 200
 
-// eventsPanel is the bottom panel's event log of the selected run: newest
-// at the bottom, filterable by task and type, scrolled back page by page
-// beyond what the live feed holds.
 type eventsPanel struct {
 	focused bool
-	scroll  int // lines above the newest; 0 follows new events
+	scroll  int
 
-	typeFilter string // substring of the event type
-	typing     bool   // keys edit typeFilter
-	taskFilter string // task id; "" = all tasks
+	typeFilter string
+	typing     bool
+	taskFilter string
 
-	// Pages read backwards from the database, older than the live feed.
 	olderRun string
-	older    []c.Event // oldest first
+	older    []c.Event
 	loading  bool
-	noMore   bool // the beginning of the run's log was reached
+	noMore   bool
 }
 
 type olderMsg struct {
@@ -37,8 +32,6 @@ type olderMsg struct {
 	err    error
 }
 
-// panelEvents is the selected run's log as the panel knows it: loaded older
-// pages, then the live feed.
 func (m model) panelEvents() []c.Event {
 	var out []c.Event
 	if m.events.olderRun == m.live.runID {
@@ -56,7 +49,6 @@ func (m model) panelEvents() []c.Event {
 	return out
 }
 
-// filtered applies the task and type filters.
 func (p eventsPanel) filtered(evs []c.Event) []c.Event {
 	q := strings.ToLower(p.typeFilter)
 	var out []c.Event
@@ -72,7 +64,6 @@ func (p eventsPanel) filtered(evs []c.Event) []c.Event {
 	return out
 }
 
-// loadOlder reads the page before the oldest event the panel holds.
 func (m model) loadOlder() (model, tea.Cmd) {
 	p := &m.events
 	if p.olderRun != m.live.runID {
@@ -97,7 +88,7 @@ func (m model) updateOlder(msg olderMsg) (model, tea.Cmd) {
 	p := &m.events
 	p.loading = false
 	if msg.runID != p.olderRun {
-		return m, nil // the run changed meanwhile
+		return m, nil
 	}
 	if msg.err != nil {
 		m.live.fail(msg.err, m.now())
@@ -108,8 +99,6 @@ func (m model) updateOlder(msg olderMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-// eventsScroll moves the view; reaching the top of what is loaded loads the
-// previous page.
 func (m model) eventsScroll(delta, rows int) (model, tea.Cmd) {
 	top := max(len(m.panelAll())-rows, 0)
 	m.events.scroll = min(max(m.events.scroll+delta, 0), top)
@@ -119,7 +108,6 @@ func (m model) eventsScroll(delta, rows int) (model, tea.Cmd) {
 	return m, nil
 }
 
-// cycleTask moves the task filter to the next task of the run, then off.
 func (m model) cycleTask() model {
 	if m.live.snap == nil {
 		return m
@@ -157,7 +145,6 @@ func (m model) eventsFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// panelTitle names the panel, its focus and its filters.
 func (m model) panelTitle() string {
 	t := "events"
 	if m.events.focused {
@@ -192,8 +179,6 @@ func (m model) panelTitle() string {
 	return t
 }
 
-// panelAll is every line the panel can show for the filtered log, oldest
-// first, with a marker once the beginning of the run was reached.
 func (m model) panelAll() []string {
 	evs := m.events.filtered(m.panelEvents())
 	keys := map[string]string{}
@@ -212,10 +197,9 @@ func (m model) panelAll() []string {
 	return out
 }
 
-// panelLines is the visible window of panelAll, rows tall.
 func (m model) panelLines(rows int) []string {
 	if rows <= 0 {
-		return nil // panel hidden
+		return nil
 	}
 	all := m.panelAll()
 	end := max(len(all)-m.events.scroll, 0)

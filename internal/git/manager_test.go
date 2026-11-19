@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// NewTestRepo creates a repository with one commit and returns its path.
 func newRepo(t *testing.T) string {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(t.TempDir())
@@ -44,7 +43,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 	if err := m.ExcludeLocally(ctx, ".caffe/"); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.ExcludeLocally(ctx, ".caffe/"); err != nil { // idempotent
+	if err := m.ExcludeLocally(ctx, ".caffe/"); err != nil {
 		t.Fatal(err)
 	}
 	base, _ := m.Head(ctx)
@@ -53,7 +52,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Collisions are refused, not overwritten.
+
 	if _, err := m.CreateWorktree(ctx, "r1/other", "caffe/r1/impl", base); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("branch collision not detected: %v", err)
 	}
@@ -64,8 +63,6 @@ func TestWorktreeLifecycle(t *testing.T) {
 		t.Fatal("worktree outside the managed directory must be refused")
 	}
 
-	// A second worktree is an independent directory: concurrent developers do
-	// not share mutable files.
 	wt2, err := m.CreateWorktree(ctx, "r1/second", "caffe/r1/second", base)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +83,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 	if dirty, err := m.IsDirty(ctx, wt); err != nil || !dirty {
 		t.Fatalf("dirty = %v, %v", dirty, err)
 	}
-	// Removal of a dirty worktree is refused: uncommitted work is never destroyed.
+
 	if err := m.RemoveWorktree(ctx, wt); err == nil {
 		t.Fatal("dirty worktree was removed")
 	}
@@ -109,7 +106,7 @@ func TestWorktreeLifecycle(t *testing.T) {
 	if err != nil || len(list) != 2 || list[0].Branch != "caffe/r1/impl" {
 		t.Fatalf("worktrees = %+v, %v", list, err)
 	}
-	// The main checkout stays clean: .caffe is excluded.
+
 	if dirty, _ := m.IsDirty(ctx, repo); dirty {
 		st, _ := m.Status(ctx, repo)
 		t.Fatalf("main checkout dirty: %q", st)

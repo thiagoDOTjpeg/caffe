@@ -84,7 +84,7 @@ func TestAgentProviderPlansThroughRuntime(t *testing.T) {
 	rt := runtime.NewFake()
 	project := t.TempDir()
 	rt.OnPrompt = func(_, kind, cwd, prompt string) {
-		// The fake agent "reads the prompt file" and writes the plan where told.
+
 		fields := strings.Fields(prompt)
 		reportPath := fields[len(fields)-1]
 		if kind != "codex" || cwd != project || filepath.Dir(reportPath) != project {

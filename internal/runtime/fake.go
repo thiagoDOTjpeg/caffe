@@ -6,25 +6,20 @@ import (
 	"sync"
 )
 
-// Fake is an in-memory Runtime for tests. OnPrompt simulates the agent doing
-// its work (typically writing a report file) and runs on its own goroutine;
-// while it runs the agent reports "working".
 type Fake struct {
-	// OnPrompt is called for every submitted prompt. cwd is the workspace cwd.
 	OnPrompt func(agent, kind, cwd, prompt string)
-	// StartErr, when set, is returned by StartAgent (with a valid session if it
-	// wraps ErrNotReady).
+
 	StartErr error
-	// PromptErr, when set, is returned by SendPrompt after delivering the prompt.
+
 	PromptErr error
 	KindsList []string
 
 	mu      sync.Mutex
 	seq     int
-	ws      map[string]string // workspace id -> cwd
+	ws      map[string]string
 	agents  map[string]*fakeAgent
 	Prompts []string
-	// MaxConcurrent is the highest number of agents that were working at once.
+
 	MaxConcurrent int
 	working       int
 }
@@ -134,7 +129,6 @@ func (f *Fake) StopAgent(_ context.Context, workspaceID string) error {
 	return nil
 }
 
-// SetStatus forces an agent's status (e.g. to unblock it like a human would).
 func (f *Fake) SetStatus(agent string, s AgentStatus) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -143,7 +137,6 @@ func (f *Fake) SetStatus(agent string, s AgentStatus) {
 	}
 }
 
-// Live returns the names of agents that still exist.
 func (f *Fake) Live() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

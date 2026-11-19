@@ -1,5 +1,3 @@
-// Package ui holds Studio's presentation primitives: layout, theme and key
-// bindings. It knows nothing about Caffè's domain; screens give it text.
 package ui
 
 import (
@@ -10,14 +8,13 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Mode is how much of the layout fits (docs/studio/ux-specification.md §1.3).
 type Mode int
 
 const (
-	ModeTooSmall Mode = iota // below the minimum: only a message
-	ModeSingle               // header, main, status bar; sidebar and panel as overlays
-	ModeCompact              // sidebar collapsed to keys; panel closed by default
-	ModeFull                 // sidebar with labels; panel open by default
+	ModeTooSmall Mode = iota
+	ModeSingle
+	ModeCompact
+	ModeFull
 )
 
 func (m Mode) String() string {
@@ -29,32 +26,27 @@ const (
 	CompactWidth, CompactHeight = 80, 24
 	FullWidth, FullHeight       = 120, 30
 
-	sidebarFull    = 22 // including its right border
+	sidebarFull    = 22
 	sidebarCompact = 5
-	panelFull      = 8 // including its title line
+	panelFull      = 8
 	panelCompact   = 6
 )
 
-// Rect is a region of the terminal; W or H 0 means hidden.
 type Rect struct{ X, Y, W, H int }
 
 func (r Rect) Visible() bool { return r.W > 0 && r.H > 0 }
 
-// Toggles are the user's overrides of the per-mode defaults; nil keeps the
-// default. They only apply where the mode has room for the region.
 type Toggles struct {
 	Sidebar *bool
 	Panel   *bool
 }
 
-// Layout is the result of Compute: where every region goes.
 type Layout struct {
 	Mode                                 Mode
 	Width, Height                        int
 	Header, Sidebar, Main, Panel, Status Rect
 }
 
-// Compute lays out a width×height terminal. Pure: no I/O, no state.
 func Compute(width, height int, t Toggles) Layout {
 	l := Layout{Width: width, Height: height}
 	switch {
@@ -92,7 +84,6 @@ func Compute(width, height int, t Toggles) Layout {
 	return l
 }
 
-// pick returns size when the region is shown (toggle, else the default).
 func pick(toggle *bool, def bool, size int) int {
 	show := def
 	if toggle != nil {
@@ -104,15 +95,12 @@ func pick(toggle *bool, def bool, size int) int {
 	return 0
 }
 
-// NavItem is one entry of the sidebar.
 type NavItem struct {
-	Key    string // "1".."9"
+	Key    string
 	Label  string
 	Active bool
 }
 
-// Content is what the screens put in each region. Lines longer than their
-// region are truncated; shorter ones are padded.
 type Content struct {
 	Header     string
 	Nav        []NavItem
@@ -122,10 +110,6 @@ type Content struct {
 	Status     string
 }
 
-// Frame renders c into l with theme th. Every line is exactly l.Width cells
-// wide and there are exactly l.Height lines: a terminal UI that overflows
-// scrolls and tears. Styling is applied after fitting, so it never changes
-// widths.
 func Frame(l Layout, c Content, th Theme) string {
 	if l.Mode == ModeTooSmall {
 		msg := fmt.Sprintf("Caffè Studio needs at least %d×%d (now %d×%d)", MinWidth, MinHeight, l.Width, l.Height)
@@ -172,12 +156,12 @@ func sidebarLines(l Layout, nav []NavItem) []sideLine {
 		if i >= len(out) {
 			break
 		}
-		marker := " " // the ▸ marker shows the active item without colour
+		marker := " "
 		if n.Active {
 			marker = "▸"
 		}
 		text := marker + " " + n.Key + " " + n.Label
-		if l.Mode == ModeCompact { // collapsed: marker, key, initial
+		if l.Mode == ModeCompact {
 			text = marker + n.Key + " " + firstRune(n.Label)
 		}
 		out[i] = sideLine{text: text, active: n.Active}
@@ -185,7 +169,6 @@ func sidebarLines(l Layout, nav []NavItem) []sideLine {
 	return out
 }
 
-// lines splits s into exactly n lines (cut or padded with empty lines).
 func lines(s string, n int) []string {
 	out := strings.Split(s, "\n")
 	if s == "" {
@@ -197,7 +180,6 @@ func lines(s string, n int) []string {
 	return out[:n]
 }
 
-// fit makes one line exactly w cells wide, ANSI- and wide-rune-aware.
 func fit(s string, w int) string {
 	if w <= 0 {
 		return ""
@@ -218,6 +200,4 @@ func firstRune(s string) string {
 	return ""
 }
 
-// Fit makes one line exactly w cells wide (see Frame), for screens that lay
-// out columns themselves.
 func Fit(s string, w int) string { return fit(s, w) }

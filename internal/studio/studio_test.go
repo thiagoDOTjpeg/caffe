@@ -14,13 +14,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Alternate screen on/off, as written by the terminal renderer.
 const (
 	altScreenOn  = "\x1b[?1049h"
 	altScreenOff = "\x1b[?1049l"
 )
 
-// syncBuffer is an io.Writer safe for the renderer goroutine and the test.
 type syncBuffer struct {
 	mu sync.Mutex
 	b  bytes.Buffer
@@ -54,7 +52,6 @@ func runStudio(t *testing.T, ctx context.Context, in io.Reader) (*syncBuffer, er
 	}
 }
 
-// expectRestored: the terminal left the alternate screen after entering it.
 func expectRestored(t *testing.T, out string) {
 	t.Helper()
 	on, off := strings.Index(out, altScreenOn), strings.LastIndex(out, altScreenOff)
@@ -66,8 +63,8 @@ func expectRestored(t *testing.T, out string) {
 func TestQuitRestoresTheTerminal(t *testing.T) {
 	r, w := io.Pipe()
 	go func() {
-		time.Sleep(300 * time.Millisecond) // let it render once
-		w.Write([]byte{0x11})              // ctrl+q: q alone only closes overlays
+		time.Sleep(300 * time.Millisecond)
+		w.Write([]byte{0x11})
 	}()
 	out, err := runStudio(t, context.Background(), r)
 	if err != nil {
@@ -80,9 +77,9 @@ func TestQuitRestoresTheTerminal(t *testing.T) {
 }
 
 func TestSignalStopsStudioCleanly(t *testing.T) {
-	r, _ := io.Pipe() // no input ever: only the context can stop it
+	r, _ := io.Pipe()
 	ctx, cancel := context.WithCancel(context.Background())
-	time.AfterFunc(300*time.Millisecond, cancel) // what SIGINT/SIGTERM do via main
+	time.AfterFunc(300*time.Millisecond, cancel)
 	out, err := runStudio(t, ctx, r)
 	if err != nil {
 		t.Fatalf("a signal is a normal way to stop, got %v", err)
@@ -110,7 +107,7 @@ func TestCrashGuardWritesLogAndRepanics(t *testing.T) {
 	if filepath.Dir(g.file) != g.dir {
 		t.Errorf("crash log written outside the studio directory: %s", g.file)
 	}
-	// No panic, no log.
+
 	g2 := &crashGuard{dir: t.TempDir(), log: zerolog.Nop()}
 	g2.protect(func() {})
 	if g2.file != "" {

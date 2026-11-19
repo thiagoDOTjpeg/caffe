@@ -16,12 +16,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// The test binary doubles as a fake `herdr`: when CAFFE_FAKE_HERDR_LOG is
-// set, TestMain imitates the herdr CLI (same argument shapes, same JSON
-// envelopes, captured from herdr 0.9.5) and exits. It needs no shell, so the
-// adapter tests run on Windows too. Every invocation's argv is appended to the
-// log, one argument per line, so tests can check that arguments arrive
-// intact and unsplit.
 func TestMain(m *testing.M) {
 	if log := os.Getenv("CAFFE_FAKE_HERDR_LOG"); log != "" {
 		os.Exit(fakeHerdrMain(log, os.Args[1:]))
@@ -96,26 +90,22 @@ func fakeHerdrMain(logPath string, args []string) int {
 	return 2
 }
 
-// installedKind is an agent kind whose "executable" fakeHerdr puts on PATH, so
-// capability discovery does not depend on what the machine has installed.
 const installedKind = "caffe-fake-kind"
 
-// fakeHerdr returns the fake executable (this test binary) and the directory
-// holding its calls.log.
 func fakeHerdr(t *testing.T) (exe, dir string) {
 	t.Helper()
 	dir = t.TempDir()
 	bin := t.TempDir()
 	name := installedKind
 	if goruntime.GOOS == "windows" {
-		name += ".exe" // LookPath on Windows needs a PATHEXT extension
+		name += ".exe"
 	}
 	if err := os.WriteFile(filepath.Join(bin, name), []byte("not run"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("CAFFE_FAKE_HERDR_LOG", filepath.Join(dir, "calls.log"))
-	// Under -race the fake would sleep 1 s at every exit (atexit_sleep_ms).
+
 	t.Setenv("GORACE", strings.TrimSpace(os.Getenv("GORACE")+" atexit_sleep_ms=0"))
 	return os.Args[0], dir
 }
@@ -145,7 +135,7 @@ func TestLifecycleAgainstFakeExecutable(t *testing.T) {
 	if err != nil || s.Name != "dev" || s.Status != runtime.StatusIdle || s.TerminalID != "term_1" {
 		t.Fatalf("session = %+v, %v", s, err)
 	}
-	// Hostile-looking prompt: must reach herdr as ONE argument, uninterpreted.
+
 	prompt := "do it; rm -rf / $(whoami) `id`\n'second line' \"quoted\""
 	if err := a.SendPrompt(ctx, "dev", prompt); err != nil {
 		t.Fatal(err)
@@ -179,7 +169,7 @@ func TestLifecycleAgainstFakeExecutable(t *testing.T) {
 func TestSessionFlagIsPrepended(t *testing.T) {
 	exe, dir := fakeHerdr(t)
 	a := New(exe, "isolated", 5*time.Second, zerolog.Nop())
-	// With --session first the fake sees an unknown command; what matters is argv.
+
 	_, _ = a.GetAgentStatus(context.Background(), "x")
 	log, _ := os.ReadFile(filepath.Join(dir, "calls.log"))
 	if !strings.HasPrefix(string(log), "--call\n--session\nisolated\nagent\nget\nx\n") {
@@ -199,12 +189,12 @@ func TestErrorsAreStructured(t *testing.T) {
 	if err := a.SendPrompt(ctx, "blocked", "p"); !errors.Is(err, runtime.ErrBlocked) {
 		t.Fatalf("want ErrBlocked, got %v", err)
 	}
-	// Non-JSON failure: exit code and redacted stderr are kept.
+
 	err = a.SendPrompt(ctx, "crash", "p")
 	if !errors.As(err, &he) || he.ExitCode != 3 || strings.Contains(err.Error(), "supersecretvalue123") || !strings.Contains(err.Error(), "[REDACTED]") {
 		t.Fatalf("want exit 3 with redacted stderr, got %v", err)
 	}
-	// An unknown status must not be mistaken for a known one.
+
 	if st, err := a.GetAgentStatus(ctx, "future"); err != nil || st != runtime.StatusUnknown {
 		t.Fatalf("status = %q, %v", st, err)
 	}
@@ -252,7 +242,7 @@ func TestMissingExecutableIsUnavailable(t *testing.T) {
 }
 
 func TestRedact(t *testing.T) {
-	fakeKey := "sk-" + strings.Repeat("a1B2", 6) // built at runtime: not a real credential
+	fakeKey := "sk-" + strings.Repeat("a1B2", 6)
 	for in, leak := range map[string]string{
 		"API_KEY=abcdef123456":           "abcdef123456",
 		"Authorization: Bearer-abcdefgh": "Bearer-abcdefgh",

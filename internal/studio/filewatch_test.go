@@ -18,7 +18,6 @@ type fakeInfo struct {
 func (f fakeInfo) ModTime() time.Time { return f.mod }
 func (f fakeInfo) Size() int64        { return f.size }
 
-// step delivers msg and runs the command it returns, once.
 func step(m model, msg tea.Msg) (model, tea.Msg) {
 	res, cmd := m.Update(msg)
 	m = res.(model)
@@ -41,10 +40,9 @@ func TestOpenFileReloadsWhenChangedOnDisk(t *testing.T) {
 	var statErr error
 	statFile = func(string) (fs.FileInfo, error) { stats++; return info, statErr }
 	every := fileWatchEvery
-	fileWatchEvery = time.Millisecond // step runs tick commands synchronously
+	fileWatchEvery = time.Millisecond
 	t.Cleanup(func() { statFile, fileWatchEvery = defaultStat, every })
 
-	// Unchanged: no reload, the chain goes on.
 	m, msg := step(m, fileTickMsg{m.fileGen})
 	if _, ok := msg.(fileStatMsg); !ok || stats != 1 {
 		t.Fatalf("tick did not stat: %T", msg)
@@ -53,7 +51,6 @@ func TestOpenFileReloadsWhenChangedOnDisk(t *testing.T) {
 		t.Fatalf("unchanged file: disk %q, next %T", m.file.disk, msg)
 	}
 
-	// Changed: reloaded in place, marked, and a new chain starts.
 	f.set(func(f *fakeSource) { f.files["main:a.go"] = "package b\n" })
 	info.size = 99
 	gen := m.fileGen
@@ -73,7 +70,6 @@ func TestOpenFileReloadsWhenChangedOnDisk(t *testing.T) {
 		t.Error("the old chain keeps running")
 	}
 
-	// Deleted: marked, nothing read.
 	statErr = fs.ErrNotExist
 	m, msg = step(m, fileTickMsg{m.fileGen})
 	m, _ = step(m, msg)
@@ -81,7 +77,6 @@ func TestOpenFileReloadsWhenChangedOnDisk(t *testing.T) {
 		t.Error("deletion not shown")
 	}
 
-	// Hidden: no I/O.
 	m, _ = press(m, "1")
 	before := stats
 	if _, msg = step(m, fileTickMsg{m.fileGen}); stats != before {

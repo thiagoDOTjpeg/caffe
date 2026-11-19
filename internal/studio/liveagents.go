@@ -13,16 +13,8 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Live agents (CC-15): the focused agent's terminal output, once a second,
-// and the runtime status of the agents on screen, every two seconds. Both
-// are read only while their view is visible (architecture §7), and runtime
-// status only decorates: what is completed or failed comes from the
-// database alone.
-
-// liveEvery is the tick of both; status is read every other tick.
 var liveEvery = time.Second
 
-// outputLines is how much of an agent's terminal is read.
 const outputLines = 200
 
 type (
@@ -37,15 +29,13 @@ type (
 	}
 )
 
-// agentOutput is the output pane of the Agent Room.
 type agentOutput struct {
 	on      bool
-	agentID string // what out/err are about
+	agentID string
 	out     *service.AgentOutput
 	err     error
 }
 
-// rtObs is the last runtime status of each agent, with when it was read.
 type rtObs struct {
 	at  time.Time
 	obs map[string]service.RuntimeObservation
@@ -55,12 +45,10 @@ func liveTick(n int) tea.Cmd {
 	return tea.Tick(liveEvery, func(time.Time) tea.Msg { return liveTickMsg{n} })
 }
 
-// roomVisible: the Agent Room is what the user is looking at.
 func (m model) roomVisible() bool {
 	return m.screen == screenAgents && m.inspect == nil && m.report == nil && m.overlay == overlayNone && !m.noProject
 }
 
-// agentsOnScreen are the agents whose cards or rows are visible now.
 func (m model) agentsOnScreen() []service.AgentView {
 	if m.live.snap == nil || m.inspect != nil || m.report != nil || m.overlay != overlayNone {
 		return nil
@@ -70,7 +58,7 @@ func (m model) agentsOnScreen() []service.AgentView {
 	}
 	var out []service.AgentView
 	for _, a := range m.live.snap.Agents {
-		if agentRank(a.Visual) != 5 { // finished agents need no runtime status
+		if agentRank(a.Visual) != 5 {
 			out = append(out, a)
 		}
 	}
@@ -102,16 +90,13 @@ func (m model) updateLiveAgents(msg tea.Msg) (model, tea.Cmd) {
 			m.output.agentID, m.output.out, m.output.err = msg.agentID, msg.out, msg.err
 		}
 	case rtStatusMsg:
-		m.rt = rtObs{at: m.now(), obs: msg.obs} // the model's clock, as freshness is judged by it
+		m.rt = rtObs{at: m.now(), obs: msg.obs}
 	}
 	return m, nil
 }
 
-// withRuntime returns agents with their visual state derived again using
-// the last runtime status, when it is recent. Stored state wins for every
-// finished execution (DeriveVisualState checks it first).
 func (m model) withRuntime(agents []service.AgentView) []service.AgentView {
-	if m.rt.obs == nil || m.now().Sub(m.rt.at) > 6*liveEvery { // stale: three missed reads
+	if m.rt.obs == nil || m.now().Sub(m.rt.at) > 6*liveEvery {
 		return agents
 	}
 	out := make([]service.AgentView, len(agents))
@@ -125,7 +110,6 @@ func (m model) withRuntime(agents []service.AgentView) []service.AgentView {
 	return out
 }
 
-// focusedAgent is the agent under the Agent Room cursor.
 func (m model) focusedAgent() (service.AgentView, bool) {
 	if m.live.snap == nil || len(m.live.snap.Agents) == 0 {
 		return service.AgentView{}, false
@@ -134,8 +118,6 @@ func (m model) focusedAgent() (service.AgentView, bool) {
 	return agents[m.agents.index(agents)], true
 }
 
-// outputPane renders the lower half of the Agent Room: the source is always
-// named, live output says how fresh it is.
 func (m model) outputPane(width, height int) []string {
 	a, ok := m.focusedAgent()
 	if !ok || height < 2 {
@@ -166,7 +148,7 @@ func (m model) outputPane(width, height int) []string {
 	}
 	room := height - 1
 	if len(body) > room {
-		body = body[len(body)-room:] // the newest lines
+		body = body[len(body)-room:]
 	}
 	for _, l := range body {
 		lines = append(lines, clip(l, width-1))
@@ -174,7 +156,6 @@ func (m model) outputPane(width, height int) []string {
 	return lines
 }
 
-// latestExec is an agent's latest execution, nil for planning agents.
 func latestExec(a service.AgentView) *c.Execution {
 	if a.Execution == nil {
 		return nil

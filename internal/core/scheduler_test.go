@@ -26,7 +26,6 @@ func testStore(t *testing.T) *persistence.Store {
 	return s
 }
 
-// seedTasks stores a run with tasks described as "key:dep1,dep2".
 func seedTasks(t *testing.T, s *persistence.Store, maxAttempts int, specs ...string) []*c.Task {
 	t.Helper()
 	ctx := context.Background()
@@ -134,7 +133,7 @@ func TestGraphRejectsCyclesAndDanglingDeps(t *testing.T) {
 
 func TestDependenciesAndBoundedConcurrency(t *testing.T) {
 	s := testStore(t)
-	// a and b are independent; c..g fan out from a; z needs everything.
+
 	tasks := seedTasks(t, s, 1, "a", "b", "c:a", "d:a", "e:a", "f:a", "g:a", "z:b,c,d,e,f,g")
 	var mu sync.Mutex
 	done := map[string]bool{}
@@ -171,7 +170,7 @@ func TestDependenciesAndBoundedConcurrency(t *testing.T) {
 	if peak != 3 {
 		t.Errorf("peak concurrency = %d, want exactly the limit 3 (independent tasks must run concurrently, never above the limit)", peak)
 	}
-	// What is in memory must be what is stored.
+
 	stored, _ := s.ListTasks(context.Background(), "run")
 	for _, st := range stored {
 		if st.Status != c.TaskCompleted || st.Attempts != 1 || st.CompletedAt == nil {
@@ -291,8 +290,6 @@ func TestPanicInHandlerIsATaskFailure(t *testing.T) {
 	}
 }
 
-// Two schedulers on the same database (two orchestrator processes) must never
-// both run the same task.
 func TestNoDuplicateDispatchAcrossSchedulers(t *testing.T) {
 	s := testStore(t)
 	specs := []string{"a", "b", "c", "d", "e", "f"}

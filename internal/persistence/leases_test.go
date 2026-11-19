@@ -39,7 +39,6 @@ func TestLeaseLifecycle(t *testing.T) {
 		t.Fatalf("after release: %v", err)
 	}
 
-	// Expiry removes only an old heartbeat.
 	if err := s.AcquireLease(ctx, human); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +53,6 @@ func TestLeaseLifecycle(t *testing.T) {
 		t.Fatalf("old lease not expired: %v %v", ok, err)
 	}
 
-	// Recovery drops the run's agent leases only.
 	for i, l := range []*Lease{
 		{Path: "/w/1", HolderKind: LeaseAgent, HolderID: "e1", RunID: "r1"},
 		{Path: "/w/2", HolderKind: LeaseAgent, HolderID: "e2", RunID: "r2"},
@@ -73,7 +71,6 @@ func TestLeaseLifecycle(t *testing.T) {
 	}
 }
 
-// Two processes (two connections) racing for one worktree: exactly one wins.
 func TestLeaseAcquireRace(t *testing.T) {
 	a, path := open(t)
 	b, err := Open(context.Background(), path)

@@ -9,12 +9,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// File watching (WS-10). The viewer is read-only in M2a, so a file that
-// changes on disk (the agent, the user's editor) is simply reloaded.
-// ponytail: one os.Stat of the open file per second instead of fsnotify —
-// one buffer, no new dependency, same on Windows; switch to fsnotify on the
-// buffers' directories when tabs (WS-04) hold many files.
-
 var defaultStat = os.Stat
 
 var (
@@ -41,10 +35,10 @@ func (m model) updateFileWatch(msg tea.Msg) (model, tea.Cmd) {
 	case fileTickMsg:
 		v := m.file
 		if msg.gen != m.fileGen || v == nil || v.file == nil {
-			return m, nil // replaced or closed: this chain ends
+			return m, nil
 		}
 		if m.screen != screenWorkspace || m.diff != nil || m.overlay != overlayNone {
-			return m, watchFile(msg.gen) // not visible: no I/O (NFR-P6)
+			return m, watchFile(msg.gen)
 		}
 		path, gen := v.file.Path, msg.gen
 		return m, func() tea.Msg {

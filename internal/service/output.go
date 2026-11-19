@@ -14,35 +14,26 @@ import (
 	"caffe/internal/runtime"
 )
 
-// ErrUnavailable means the runtime could not be asked (not running, not
-// reachable). Stored state is still available.
 var ErrUnavailable = errors.New("unavailable")
 
-// OutputSource says where agent output came from. Views must show it: live
-// output can change, captured output is the agent's last screen.
 type OutputSource string
 
 const (
-	OutputLive     OutputSource = "live"     // read from the runtime now
-	OutputCaptured OutputSource = "captured" // saved when the execution ended
-	OutputNone     OutputSource = "none"     // the agent is gone and nothing was saved
+	OutputLive     OutputSource = "live"
+	OutputCaptured OutputSource = "captured"
+	OutputNone     OutputSource = "none"
 )
 
-// AgentOutput is the recent terminal output of an agent, redacted.
 type AgentOutput struct {
 	AgentID    string
 	Source     OutputSource
 	Text       string
-	Truncated  bool // more lines existed than were returned
+	Truncated  bool
 	ObservedAt time.Time
 }
 
-// maxCapturedBytes bounds how much of a captured output file is read.
 const maxCapturedBytes = 1 << 20
 
-// AgentOutput returns the last `lines` lines of an agent's terminal: live from
-// the runtime while the agent exists there, otherwise what the engine
-// captured when its latest execution ended.
 func (s *Service) AgentOutput(ctx context.Context, agentID string, lines int) (*AgentOutput, error) {
 	if lines <= 0 {
 		return nil, fmt.Errorf("AgentOutput: lines must be positive, got %d", lines)
@@ -62,7 +53,7 @@ func (s *Service) AgentOutput(ctx context.Context, agentID string, lines int) (*
 		case !errors.Is(err, runtime.ErrNotFound):
 			return nil, fmt.Errorf("%w: live output of agent %s: %w", ErrUnavailable, a.Name, err)
 		}
-		// Gone from the runtime although not recorded as stopped: fall back.
+
 	}
 	path, err := s.capturedOutputPath(ctx, a)
 	if err != nil {
@@ -81,10 +72,6 @@ func (s *Service) AgentOutput(ctx context.Context, agentID string, lines int) (*
 	return out, nil
 }
 
-// capturedOutputPath finds the output artifact of the agent's latest
-// execution: a log artifact of that execution's task, in the execution's
-// own artifact directory. "" when there is none (planning agents, or the
-// output could not be read when the execution ended).
 func (s *Service) capturedOutputPath(ctx context.Context, a *c.Agent) (string, error) {
 	snap, err := s.store.RunSnapshot(ctx, a.RunID)
 	if err != nil {
@@ -93,7 +80,7 @@ func (s *Service) capturedOutputPath(ctx context.Context, a *c.Agent) (string, e
 	var latest *c.Execution
 	for _, e := range snap.Executions {
 		if e.AgentID == a.ID {
-			latest = e // oldest first
+			latest = e
 		}
 	}
 	if latest == nil {
@@ -114,7 +101,6 @@ func (s *Service) capturedOutputPath(ctx context.Context, a *c.Agent) (string, e
 	return "", nil
 }
 
-// readTail reads at most max bytes from the end of a file.
 func readTail(path string, max int64) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -137,7 +123,6 @@ func readTail(path string, max int64) (string, error) {
 	return strings.ToValidUTF8(string(buf), ""), nil
 }
 
-// lastLines keeps the last n lines of text.
 func lastLines(text string, n int) (string, bool) {
 	text = strings.TrimRight(text, "\n")
 	all := strings.Split(text, "\n")

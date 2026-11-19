@@ -1,10 +1,5 @@
 package studio
 
-// End-to-end: a real orchestrator drives a run on a real Git repository and
-// SQLite database, with only the agent runtime faked; Studio reads it through
-// the real service and watcher. Only test code imports the engine here; the
-// import-boundary test covers Studio's own code.
-
 import (
 	"context"
 	"os"
@@ -36,7 +31,7 @@ const e2ePlan = `{"goal":"Add the feature","tasks":[
 type e2eEnv struct {
 	orch    *core.Orchestrator
 	svc     *service.Service
-	release chan struct{} // closed: the developer agent finishes
+	release chan struct{}
 }
 
 func git1(t *testing.T, dir string, args ...string) {
@@ -91,8 +86,7 @@ func newE2E(t *testing.T) *e2eEnv {
 
 	e := &e2eEnv{release: make(chan struct{})}
 	rt := runtime.NewFake()
-	// The fake agents: the prompt names the prompt file (4th word) and the
-	// report path (last word). The developer waits for the test.
+
 	rt.OnPrompt = func(agent, _, cwd, text string) {
 		if strings.Contains(text, "stopped without delivering") {
 			return
@@ -115,8 +109,6 @@ func newE2E(t *testing.T) *e2eEnv {
 	return e
 }
 
-// pump runs a model like Bubble Tea does: commands run in goroutines and
-// their messages come back to Update, one at a time.
 type pump struct {
 	t    *testing.T
 	m    model
@@ -154,7 +146,6 @@ func (p *pump) keys(keys ...string) {
 	}
 }
 
-// until processes messages until cond holds for the model, or fails.
 func (p *pump) until(what string, cond func(m model) bool) {
 	p.t.Helper()
 	deadline := time.After(15 * time.Second)
@@ -212,8 +203,6 @@ func TestStudioFollowsARealRunEndToEnd(t *testing.T) {
 		done <- run
 	}()
 
-	// While the developer works: the run is selected by itself, impl runs,
-	// review waits on it, and the developer's card shows it.
 	p.until("impl running", func(m model) bool {
 		t, ok := task(m, "impl")
 		return ok && t.Status == c.TaskRunning
@@ -242,13 +231,12 @@ func TestStudioFollowsARealRunEndToEnd(t *testing.T) {
 		return m.live.snap != nil && m.live.snap.Run.Status == c.RunCompleted
 	})
 
-	// Task Board: everything DONE.
 	v = plain(p.m.View().Content)
 	if !strings.Contains(v, "✓ impl") || !strings.Contains(v, "✓ review") {
 		t.Errorf("board after the run:\n%s", v)
 	}
-	// Inspector on impl: the agent's tests are labelled as claims.
-	p.keys("l", "l", "l", "l", "enter") // DONE column, first card: impl
+
+	p.keys("l", "l", "l", "l", "enter")
 	p.until("the impl execution", func(m model) bool { return m.inspect != nil && m.inspect.d != nil })
 	v = plain(p.m.View().Content)
 	for _, want := range []string{"Execution", "impl", "created feature.txt", "go test ./... → exit 0 · " + c.LabelClaimed} {
@@ -266,7 +254,7 @@ func TestStudioFollowsARealRunEndToEnd(t *testing.T) {
 		t.Errorf("report:\n%s", v)
 	}
 	p.keys("esc")
-	// The feed saw the run's events, in order and without duplicates.
+
 	var last int64
 	for _, ev := range p.m.live.feed {
 		if ev.Seq <= last {

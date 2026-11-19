@@ -11,10 +11,6 @@ import (
 	"caffe/internal/service"
 )
 
-// Attach hand-off (CC-16): Studio gives the terminal to the runtime's
-// attach command and takes it back when the user detaches, then re-reads
-// everything (architecture §13, suspend/resume).
-
 type (
 	attachReadyMsg struct {
 		agent string
@@ -27,7 +23,6 @@ type (
 	}
 )
 
-// pauser is the watcher's suspend control; nil in tests without a watcher.
 type pauser interface {
 	Pause()
 	Resume()
@@ -80,7 +75,7 @@ func (m model) updateAttach(msg tea.Msg) (model, tea.Cmd) {
 			m, cmd = m.notify("detached from " + msg.agent)
 			cmds = append(cmds, cmd)
 		}
-		// The world moved on while the terminal was handed over: re-read it all.
+
 		m.output = agentOutput{on: m.output.on}
 		m, cmd := m.refreshNow()
 		return m, tea.Batch(append(cmds, cmd, checkRuntime(m.src))...)

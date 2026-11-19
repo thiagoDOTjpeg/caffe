@@ -40,7 +40,7 @@ func TestConfirmRunsOnlyOnExplicitChoice(t *testing.T) {
 	if hits.n != 1 || m.overlay != overlayNone || m.confirm != nil {
 		t.Fatalf("hits %d overlay %d", hits.n, m.overlay)
 	}
-	// Keys are captured while open: "4" does not switch screens.
+
 	m = dialogModel(t, &hits)
 	if m, _ = press(m, "4"); m.screen != screenOverview || m.overlay != overlayConfirm {
 		t.Error("a key leaked through the dialog")
@@ -75,12 +75,12 @@ func TestToastsExpireAndErrorsStay(t *testing.T) {
 	}
 	res, _ := m.Update(toastExpiredMsg{id: 1})
 	m = res.(model)
-	res, _ = m.Update(toastExpiredMsg{id: 2}) // errors never expire
+	res, _ = m.Update(toastExpiredMsg{id: 2})
 	if m = res.(model); len(m.toasts) != 1 || !m.toasts[0].err {
 		t.Fatalf("toasts %+v", m.toasts)
 	}
 	m.inspect = &inspector{id: "x"}
-	m, _ = press(m, "esc") // dismisses the error first, keeps the inspector
+	m, _ = press(m, "esc")
 	if len(m.toasts) != 0 || m.inspect == nil {
 		t.Errorf("esc: toasts %d inspector %v", len(m.toasts), m.inspect != nil)
 	}
@@ -99,5 +99,4 @@ func TestToastExpiresAfterTTL(t *testing.T) {
 
 var ansi = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
-// plain strips colours from a rendered view.
 func plain(s string) string { return ansi.ReplaceAllString(s, "") }

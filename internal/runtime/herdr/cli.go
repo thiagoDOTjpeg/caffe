@@ -1,4 +1,3 @@
-// Package herdr drives Herdr through its CLI (verified against herdr 0.9.5).
 package herdr
 
 import (
@@ -16,14 +15,12 @@ import (
 	"caffe/internal/runtime"
 )
 
-// Error is a failed Herdr command. Code is Herdr's own error code when it
-// printed a JSON error envelope, otherwise empty.
 type Error struct {
 	Op       string
 	Code     string
 	Message  string
 	ExitCode int
-	Err      error // underlying cause: context error, exec error
+	Err      error
 }
 
 func (e *Error) Error() string {
@@ -39,8 +36,6 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error { return e.Err }
 
-// cli runs the herdr executable. Arguments are always passed as a vector;
-// nothing ever goes through a shell.
 type cli struct {
 	exe     string
 	session string
@@ -56,8 +51,6 @@ type envelope struct {
 	} `json:"error"`
 }
 
-// run executes `herdr [--session S] args...` and returns raw stdout.
-// sensitive lists argument indexes (prompt text) that must not be logged.
 func (c *cli) run(ctx context.Context, op string, args []string, sensitive ...int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -67,7 +60,7 @@ func (c *cli) run(ctx context.Context, op string, args []string, sensitive ...in
 		full = append([]string{"--session", c.session}, args...)
 	}
 	cmd := exec.CommandContext(ctx, c.exe, full...)
-	cmd.WaitDelay = 2 * time.Second // do not hang on inherited pipes after a kill
+	cmd.WaitDelay = 2 * time.Second
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 
@@ -90,7 +83,7 @@ func (c *cli) run(ctx context.Context, op string, args []string, sensitive ...in
 	if errors.As(err, &exitErr) {
 		herr.ExitCode = exitErr.ExitCode()
 	}
-	// Herdr reports failures as a JSON envelope, on stdout or stderr.
+
 	for _, buf := range [][]byte{stderr.Bytes(), stdout.Bytes()} {
 		var env envelope
 		if json.Unmarshal(bytes.TrimSpace(buf), &env) == nil && env.Error != nil {
@@ -102,13 +95,12 @@ func (c *cli) run(ctx context.Context, op string, args []string, sensitive ...in
 		herr.Message = runtime.Redact(tail(stderr.String(), 500))
 	}
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		herr.Err = ctxErr // timeout or cancellation, not a plain exit
+		herr.Err = ctxErr
 	}
 	ev.Str("code", herr.Code).Int("exit_code", herr.ExitCode).Str("error", herr.Message).Msg("herdr failed")
 	return nil, herr
 }
 
-// result runs a command and decodes the `result` object of its JSON envelope.
 func (c *cli) result(ctx context.Context, op string, out any, args []string, sensitive ...int) error {
 	raw, err := c.run(ctx, op, args, sensitive...)
 	if err != nil {
@@ -118,7 +110,7 @@ func (c *cli) result(ctx context.Context, op string, out any, args []string, sen
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return &Error{Op: op, Message: "unparseable output: " + runtime.Redact(tail(string(raw), 200)), Err: err}
 	}
-	if env.Error != nil { // some failures exit 0
+	if env.Error != nil {
 		return &Error{Op: op, Code: env.Error.Code, Message: env.Error.Message}
 	}
 	if out == nil {

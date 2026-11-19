@@ -13,28 +13,21 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Run controls (CC-14): new run, cancel, resume, clean. Each goes through
-// the service; while one is in flight its target shows it and the same
-// action is refused, and its result triggers an immediate refresh.
-
-// cleanTarget is the in-flight key of a clean, which has no run.
 const cleanTarget = "*clean"
 
 type actionDoneMsg struct {
-	target string // run id or cleanTarget
-	label  string // "cancel run 0112dd6a"
-	ok     string // toast text on success
-	runID  string // a run to select (new run)
+	target string
+	label  string
+	ok     string
+	runID  string
 	err    error
 }
 
-// busy reports the in-flight action on target, if any.
 func (m model) busy(target string) (string, bool) {
 	a, ok := m.inflight[target]
 	return a, ok
 }
 
-// perform runs fn as a command with target marked in flight.
 func (m model) perform(target, doing, label string, fn func(ctx context.Context) actionDoneMsg) (model, tea.Cmd) {
 	if a, ok := m.busy(target); ok {
 		return m.failed(label, fmt.Errorf("already %s", a)), nil
@@ -81,8 +74,6 @@ func (m model) actionDone(msg actionDoneMsg) (model, tea.Cmd) {
 	return m, tea.Batch(append(cmds, cmd)...)
 }
 
-// refreshNow reloads without waiting for the watcher: Studio's own actions
-// show their effect at once (architecture §5.3).
 func (m model) refreshNow() (model, tea.Cmd) {
 	if m.src == nil {
 		return m, nil
@@ -95,8 +86,6 @@ func (m model) refreshNow() (model, tea.Cmd) {
 	return m, m.live.load(m.src)
 }
 
-// targetRun is the run an action applies to: the Runs cursor on the Runs
-// screen, the selected run elsewhere.
 func (m model) targetRun() (service.RunSummary, bool) {
 	id := m.live.runID
 	if m.screen == screenRuns && m.inspect == nil && m.report == nil {
@@ -190,10 +179,9 @@ func (m model) cleanWorktrees() (model, tea.Cmd) {
 	}), nil
 }
 
-// newRunForm is the "new run" overlay: a request and an optional plan file.
 type newRunForm struct {
 	request, plan string
-	onPlan        bool // the plan field has focus
+	onPlan        bool
 }
 
 func (m model) openNewRun() (model, tea.Cmd) {
@@ -227,7 +215,7 @@ func (m model) newRunKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if req == "" {
 			f.onPlan = false
 			m.form = &f
-			return m, nil // nothing to start yet
+			return m, nil
 		}
 		m.overlay, m.form = overlayNone, nil
 		src, plan := m.src, strings.TrimSpace(f.plan)

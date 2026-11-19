@@ -15,22 +15,22 @@ func TestComputeBreakpoints(t *testing.T) {
 		w, h          int
 		t             Toggles
 		mode          Mode
-		sidebar, main int // widths
-		panel         int // height
+		sidebar, main int
+		panel         int
 	}{
 		{59, 40, Toggles{}, ModeTooSmall, 0, 0, 0},
 		{100, 15, Toggles{}, ModeTooSmall, 0, 0, 0},
-		{60, 16, Toggles{}, ModeSingle, 0, 60, 0}, // exactly the minimum
+		{60, 16, Toggles{}, ModeSingle, 0, 60, 0},
 		{79, 40, Toggles{}, ModeSingle, 0, 79, 0},
 		{200, 23, Toggles{}, ModeSingle, 0, 200, 0},
-		{80, 24, Toggles{}, ModeCompact, 5, 75, 0}, // panel closed by default
+		{80, 24, Toggles{}, ModeCompact, 5, 75, 0},
 		{119, 50, Toggles{}, ModeCompact, 5, 114, 0},
 		{80, 24, Toggles{Panel: on()}, ModeCompact, 5, 75, 6},
 		{80, 24, Toggles{Sidebar: off()}, ModeCompact, 0, 80, 0},
 		{120, 30, Toggles{}, ModeFull, 22, 98, 8},
 		{200, 60, Toggles{Panel: off()}, ModeFull, 22, 178, 0},
 		{200, 60, Toggles{Sidebar: off()}, ModeFull, 0, 200, 8},
-		{70, 20, Toggles{Sidebar: on(), Panel: on()}, ModeSingle, 0, 70, 0}, // no room: toggles ignored
+		{70, 20, Toggles{Sidebar: on(), Panel: on()}, ModeSingle, 0, 70, 0},
 	}
 	for _, c := range cases {
 		l := Compute(c.w, c.h, c.t)
@@ -41,7 +41,7 @@ func TestComputeBreakpoints(t *testing.T) {
 		if l.Mode == ModeTooSmall {
 			continue
 		}
-		// Regions tile the terminal: header + middle + panel + status = height.
+
 		if got := l.Header.H + l.Main.H + l.Panel.H + l.Status.H; got != c.h {
 			t.Errorf("%dx%d: rows add up to %d", c.w, c.h, got)
 		}
@@ -51,8 +51,6 @@ func TestComputeBreakpoints(t *testing.T) {
 	}
 }
 
-// Whatever the size and content, the frame fills the terminal exactly:
-// never a line too long (it would wrap and tear the screen), never too few.
 func TestFrameAlwaysFillsTheTerminalExactly(t *testing.T) {
 	content := Content{
 		Header:     "caffè ─ a project with a deliberately very long name that will not fit anywhere at all",

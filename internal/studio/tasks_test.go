@@ -51,7 +51,7 @@ func TestTaskBoardNavigationAndDetails(t *testing.T) {
 	if tk, _ := m.cursorTask(); tk.Key != "validate" {
 		t.Fatalf("starts on the first card: %q", tk.Key)
 	}
-	// READY and REVIEW are empty: l skips them.
+
 	m, _ = press(m, "l")
 	if tk, _ := m.cursorTask(); tk.Key != "review" {
 		t.Errorf("l from PENDING: %q", tk.Key)
@@ -73,7 +73,7 @@ func TestTaskBoardNavigationAndDetails(t *testing.T) {
 	for _, want := range []string{"─ review ─", "Review the change that adds hello.txt", "role reviewer · attempt 1/3 · depends on impl (completed)",
 		"☐ The diff was read and evaluated", "agent c8eccebbd"} {
 		if want == "agent c8eccebbd" {
-			continue // only on the Overview
+			continue
 		}
 		if !strings.Contains(v, want) {
 			t.Errorf("details lack %q", want)
@@ -93,8 +93,8 @@ func TestTaskBoardShowsWaitingReasonAndCards(t *testing.T) {
 
 func TestTaskBoardCursorKeptByID(t *testing.T) {
 	m := boardModel(t)
-	m, _ = press(m, "l", "j") // docs
-	// docs finishes: it moves to DONE, the cursor follows it.
+	m, _ = press(m, "l", "j")
+
 	for i := range m.live.snap.Tasks {
 		if m.live.snap.Tasks[i].Key == "docs" {
 			m.live.snap.Tasks[i].Status = c.TaskCompleted

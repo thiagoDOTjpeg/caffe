@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-// Recorded from ripgrep 15.2: a non-UTF-8 line (bytes), a path given as
-// bytes, a summary message, an unknown type and a broken line.
 const rgOutput = `{"type":"begin","data":{"path":{"text":"./b.txt"}}}
 {"type":"match","data":{"path":{"text":"./b.txt"},"lines":{"bytes":"eP8gaGVsbG8K"},"line_number":1,"absolute_offset":0,"submatches":[{"match":{"text":"hello"},"start":3,"end":8}]}}
 {"type":"end","data":{"path":{"text":"./b.txt"},"binary_offset":null,"stats":{"matches":1}}}
@@ -41,7 +39,7 @@ func TestSearchWithBothEngines(t *testing.T) {
 	svc, gm, tasks := stackedRepo(t)
 	must(t, gm.ExcludeLocally(ctx, ".caffe/"))
 	wt := tasks["base"].WorktreePath
-	must(t, os.WriteFile(filepath.Join(wt, "notes.md"), []byte("one\nNeedle here\nneedle again\n"), 0o644)) // untracked
+	must(t, os.WriteFile(filepath.Join(wt, "notes.md"), []byte("one\nNeedle here\nneedle again\n"), 0o644))
 	must(t, os.WriteFile(filepath.Join(wt, ".gitignore"), []byte("ignored.txt\n"), 0o644))
 	must(t, os.WriteFile(filepath.Join(wt, "ignored.txt"), []byte("needle\n"), 0o644))
 

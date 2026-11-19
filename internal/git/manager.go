@@ -1,5 +1,3 @@
-// Package git isolates agent changes in worktrees. It never merges and never
-// deletes a branch: branches are the output of a run.
 package git
 
 import (
@@ -14,18 +12,17 @@ import (
 )
 
 type Manager struct {
-	repo        string // main checkout
-	worktreeDir string // every worktree this manager creates or removes lives under it
+	repo        string
+	worktreeDir string
 }
 
-// New verifies that repo is a Git work tree with at least one commit.
 func New(ctx context.Context, repo, worktreeDir string) (*Manager, error) {
 	m := &Manager{repo: repo, worktreeDir: filepath.Clean(worktreeDir)}
 	top, err := m.git(ctx, repo, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return nil, fmt.Errorf("%s is not a Git repository: %w", repo, err)
 	}
-	// Agents must not be able to wander into a parent repository's files.
+
 	if resolved, _ := filepath.EvalSymlinks(repo); filepath.Clean(top) != filepath.Clean(resolved) {
 		return nil, fmt.Errorf("%s is inside the Git repository %s; caffe must run at the repository root", repo, top)
 	}
@@ -35,11 +32,10 @@ func New(ctx context.Context, repo, worktreeDir string) (*Manager, error) {
 	return m, nil
 }
 
-// git runs one git command in dir, without a shell.
 func (m *Manager) git(ctx context.Context, dir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
-	// Agent-controlled repositories must not be able to prompt or page.
+
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_PAGER=cat", "LC_ALL=C")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -52,12 +48,10 @@ func (m *Manager) git(ctx context.Context, dir string, args ...string) (string, 
 	return strings.TrimRight(stdout.String(), "\n"), nil
 }
 
-// Head returns the commit the main checkout is on.
 func (m *Manager) Head(ctx context.Context) (string, error) {
 	return m.git(ctx, m.repo, "rev-parse", "--verify", "HEAD^{commit}")
 }
 
-// Branch returns the branch checked out in dir ("HEAD" when detached).
 func (m *Manager) Branch(ctx context.Context, dir string) (string, error) {
 	return m.git(ctx, dir, "rev-parse", "--abbrev-ref", "HEAD")
 }
@@ -67,14 +61,11 @@ func (m *Manager) branchExists(ctx context.Context, branch string) bool {
 	return err == nil
 }
 
-// owned reports whether path is strictly inside the managed worktree directory.
 func (m *Manager) owned(path string) bool {
 	rel, err := filepath.Rel(m.worktreeDir, filepath.Clean(path))
 	return err == nil && rel != "." && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel)
 }
 
-// CreateWorktree creates branch at base and checks it out in a new directory
-// worktreeDir/name. It refuses to reuse an existing branch or directory.
 func (m *Manager) CreateWorktree(ctx context.Context, name, branch, base string) (string, error) {
 	path := filepath.Join(m.worktreeDir, name)
 	if !m.owned(path) {
@@ -106,7 +97,6 @@ type Worktree struct {
 	Head   string
 }
 
-// ListWorktrees returns the worktrees under the managed directory.
 func (m *Manager) ListWorktrees(ctx context.Context) ([]Worktree, error) {
 	out, err := m.git(ctx, m.repo, "worktree", "list", "--porcelain")
 	if err != nil {
@@ -133,21 +123,15 @@ func (m *Manager) ListWorktrees(ctx context.Context) ([]Worktree, error) {
 	return all, nil
 }
 
-// IsDirty reports uncommitted changes (including untracked files) in dir.
 func (m *Manager) IsDirty(ctx context.Context, dir string) (bool, error) {
 	out, err := m.git(ctx, dir, "status", "--porcelain")
 	return out != "", err
 }
 
-// Status is a fingerprint of a checkout's uncommitted state, used to notice a
-// read-only agent that modified files anyway.
 func (m *Manager) Status(ctx context.Context, dir string) (string, error) {
 	return m.git(ctx, dir, "status", "--porcelain")
 }
 
-// CommitAll commits everything in a worktree, so that an agent's work is on
-// its branch even if it forgot to commit. Returns false when there was
-// nothing to commit.
 func (m *Manager) CommitAll(ctx context.Context, worktree, message string) (bool, error) {
 	if !m.owned(worktree) {
 		return false, fmt.Errorf("refusing to commit outside managed worktrees: %s", worktree)
@@ -161,19 +145,17 @@ func (m *Manager) CommitAll(ctx context.Context, worktree, message string) (bool
 	}
 	args := []string{"commit", "--no-verify", "-m", message}
 	if _, err := m.git(ctx, worktree, "config", "user.email"); err != nil {
-		// No identity configured: commit as the orchestrator instead of failing.
+
 		args = append([]string{"-c", "user.name=caffe", "-c", "user.email=caffe@localhost"}, args...)
 	}
 	_, err = m.git(ctx, worktree, args...)
 	return err == nil, err
 }
 
-// Diff returns the committed changes of a worktree's branch relative to base.
 func (m *Manager) Diff(ctx context.Context, worktree, base string) (string, error) {
 	return m.git(ctx, worktree, "diff", "--no-color", "--no-ext-diff", base, "HEAD")
 }
 
-// ChangedFiles lists the files that differ between base and the worktree HEAD.
 func (m *Manager) ChangedFiles(ctx context.Context, worktree, base string) ([]string, error) {
 	out, err := m.git(ctx, worktree, "diff", "--name-only", base, "HEAD")
 	if err != nil || out == "" {
@@ -182,15 +164,11 @@ func (m *Manager) ChangedFiles(ctx context.Context, worktree, base string) ([]st
 	return strings.Split(out, "\n"), nil
 }
 
-// ListFiles lists the tracked and untracked, not ignored, files of a
-// checkout, slash-separated and relative to dir.
 func (m *Manager) ListFiles(ctx context.Context, dir string) ([]string, error) {
 	out, err := m.git(ctx, dir, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	return splitZ(out), err
 }
 
-// CommittedChanges maps each file changed between base and HEAD to its
-// status letter (A, M, D, T).
 func (m *Manager) CommittedChanges(ctx context.Context, dir, base string) (map[string]string, error) {
 	out, err := m.git(ctx, dir, "diff", "-z", "--name-status", "--no-renames", base, "HEAD")
 	if err != nil {
@@ -204,21 +182,16 @@ func (m *Manager) CommittedChanges(ctx context.Context, dir, base string) (map[s
 	return ch, nil
 }
 
-// StatusEntry is one file of `git status --porcelain=v2`.
 type StatusEntry struct {
-	XY   string // index and worktree status ("M.", ".M", "??", "UU", …)
+	XY   string
 	Path string
 }
 
-// WorkStatus is a checkout's branch and uncommitted files, untracked
-// included.
 type WorkStatus struct {
-	Branch  string // "(detached)" when detached
+	Branch  string
 	Entries []StatusEntry
 }
 
-// Status2 parses `git status --porcelain=v2 --branch -z`. Renames are off,
-// so every entry has a single path.
 func (m *Manager) Status2(ctx context.Context, dir string) (*WorkStatus, error) {
 	out, err := m.git(ctx, dir, "status", "-z", "--porcelain=v2", "--branch", "--no-renames", "--untracked-files=all")
 	if err != nil {
@@ -252,14 +225,10 @@ func splitZ(s string) []string {
 	return strings.Split(s, "\x00")
 }
 
-// MergeBase returns the commit where two refs of a worktree diverged.
 func (m *Manager) MergeBase(ctx context.Context, worktree, a, b string) (string, error) {
 	return m.git(ctx, worktree, "merge-base", a, b)
 }
 
-// Restore discards uncommitted changes in a managed worktree. Used only to
-// undo edits by an agent that was supposed to be read-only, on a tree whose
-// legitimate content is already committed.
 func (m *Manager) Restore(ctx context.Context, worktree string) error {
 	if !m.owned(worktree) {
 		return fmt.Errorf("refusing to restore %s: not under %s", worktree, m.worktreeDir)
@@ -271,9 +240,6 @@ func (m *Manager) Restore(ctx context.Context, worktree string) error {
 	return err
 }
 
-// RemoveWorktree deletes a worktree checkout. Git refuses if it holds
-// uncommitted changes, which is the safety net: nothing is forced, and the
-// branch is kept.
 func (m *Manager) RemoveWorktree(ctx context.Context, path string) error {
 	if !m.owned(path) {
 		return fmt.Errorf("refusing to remove %s: not under %s", path, m.worktreeDir)
@@ -282,8 +248,6 @@ func (m *Manager) RemoveWorktree(ctx context.Context, path string) error {
 	return err
 }
 
-// ExcludeLocally adds patterns to .git/info/exclude so that orchestrator files
-// never show up as untracked, without touching the tracked .gitignore.
 func (m *Manager) ExcludeLocally(ctx context.Context, patterns ...string) error {
 	p, err := m.git(ctx, m.repo, "rev-parse", "--git-path", "info/exclude")
 	if err != nil {

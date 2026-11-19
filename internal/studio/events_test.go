@@ -10,8 +10,6 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// eventsModel has a run with 30 events in the database; the live feed holds
-// only the newest 10 of them, as after a long session.
 func eventsModel(t *testing.T) (model, *fakeSource) {
 	m := overviewModel(t)
 	f := m.src.(*fakeSource)
@@ -35,7 +33,7 @@ func TestEventsPanelFiltersByTaskAndType(t *testing.T) {
 	if m.scope() != "events" {
 		t.Fatalf("tab did not focus the panel: %s", m.scope())
 	}
-	m, _ = press(m, "t") // first task: research (t1)
+	m, _ = press(m, "t")
 	for _, e := range m.events.filtered(m.panelEvents()) {
 		if e.TaskID != "t1" {
 			t.Fatalf("task filter let %s through", e.TaskID)
@@ -54,7 +52,7 @@ func TestEventsPanelFiltersByTaskAndType(t *testing.T) {
 			t.Fatalf("filters let %s/%s through", e.TaskID, e.Type)
 		}
 	}
-	// While typing, screen keys are text.
+
 	m, _ = press(m, "/", "1")
 	if m.screen != screenOverview || m.events.typeFilter != "diff1" {
 		t.Errorf("typing: screen %d filter %q", m.screen, m.events.typeFilter)
@@ -70,7 +68,7 @@ func TestEventsPanelScrollBackLoadsOlderPages(t *testing.T) {
 	rows := m.layout().Panel.H - 1
 	m, _ = press(m, "tab")
 	var cmd tea.Cmd
-	for range 10 - rows { // to the top of the live feed
+	for range 10 - rows {
 		m, cmd = press(m, "k")
 	}
 	if cmd == nil || !m.events.loading {
@@ -83,7 +81,7 @@ func TestEventsPanelScrollBackLoadsOlderPages(t *testing.T) {
 	if !m.events.noMore {
 		t.Error("a short page did not mark the beginning")
 	}
-	// No duplicates between the loaded pages and the live feed.
+
 	seen := map[int64]bool{}
 	for _, e := range m.panelEvents() {
 		if seen[e.Seq] {
@@ -91,7 +89,7 @@ func TestEventsPanelScrollBackLoadsOlderPages(t *testing.T) {
 		}
 		seen[e.Seq] = true
 	}
-	m, _ = press(m, "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u") // 4 pages of 7 rows: past the top, clamped
+	m, _ = press(m, "ctrl+u", "ctrl+u", "ctrl+u", "ctrl+u")
 	if v := strings.Join(m.panelLines(rows), "\n"); !strings.Contains(v, "beginning of the run") {
 		t.Errorf("top not marked:\n%s", v)
 	}
@@ -115,7 +113,7 @@ func TestEventsPanelShowsTheNewestEvent(t *testing.T) {
 
 func TestFocusNeedsAVisiblePanel(t *testing.T) {
 	m, _ := eventsModel(t)
-	res, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24}) // compact: panel closed
+	res, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = res.(model)
 	if m, _ = press(m, "tab"); m.events.focused {
 		t.Error("focused a hidden panel")

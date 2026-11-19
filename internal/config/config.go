@@ -1,4 +1,3 @@
-// Package config loads and validates the project-level configuration.
 package config
 
 import (
@@ -42,15 +41,11 @@ type Project struct {
 type Runtime struct {
 	Provider   string `yaml:"provider"`
 	Executable string `yaml:"executable"`
-	// Session selects a named Herdr session (`herdr --session`). Empty uses the
-	// default session, i.e. agents show up next to the user's own workspaces.
+
 	Session        string        `yaml:"session"`
 	CommandTimeout time.Duration `yaml:"command_timeout"`
 	PollInterval   time.Duration `yaml:"poll_interval"`
-	// An idle agent that has not delivered its report is reminded once after
-	// IdleNudgeAfter, and the execution fails after IdleGiveUpAfter more idle
-	// time. Agents legitimately sit idle while a background command runs, so
-	// raise these for projects with long builds or test suites.
+
 	IdleNudgeAfter  time.Duration `yaml:"idle_nudge_after"`
 	IdleGiveUpAfter time.Duration `yaml:"idle_give_up_after"`
 }
@@ -64,15 +59,11 @@ type Orchestration struct {
 
 type AgentSpec struct {
 	Kind string `yaml:"kind"`
-	// Args are passed verbatim to the agent executable (e.g. a model or a
-	// permission mode). Nothing is added by default.
+
 	Args []string `yaml:"args"`
 }
 
 type Validation struct {
-	// Commands are executed by the orchestrator itself, without a shell, in the
-	// task's worktree. Their real exit codes are what validation records. When
-	// empty, validation is delegated to the validator agent and is self-reported.
 	Commands []string      `yaml:"commands"`
 	Timeout  time.Duration `yaml:"timeout"`
 }
@@ -88,26 +79,19 @@ type Persistence struct {
 }
 
 type Security struct {
-	// RequireConfirmationForMerge is reserved: this version never merges agent
-	// branches, so there is nothing to confirm yet.
 	RequireConfirmationForMerge bool `yaml:"require_confirmation_for_merge"`
 	PreserveFailedWorktrees     bool `yaml:"preserve_failed_worktrees"`
 }
 
-// Studio configures Caffè Studio, the terminal UI. Reserved: the settings are
-// validated now so a config written today keeps working, but nothing reads
-// them until Studio exists (docs/studio/).
 type Studio struct {
-	Theme        string `yaml:"theme"`         // caffe | high-contrast | mono
-	Mouse        bool   `yaml:"mouse"`         // off by default: keyboard first
-	ReduceMotion bool   `yaml:"reduce_motion"` // no animation at all
-	Avatars      bool   `yaml:"avatars"`       // role avatars on agent cards
-	// Editor is the command that opens a file for editing; empty means
-	// $VISUAL, then $EDITOR. Split on whitespace, run without a shell.
+	Theme        string `yaml:"theme"`
+	Mouse        bool   `yaml:"mouse"`
+	ReduceMotion bool   `yaml:"reduce_motion"`
+	Avatars      bool   `yaml:"avatars"`
+
 	Editor string `yaml:"editor"`
 }
 
-// StudioThemes are the accepted values of studio.theme.
 var StudioThemes = []string{"caffe", "high-contrast", "mono"}
 
 func Default(projectName string) *Config {
@@ -136,11 +120,8 @@ func Default(projectName string) *Config {
 	}
 }
 
-// Path returns the config file location for a project root.
 func Path(projectRoot string) string { return filepath.Join(projectRoot, Dir, File) }
 
-// Load reads the config of the project at projectRoot. Unknown keys are an
-// error: a typo must not silently fall back to a default.
 func Load(projectRoot string) (*Config, error) {
 	data, err := os.ReadFile(Path(projectRoot))
 	if errors.Is(err, os.ErrNotExist) {
@@ -167,7 +148,6 @@ var (
 	kindRE         = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 )
 
-// resolve makes paths absolute and validates every setting.
 func (c *Config) resolve(projectRoot string) error {
 	abs := func(p string) string {
 		if filepath.IsAbs(p) {
@@ -257,15 +237,12 @@ func (c *Config) resolve(projectRoot string) error {
 	return nil
 }
 
-// Agent returns the agent spec configured for a role.
 func (c *Config) Agent(role contracts.Role) AgentSpec { return c.Agents[string(role)] }
 
-// ArtifactDir is where large outputs live; the database only references them.
 func (c *Config) ArtifactDir() string {
 	return filepath.Join(c.Project.Path, Dir, "artifacts")
 }
 
-// Write stores a fresh config with paths relative to the project root.
 func Write(projectRoot string, c *Config) error {
 	data, err := yaml.Marshal(c)
 	if err != nil {

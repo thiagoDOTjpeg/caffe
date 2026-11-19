@@ -26,7 +26,7 @@ func TestWorkspaceSelector(t *testing.T) {
 	if !strings.Contains(v, "uncommitted changes") || !strings.Contains(v, "removed") {
 		t.Errorf("selector:\n%s", v)
 	}
-	m, _ = press(m, "j", "j", "enter") // the removed one cannot be selected
+	m, _ = press(m, "j", "j", "enter")
 	if m.overlay != overlayWorkspaces || m.ws.selected.ID != "" {
 		t.Fatal("a removed worktree was selected")
 	}

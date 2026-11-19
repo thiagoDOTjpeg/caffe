@@ -10,26 +10,20 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// confirmDialog asks before an action that cannot be undone
-// (ux-specification §5). The title names the target, the body the
-// consequence; "Cancel" is selected until the user moves off it.
 type confirmDialog struct {
-	title   string   // "Cancel run 0112dd6a?"
-	body    []string // what will happen
-	action  string   // label of the confirming button: "Stop the run"
-	confirm handler  // runs only on an explicit choice of action
-	onLeft  bool     // true: Cancel selected
+	title   string
+	body    []string
+	action  string
+	confirm handler
+	onLeft  bool
 }
 
-// ask opens a confirm dialog with Cancel selected.
 func (m model) ask(title, action string, body []string, confirm handler) model {
 	m.confirm = &confirmDialog{title: title, body: body, action: action, confirm: confirm, onLeft: true}
 	m.overlay = overlayConfirm
 	return m
 }
 
-// confirmKey handles keys while the dialog is open: the dialog captures
-// them all, so a stray key never reaches the screen behind it.
 func (m model) confirmKey(k string) (tea.Model, tea.Cmd) {
 	d := *m.confirm
 	switch k {
@@ -51,7 +45,6 @@ func (m model) confirmKey(k string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// confirmView draws the dialog box centred in a width×height region.
 func (m model) confirmView(width, height int) string {
 	d := m.confirm
 	cancel, act := "[ Cancel ]", "[ "+d.action+" ]"
@@ -66,7 +59,7 @@ func (m model) confirmView(width, height int) string {
 	for _, l := range d.body {
 		inner = max(inner, len([]rune(l))+2)
 	}
-	buttons := len([]rune("[ Cancel ]   [ "+d.action+" ]")) + 2 // markers and the trailing space
+	buttons := len([]rune("[ Cancel ]   [ "+d.action+" ]")) + 2
 	inner = min(max(inner, buttons+2), max(width-4, 10))
 
 	top := "┌ " + d.title + " " + strings.Repeat("─", max(inner-len([]rune(d.title))-2, 0)) + "┐"
@@ -90,8 +83,6 @@ func (m model) confirmView(width, height int) string {
 	return b.String()
 }
 
-// toastTTL is how long an information toast stays; errors stay until
-// dismissed (ux-specification §6).
 var toastTTL = 5 * time.Second
 
 type toast struct {
@@ -102,7 +93,6 @@ type toast struct {
 
 type toastExpiredMsg struct{ id int }
 
-// notify shows an information toast that expires.
 func (m model) notify(text string) (model, tea.Cmd) {
 	m.toastSeq++
 	id := m.toastSeq
@@ -110,7 +100,6 @@ func (m model) notify(text string) (model, tea.Cmd) {
 	return m, tea.Tick(toastTTL, func(time.Time) tea.Msg { return toastExpiredMsg{id} })
 }
 
-// failed shows an error toast; it stays until dismissed with esc.
 func (m model) failed(what string, err error) model {
 	m.toastSeq++
 	m.toasts = append(m.toasts, toast{id: m.toastSeq, text: what + ": " + err.Error(), err: true})
@@ -128,7 +117,6 @@ func (m model) expireToast(id int) model {
 	return m
 }
 
-// dismissErrors removes error toasts; it reports whether there were any.
 func (m model) dismissErrors() (model, bool) {
 	var keep []toast
 	for _, t := range m.toasts {
@@ -141,7 +129,6 @@ func (m model) dismissErrors() (model, bool) {
 	return m, had
 }
 
-// toastLine is the newest toast for the status bar, or "".
 func (m model) toastLine() string {
 	if len(m.toasts) == 0 {
 		return ""

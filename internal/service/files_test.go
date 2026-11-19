@@ -55,7 +55,7 @@ func TestFilesAndMarks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// top's base is base's branch: base.txt is not top's change.
+
 	want := map[string]string{"top.txt": MarkManual, "README.md": MarkDeleted, "new file.txt": MarkManual}
 	if len(fl.Marks) != len(want) {
 		t.Errorf("marks = %v", fl.Marks)

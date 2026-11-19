@@ -58,7 +58,7 @@ func diffModel(t *testing.T) model {
 		f.lists = map[string]*service.FileList{"t2": {Paths: []string{"hello.txt", "main.go"}, Marks: map[string]string{}}}
 	})
 	m, _ = press(m, "2")
-	m.tasks.cursor = "t2" // impl, the developer task
+	m.tasks.cursor = "t2"
 	m, cmd := press(m, "d")
 	return drive(t, m, cmd)
 }
@@ -89,7 +89,7 @@ func TestDiffViewFromTaskToFile(t *testing.T) {
 	if v := plain(m.View().Content); !strings.Contains(v, "── ws impl") || !strings.Contains(v, "10 │ x") {
 		t.Errorf("worktree not in the header or wrong line:\n%s", v)
 	}
-	m, cmd = press(m, "d") // back to the diff from the workspace
+	m, cmd = press(m, "d")
 	if m = drive(t, m, cmd); m.diff == nil || !m.diff.loaded {
 		t.Error("d in the workspace does not open its diff")
 	}
@@ -97,7 +97,7 @@ func TestDiffViewFromTaskToFile(t *testing.T) {
 
 func TestDiffRefusals(t *testing.T) {
 	m := overviewModel(t)
-	m, _ = press(m, "2") // the first task is the researcher
+	m, _ = press(m, "2")
 	if m, cmd := press(m, "d"); cmd != nil || !strings.Contains(plain(m.View().Content), "only developer tasks") {
 		t.Error("diff of a researcher task not refused")
 	}

@@ -34,16 +34,13 @@ func expectDead(t *testing.T, pid int) {
 	deadline := time.Now().Add(5 * time.Second)
 	for ptest.Alive(pid) {
 		if time.Now().After(deadline) {
-			ptest.Kill(pid) // do not leak it from the test itself
+			ptest.Kill(pid)
 			t.Fatalf("grandchild %d survived", pid)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 }
 
-// A validation command that starts a child, like `go test` starting a test
-// binary, must not leave it running: not on timeout, not on cancellation and
-// not when the command exits normally. Same test on Unix and Windows.
 func TestValidationCommandLeavesNoProcessesBehind(t *testing.T) {
 	dir := t.TempDir()
 	helper := func(args ...string) []string { return append([]string{os.Args[0]}, args...) }
@@ -74,7 +71,6 @@ func TestValidationCommandLeavesNoProcessesBehind(t *testing.T) {
 	}
 	expectDead(t, grandchildPid(t, pidFile))
 
-	// Exit codes are still the command's own.
 	if code, err := runCommand(context.Background(), time.Minute, dir, helper("fail"), filepath.Join(dir, "code.log")); code != 3 || err != nil {
 		t.Fatalf("exit code: %d, %v", code, err)
 	}

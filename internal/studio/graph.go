@@ -8,7 +8,6 @@ import (
 	"caffe/internal/service"
 )
 
-// taskView is how the Tasks screen shows the run (ux-specification §2.2).
 type taskView int
 
 const (
@@ -17,13 +16,8 @@ const (
 	viewList
 )
 
-// graphMax is the size above which the graph view falls back to the list.
 const graphMax = 30
 
-// layers places each task at the length of the longest dependency path from
-// a root, and orders each layer so a task sits next to its first dependency
-// (a barycenter pass). Plans are validated acyclic; a dependency on an
-// unknown key is ignored. Plan order breaks ties.
 func layers(tasks []service.TaskView) [][]service.TaskView {
 	byKey := map[string]service.TaskView{}
 	order := map[string]int{}
@@ -37,7 +31,7 @@ func layers(tasks []service.TaskView) [][]service.TaskView {
 			return d
 		}
 		d := 0
-		if seen <= len(tasks) { // guard: a cycle would otherwise recurse forever
+		if seen <= len(tasks) {
 			for _, dep := range byKey[k].DependsOn {
 				if _, ok := byKey[dep]; ok {
 					d = max(d, level(dep, seen+1)+1)
@@ -55,7 +49,7 @@ func layers(tasks []service.TaskView) [][]service.TaskView {
 		}
 		out[d] = append(out[d], t)
 	}
-	// Barycenter sweeps: down (by dependencies), up (by dependents), down.
+
 	row := map[string]int{}
 	dependents := map[string][]string{}
 	for _, t := range tasks {
@@ -92,9 +86,6 @@ func layers(tasks []service.TaskView) [][]service.TaskView {
 	return out
 }
 
-// graphLines draws the layers left to right. An edge between neighbours on
-// the same row is drawn as an arrow; any other dependency is listed under
-// the task ("⤷ a, b"), so every edge is shown without crossing lines.
 func graphLines(tasks []service.TaskView) []string {
 	ls := layers(tasks)
 	colW := 0
@@ -157,7 +148,6 @@ func graphLines(tasks []service.TaskView) []string {
 	return out
 }
 
-// listLines is the list view: one task per line with its dependencies.
 func listLines(tasks []service.TaskView, width int) []string {
 	out := []string{fmt.Sprintf("   %-13s %-14s %-11s %s", "STATUS", "TASK", "ROLE", "DEPENDS ON")}
 	for _, t := range tasks {

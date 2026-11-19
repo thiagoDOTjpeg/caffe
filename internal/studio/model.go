@@ -11,7 +11,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// screen is one of Studio's top-level screens, in sidebar order.
 type screen int
 
 const (
@@ -25,41 +24,38 @@ const (
 
 var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace", "Terminals"}
 
-// model is the root of Studio's state (docs/studio/architecture.md §7). All
-// I/O runs in commands, never in Update or View.
 type model struct {
-	src      source                // nil: no project data (tests of layout only)
-	changes  <-chan service.Change // nil: no watcher
+	src      source
+	changes  <-chan service.Change
 	live     live
 	health   health
 	runs     runsView
 	tasks    tasksView
 	agents   agentsView
-	inspect  *inspector  // nil: closed
-	report   *reportView // nil: closed
+	inspect  *inspector
+	report   *reportView
 	events   eventsPanel
-	confirm  *confirmDialog // set while overlayConfirm is open
+	confirm  *confirmDialog
 	toasts   []toast
-	inflight map[string]string // run id (or cleanTarget) → action in progress
-	form     *newRunForm       // set while overlayNewRun is open
-	output   agentOutput       // the Agent Room's output pane
+	inflight map[string]string
+	form     *newRunForm
+	output   agentOutput
 	ws       workspaces
 	find     finder
-	grep     grep      // content search
-	diff     *diffView // nil: closed
+	grep     grep
+	diff     *diffView
 	tree     explorer
-	fileGen  int       // identifies the open file's watch chain
-	file     *viewer   // the active buffer; always one of tabs
-	tabs     []*viewer // open buffers, in tab order
-	split    *viewer   // shown left of the active buffer; nil: no split
-	terms    terminals // the Terminal Manager's sessions
-	rt       rtObs     // last runtime status of the agents on screen
-	watcher  pauser    // paused while the terminal is handed over
+	fileGen  int
+	file     *viewer
+	tabs     []*viewer
+	split    *viewer
+	terms    terminals
+	rt       rtObs
+	watcher  pauser
 	toastSeq int
 	now      func() time.Time
 	project  Project
-	// noProject: opened outside a Caffè project (project.Root is the
-	// directory); only a message and quitting are possible.
+
 	noProject bool
 	guard     *crashGuard
 
@@ -82,7 +78,6 @@ func newModel(src source, p Project, g *crashGuard) model {
 	return model{src: src, project: p, guard: g, registry: r, handlers: h, now: time.Now, theme: ui.ThemeByName("caffe", false)}
 }
 
-// Init loads the initial state and starts listening to the watcher.
 func (m model) Init() tea.Cmd {
 	if m.src == nil {
 		return nil
@@ -90,8 +85,6 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src), liveTick(0), waitSession(m.terms.notes))
 }
 
-// Update is guarded: a panic anywhere below is written to the crash log
-// before Bubble Tea restores the terminal.
 func (m model) Update(msg tea.Msg) (next tea.Model, cmd tea.Cmd) {
 	m.guard.protect(func() { next, cmd = m.update(msg) })
 	if n, ok := next.(model); ok {
@@ -111,7 +104,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		return m.key(msg) // every key goes through the action registry
+		return m.key(msg)
 	case loadedMsg:
 		next, cmd := m.updateLive(msg)
 		if msg.err == nil {
@@ -156,7 +149,6 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// flip toggles a region relative to what is shown now.
 func flip(shown bool) *bool {
 	v := !shown
 	return &v
@@ -212,7 +204,7 @@ func (m model) view() tea.View {
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main
 		}
-		panel = strings.Join(m.panelLines(l.Panel.H-1), "\n") // the title takes a row
+		panel = strings.Join(m.panelLines(l.Panel.H-1), "\n")
 		if panel == "" {
 			panel = " no events yet"
 			if m.events.typeFilter != "" || m.events.taskFilter != "" {

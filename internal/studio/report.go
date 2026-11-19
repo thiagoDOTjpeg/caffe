@@ -10,7 +10,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// reportView shows the consolidated report of a run (service.Report).
 type reportView struct {
 	runID  string
 	lines  []line
@@ -19,7 +18,6 @@ type reportView struct {
 	scroll int
 }
 
-// line is one rendered line and whether it is a heading.
 type line struct {
 	text    string
 	heading bool
@@ -85,10 +83,6 @@ func (m model) reportScreen(width, height int) string {
 	return strings.Join(out, "\n")
 }
 
-// markdownText turns the report's Markdown into plain text sections:
-// headings stand alone (top-level ones in capitals), tables become aligned
-// columns, emphasis and code marks are dropped, list items get a bullet.
-// It covers what core.BuildReport writes, not Markdown in general.
 func markdownText(md string) []line {
 	var out []line
 	var table [][]string
@@ -127,7 +121,7 @@ func markdownText(md string) []line {
 					sep = false
 				}
 			}
-			if !sep { // the |---| row only underlines the header
+			if !sep {
 				table = append(table, cells)
 			}
 			continue
@@ -147,7 +141,7 @@ func markdownText(md string) []line {
 		}
 	}
 	flush()
-	// Collapse runs of blank lines.
+
 	var dedup []line
 	for _, l := range out {
 		if strings.TrimSpace(l.text) == "" && len(dedup) > 0 && strings.TrimSpace(dedup[len(dedup)-1].text) == "" {
@@ -158,5 +152,4 @@ func markdownText(md string) []line {
 	return dedup
 }
 
-// inline drops Markdown emphasis and code marks.
 func inline(s string) string { return strings.NewReplacer("**", "", "`", "").Replace(s) }

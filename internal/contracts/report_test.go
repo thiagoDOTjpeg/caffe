@@ -47,8 +47,6 @@ func TestParseReport(t *testing.T) {
 	}
 }
 
-// A report is data. Extra fields that look like instructions are dropped by
-// the decoder and never reach the orchestrator.
 func TestReportCannotCarryCommands(t *testing.T) {
 	r, err := ParseReport(RoleDeveloper, []byte(`{"status":"completed","summary":"s","run":"rm -rf /","delegate":[{"role":"developer"}]}`))
 	if err != nil {

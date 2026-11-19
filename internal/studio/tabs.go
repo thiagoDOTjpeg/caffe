@@ -8,9 +8,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Tabs and splits (WS-04). Handlers change m.file (the active buffer);
-// syncTabs, run after every update, keeps the tab list in step with it.
-
 func (m model) syncTabs() model {
 	if m.file == nil {
 		m.tabs, m.split = nil, nil
@@ -29,7 +26,6 @@ func (m model) syncTabs() model {
 	return m
 }
 
-// findTab is the current version of buffer v, or nil if it was closed.
 func (m model) findTab(v *viewer) *viewer {
 	if v == nil {
 		return nil
@@ -51,7 +47,6 @@ func (m model) activeTab() int {
 	return -1
 }
 
-// activate makes tabs[i] the active buffer and watches it.
 func (m model) activate(i int) (model, tea.Cmd) {
 	if i < 0 || i >= len(m.tabs) {
 		return m, nil
@@ -84,8 +79,6 @@ func (m model) closeTab() (model, tea.Cmd) {
 	return m.activate(min(i, len(m.tabs)-1))
 }
 
-// toggleSplit shows the previous tab next to the active one, or closes the
-// split.
 func (m model) toggleSplit() (model, tea.Cmd) {
 	if m.split != nil {
 		m.split = nil
@@ -99,7 +92,6 @@ func (m model) toggleSplit() (model, tea.Cmd) {
 	return m, nil
 }
 
-// swapSplit makes the split's buffer active (keys go to it).
 func (m model) swapSplit() (model, tea.Cmd) {
 	if m.split == nil {
 		return m, nil
@@ -115,8 +107,6 @@ func (m model) swapSplit() (model, tea.Cmd) {
 	return m, nil
 }
 
-// tabBar names the open buffers; the workspace is shown when it is not the
-// selected one.
 func (m model) tabBar(width int) string {
 	var parts []string
 	for _, t := range m.tabs {
@@ -137,7 +127,6 @@ func (m model) tabBar(width int) string {
 	return ui.Fit(" "+strings.Join(parts, " "), width)
 }
 
-// buffersScreen is the tab bar over the active buffer, or over the split.
 func (m model) buffersScreen(width, height int) string {
 	out := []string{m.tabBar(width)}
 	if m.split == nil {

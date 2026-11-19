@@ -9,7 +9,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// overlay is what is drawn over the current screen and captures keys.
 type overlay int
 
 const (
@@ -24,13 +23,8 @@ const (
 	overlayGrep
 )
 
-// handler performs an action. Every registered action has exactly one;
-// TestEveryActionHasAHandler enforces it.
 type handler func(m model) (model, tea.Cmd)
 
-// actions builds the registry and its handlers. Keys follow
-// ux-specification.md §3: q closes, ctrl+q quits, ? help, : palette,
-// space leader.
 func actions() (*ui.Registry, map[string]handler) {
 	r := &ui.Registry{}
 	h := map[string]handler{}
@@ -78,7 +72,7 @@ func actions() (*ui.Registry, map[string]handler) {
 		s := screen(i)
 		leaderKey := strings.ToLower(name[:1])
 		if s == screenTerminals {
-			leaderKey = "x" // t is Tasks
+			leaderKey = "x"
 		}
 		add(ui.Action{ID: "screen." + strings.ToLower(name), Title: "Go to " + name, Scope: g,
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
@@ -341,7 +335,6 @@ func (m model) scope() ui.Scope {
 	return ui.Scope(strings.ToLower(screenNames[m.screen]))
 }
 
-// run performs a registered action by id.
 func (m model) run(id string) (tea.Model, tea.Cmd) {
 	if fn, ok := m.handlers[id]; ok {
 		return fn(m)
@@ -349,8 +342,6 @@ func (m model) run(id string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// key routes one key press. In normal mode every key goes through the
-// registry; the palette and the leader menu capture keys while open.
 func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
 	switch m.overlay {
@@ -421,7 +412,7 @@ func (m model) leaderKey(k string) (tea.Model, tea.Cmd) {
 		if title, _ := m.registry.LeaderGroup(k); title != "" {
 			m.leaderGroup = k
 		} else {
-			m.overlay = overlayNone // not a group: leave the menu
+			m.overlay = overlayNone
 		}
 		return m, nil
 	}
@@ -433,9 +424,6 @@ func (m model) leaderKey(k string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// overlayView is the text of the open overlay, drawn in the main region.
-// ponytail: drawn in place of the screen; floating overlays (lipgloss layers)
-// can come when a screen needs to stay visible underneath.
 func (m model) overlayView() (title, body string) {
 	var b strings.Builder
 	switch m.overlay {

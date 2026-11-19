@@ -71,7 +71,7 @@ func TestTaskReason(t *testing.T) {
 	}
 	for task, want := range map[*c.Task]string{
 		a:  "",
-		d:  "waiting on b (running)", // a is completed, so only b is listed
+		d:  "waiting on b (running)",
 		r:  "queued: at most 3 agents run at once",
 		bl: "agent is waiting for human input",
 		f:  "validation failed",
@@ -91,14 +91,11 @@ func TestTaskReason(t *testing.T) {
 	}
 }
 
-// fixture builds a project directory with a database written through the
-// normal (writing) store, then gives back a Service on a read-only store, as
-// a consumer process would have.
 type fixture struct {
 	svc      *Service
 	w        *persistence.Store
 	cfg      *config.Config
-	artifact string // path of a real artifact file
+	artifact string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -172,7 +169,7 @@ func TestRunSnapshotView(t *testing.T) {
 		t.Fatalf("runs = %+v, %v", runs, err)
 	}
 
-	v, err := f.svc.RunSnapshot(ctx, "1111") // prefix
+	v, err := f.svc.RunSnapshot(ctx, "1111")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,8 +194,7 @@ func TestRunSnapshotView(t *testing.T) {
 	if a := agents["researcher"]; a.Visual != VisualCompleted || a.TaskKey != "research" || a.Elapsed != 30*time.Second {
 		t.Errorf("researcher = %s task=%s elapsed=%s", a.Visual, a.TaskKey, a.Elapsed)
 	}
-	// Stored state only: a running execution cannot be told apart from a
-	// starting one without asking the runtime.
+
 	if a := agents["developer"]; a.Visual != VisualStarting || a.Elapsed < 10*time.Second {
 		t.Errorf("developer = %s elapsed=%s", a.Visual, a.Elapsed)
 	}
@@ -211,7 +207,6 @@ func TestRunSnapshotView(t *testing.T) {
 		t.Errorf("observed = %v", observed)
 	}
 
-	// The cursor continues exactly where the snapshot stops.
 	if evs, _ := f.svc.EventsSince(ctx, v.Seq, "", 100); len(evs) != 0 {
 		t.Errorf("%d events after a fresh snapshot", len(evs))
 	}
@@ -265,7 +260,6 @@ func TestReadArtifactIsBoundedRedactedAndConfined(t *testing.T) {
 		t.Errorf("bound not applied: %+v", short)
 	}
 
-	// A database row pointing elsewhere must not become a way to read the host.
 	outside := filepath.Join(t.TempDir(), "secret.txt")
 	must(t, os.WriteFile(outside, []byte("private"), 0o600))
 	must(t, f.w.AddArtifact(ctx, &c.Artifact{ID: "art-out", RunID: "11111111-0000-0000-0000-000000000000", Type: c.ArtifactLog, Path: outside}))
@@ -294,8 +288,6 @@ func TestExecutionReportAndPrompt(t *testing.T) {
 		t.Errorf("report %+v, claims unverified %v", d.Report, d.ClaimsUnverified)
 	}
 
-	// An agent execution's own report (beside its prompt.md) wins over the
-	// task's latest one.
 	dir := filepath.Join(f.cfg.ArtifactDir(), "11111111-0000-0000-0000-000000000000", "impl", "exdevelo")
 	must(t, os.MkdirAll(dir, 0o755))
 	prompt := filepath.Join(dir, "prompt.md")
@@ -318,7 +310,7 @@ func TestExecutionReportAndPrompt(t *testing.T) {
 	if p, err := f.svc.ReadPrompt(ctx, "ex-command", 100); err != nil || p.Text != "go test ./..." {
 		t.Errorf("command line %+v, %v", p, err)
 	}
-	ex.ID, ex.Prompt = "ex-dev-3", filepath.Join(t.TempDir(), "prompt.md") // prompts are immutable: a new row
+	ex.ID, ex.Prompt = "ex-dev-3", filepath.Join(t.TempDir(), "prompt.md")
 	must(t, os.WriteFile(ex.Prompt, []byte("private"), 0o600))
 	must(t, f.w.SaveExecution(ctx, ex))
 	if _, err := f.svc.ReadPrompt(ctx, "ex-dev-3", 100); err == nil {

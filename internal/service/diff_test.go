@@ -16,10 +16,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// stackedRepo builds what the engine leaves behind for two stacked developer
-// tasks: "base" changed base.txt on its branch, "top" depends on it, started
-// from its branch and changed top.txt. Diff artifacts are written the way the
-// engine writes them (git diff from the diff base, plus a newline).
 func stackedRepo(t *testing.T) (*Service, *git.Manager, map[string]*c.Task) {
 	t.Helper()
 	ctx := context.Background()
@@ -116,7 +112,7 @@ func TestTaskDiffLiveMatchesStoredAndFollowsStacking(t *testing.T) {
 		if live.Source != DiffLive || len(live.Files) != 1 || live.Files[0] != key+".txt" {
 			t.Errorf("%s: source=%s files=%v", key, live.Source, live.Files)
 		}
-		// top's diff holds only its own change, not the dependency's.
+
 		if key == "top" && strings.Contains(live.Text, "base.txt") {
 			t.Errorf("top diff includes its dependency's change:\n%s", live.Text)
 		}
@@ -130,7 +126,6 @@ func TestTaskDiffLiveMatchesStoredAndFollowsStacking(t *testing.T) {
 		}
 	}
 
-	// After `caffe clean` removed the worktree, the stored diff is served.
 	live, _ := svc.TaskDiff(ctx, tasks["top"].ID)
 	must(t, gm.RemoveWorktree(ctx, tasks["top"].WorktreePath))
 	stored, err := svc.TaskDiff(ctx, tasks["top"].ID)

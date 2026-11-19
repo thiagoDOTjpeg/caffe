@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// ExecutionPlan is the structured output of the planner. It is untrusted input
-// until Validate passes.
 type ExecutionPlan struct {
 	Goal  string     `json:"goal"`
 	Tasks []PlanTask `json:"tasks"`
@@ -24,13 +22,10 @@ type PlanTask struct {
 	Complexity         string   `json:"complexity,omitempty"`
 }
 
-// Task ids end up in branch names and directory names, so they are restricted
-// to a slug rather than escaped.
 var taskKeyRE = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,39}$`)
 
 const maxPlanTasks = 50
 
-// Validate rejects structurally invalid plans. It reports every problem found.
 func (p *ExecutionPlan) Validate() error {
 	var errs []string
 	add := func(f string, a ...any) { errs = append(errs, fmt.Sprintf(f, a...)) }
@@ -98,8 +93,6 @@ func (p *ExecutionPlan) Validate() error {
 	return nil
 }
 
-// cycle returns the tasks left over after Kahn's algorithm, i.e. those on or
-// behind a cycle. Empty means the plan is a DAG.
 func (p *ExecutionPlan) cycle() []string {
 	indeg := map[string]int{}
 	dependents := map[string][]string{}

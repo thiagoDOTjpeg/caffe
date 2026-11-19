@@ -12,13 +12,10 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// inspectorMax bounds what the inspector reads of a prompt or output file.
 const inspectorMax = 256 << 10
 
 var inspectorTabs = []string{"Report", "Prompt", "Output", "Artifacts", "Events"}
 
-// inspector is the Execution Inspector (ux-specification §2.5), open over
-// the current screen until closed.
 type inspector struct {
 	id     string
 	d      *service.ExecutionDetail
@@ -37,8 +34,6 @@ type inspectedMsg struct {
 	err    error
 }
 
-// loadExecution reads everything the inspector shows. A missing prompt or
-// output is not an error: the tab says so.
 func loadExecution(src source, id string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
@@ -54,8 +49,6 @@ func loadExecution(src source, id string) tea.Cmd {
 	}
 }
 
-// outputArtifact is the execution's full output: the terminal log of an
-// agent (beside its prompt), or the log of a validation command.
 func outputArtifact(d *service.ExecutionDetail) *c.Artifact {
 	var found *c.Artifact
 	for _, a := range d.Artifacts {
@@ -63,13 +56,12 @@ func outputArtifact(d *service.ExecutionDetail) *c.Artifact {
 		case a.Type == c.ArtifactLog && d.AgentID != "" && dirOf(a.Path) == dirOf(d.Prompt):
 			return a
 		case a.Type == c.ArtifactTestResult && d.AgentID == "":
-			found = a // the latest
+			found = a
 		}
 	}
 	return found
 }
 
-// dirOf is the directory part of a slash or backslash path.
 func dirOf(p string) string {
 	if i := strings.LastIndexAny(p, `/\`); i >= 0 {
 		return p[:i]
@@ -77,7 +69,6 @@ func dirOf(p string) string {
 	return ""
 }
 
-// openInspector opens the inspector on an execution.
 func (m model) openInspector(id string) (model, tea.Cmd) {
 	if id == "" || m.src == nil {
 		return m, nil
@@ -86,13 +77,12 @@ func (m model) openInspector(id string) (model, tea.Cmd) {
 	return m, loadExecution(m.src, id)
 }
 
-// latestExecution is the id of a task's latest execution, or "".
 func latestExecution(v *service.RunView, taskID string) string {
 	id := ""
 	if v != nil {
 		for _, e := range v.Executions {
 			if e.TaskID == taskID {
-				id = e.ID // oldest first
+				id = e.ID
 			}
 		}
 	}
@@ -101,7 +91,7 @@ func latestExecution(v *service.RunView, taskID string) string {
 
 func (m model) updateInspector(msg inspectedMsg) (model, tea.Cmd) {
 	if m.inspect == nil || m.inspect.id != msg.id {
-		return m, nil // closed or moved on
+		return m, nil
 	}
 	in := *m.inspect
 	in.d, in.prompt, in.output, in.err = msg.d, msg.prompt, msg.output, msg.err
@@ -109,7 +99,6 @@ func (m model) updateInspector(msg inspectedMsg) (model, tea.Cmd) {
 	return m, nil
 }
 
-// refreshInspector reloads a running execution after a data change.
 func (m model) refreshInspector() tea.Cmd {
 	if m.inspect == nil || m.inspect.d == nil || m.inspect.d.CompletedAt != nil || m.src == nil {
 		return nil
@@ -180,8 +169,6 @@ func (m model) inspectorScreen(width, height int) string {
 	return strings.Join(append(head, body[scroll:end]...), "\n")
 }
 
-// executionHeader is the inspector's first lines, with the observed exit
-// code of a validation command labelled as such.
 func executionHeader(d *service.ExecutionDetail, m model) []string {
 	first := fmt.Sprintf(" Execution %s · %s · attempt %d · %s", short(d.ID), d.TaskKey, d.Attempt, d.Role)
 	if d.Agent != nil && d.Agent.Kind != "" {
@@ -210,8 +197,6 @@ func executionHeader(d *service.ExecutionDetail, m model) []string {
 	return out
 }
 
-// reportLines renders the execution's report. Test results in it are claims
-// unless the orchestrator ran the commands (contracts.LabelClaimed).
 func reportLines(d *service.ExecutionDetail, th ui.Theme) []string {
 	r := d.Report
 	if r == nil {
@@ -277,7 +262,6 @@ func contentLines(a *service.ArtifactContent, empty string) []string {
 	return lines
 }
 
-// outputTail is the stored output tail, when the full log is not available.
 func outputTail(d *service.ExecutionDetail) []string {
 	if d.Output == "" {
 		if d.CompletedAt == nil {
@@ -288,7 +272,6 @@ func outputTail(d *service.ExecutionDetail) []string {
 	return append([]string{" (stored tail)"}, strings.Split(strings.TrimRight(d.Output, "\n"), "\n")...)
 }
 
-// executionEvents are the feed events of the execution's task or agent.
 func (m model) executionEvents(d *service.ExecutionDetail) []string {
 	var out []string
 	for _, e := range m.live.feed {

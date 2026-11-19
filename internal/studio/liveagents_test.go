@@ -11,8 +11,6 @@ import (
 	"caffe/internal/service"
 )
 
-// roomModel: the Agent Room with a working reviewer (stored state says only
-// "starting": no runtime status yet).
 func roomModel(t *testing.T) (model, *fakeSource) {
 	m := overviewModel(t)
 	f := m.src.(*fakeSource)
@@ -30,7 +28,7 @@ func roomModel(t *testing.T) (model, *fakeSource) {
 func tick(t *testing.T, m model, n int) model {
 	t.Helper()
 	_, cmd := m.Update(liveTickMsg{n})
-	res, _ := m.Update(liveTickMsg{n}) // the state after the tick itself
+	res, _ := m.Update(liveTickMsg{n})
 	return drive(t, res.(model), cmd)
 }
 
@@ -59,11 +57,11 @@ func TestOutputPaneLiveLabelled(t *testing.T) {
 
 func TestOutputPausedWhenHidden(t *testing.T) {
 	m, f := roomModel(t)
-	m, _ = press(m, "o", "1") // pane on, but the Overview is shown
+	m, _ = press(m, "o", "1")
 	m = tick(t, m, 1)
 	m.inspect = &inspector{id: "x"}
 	m.screen = screenAgents
-	m = tick(t, m, 1) // the inspector covers the room
+	m = tick(t, m, 1)
 	if f.outCalls != 0 {
 		t.Errorf("output read while hidden: %d calls", f.outCalls)
 	}
@@ -98,16 +96,16 @@ func TestRuntimeStatusDecoratesCards(t *testing.T) {
 	if v := plain(m.View().Content); !strings.Contains(v, "◌ STARTING") {
 		t.Fatalf("stored state first:\n%s", v)
 	}
-	m = tick(t, m, 2) // even ticks read status
+	m = tick(t, m, 2)
 	if v := plain(m.View().Content); !strings.Contains(v, "● WORKING") {
 		t.Errorf("runtime status not applied:\n%s", v)
 	}
-	// Advisory only: a finished execution stays finished whatever the runtime says.
+
 	m.live.snap.Agents[0].Execution.Status = c.ExecCompleted
 	if got := m.withRuntime(m.live.snap.Agents)[0].Visual; got != service.VisualCompleted {
 		t.Errorf("runtime overrode the database: %s", got)
 	}
-	// Stale status is dropped.
+
 	m.live.snap.Agents[0].Execution.Status = c.ExecRunning
 	m.now = func() time.Time { return testNow.Add(time.Minute) }
 	if got := m.withRuntime(m.live.snap.Agents)[0].Visual; got != service.VisualStarting {
@@ -117,7 +115,7 @@ func TestRuntimeStatusDecoratesCards(t *testing.T) {
 
 func TestRuntimeStatusOnlyForAgentsOnScreen(t *testing.T) {
 	m, _ := roomModel(t)
-	m, _ = press(m, "4") // Runs: no agents on screen
+	m, _ = press(m, "4")
 	if got := m.agentsOnScreen(); got != nil {
 		t.Errorf("agents on the Runs screen: %d", len(got))
 	}

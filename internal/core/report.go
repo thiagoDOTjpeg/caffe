@@ -12,8 +12,6 @@ import (
 	"caffe/internal/persistence"
 )
 
-// BuildReport renders the consolidated Markdown report of a run from what is
-// persisted. It states what was observed and marks what is only claimed.
 func BuildReport(ctx context.Context, store *persistence.Store, runID string) (string, error) {
 	run, err := store.GetRun(ctx, runID)
 	if err != nil {
@@ -99,7 +97,7 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 				w("- Waiting on: %s", strings.Join(waiting, ", "))
 			}
 		}
-		// Latest report of the task.
+
 		var reportPath string
 		for _, a := range arts {
 			if a.TaskID == t.ID && a.Type == c.ArtifactReport {
@@ -177,9 +175,6 @@ func BuildReport(ctx context.Context, store *persistence.Store, runID string) (s
 	return b.String(), nil
 }
 
-// ClaimsUnverified: the test results in a task's report are only the agent's
-// claims. A validator task whose commands the orchestrator ran has observed
-// exit codes instead, so its report's tests are not shown as claims.
 func ClaimsUnverified(role c.Role, execs []*c.Execution, taskID string) bool {
 	if role != c.RoleValidator {
 		return true
@@ -192,7 +187,6 @@ func ClaimsUnverified(role c.Role, execs []*c.Execution, taskID string) bool {
 	return true
 }
 
-// LoadReport reads a stored report; nil when it is missing or unreadable.
 func LoadReport(path string) *c.Report {
 	if path == "" {
 		return nil
@@ -210,7 +204,6 @@ func LoadReport(path string) *c.Report {
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
-// ifNonEmpty returns prefix+s(+suffix) when s is not empty.
 func ifNonEmpty(prefix, s string, suffix ...string) string {
 	if s == "" {
 		return ""

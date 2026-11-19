@@ -6,32 +6,25 @@ import (
 	"strings"
 )
 
-// Scope is where an action's keys apply: ScopeGlobal everywhere (normal
-// mode), or one screen.
 type Scope string
 
 const ScopeGlobal Scope = "global"
 
-// Action describes something the user can do. It is registered once; keys,
-// the help overlay, the command palette and the leader menu are all derived
-// from the registry, so they cannot disagree (ux-specification.md §3.1).
 type Action struct {
-	ID     string // stable, e.g. "screen.overview"
-	Title  string // what the palette and help show
+	ID     string
+	Title  string
 	Scope  Scope
-	Keys   []string // as Bubble Tea names them: "q", "ctrl+b", "?"
-	Leader string   // "<group> <key>" under the leader key, e.g. "v b"; "" for none
+	Keys   []string
+	Leader string
 }
 
-// Registry holds every action. The zero value is empty and usable.
 type Registry struct {
 	actions []Action
-	groups  map[string]string // leader group key → title
+	groups  map[string]string
 }
 
 func (r *Registry) Add(a ...Action) { r.actions = append(r.actions, a...) }
 
-// Group names a leader group (shown in the leader menu).
 func (r *Registry) Group(key, title string) {
 	if r.groups == nil {
 		r.groups = map[string]string{}
@@ -41,13 +34,10 @@ func (r *Registry) Group(key, title string) {
 
 func (r *Registry) Actions() []Action { return append([]Action(nil), r.actions...) }
 
-// Validate rejects ambiguous registries: duplicate ids, a key bound twice in
-// one scope, a screen key that shadows a global one, two actions on the same
-// leader sequence, or a leader sequence in an unnamed group.
 func (r *Registry) Validate() error {
 	var errs []string
 	ids := map[string]bool{}
-	bound := map[Scope]map[string]string{} // scope → key → action id
+	bound := map[Scope]map[string]string{}
 	leaders := map[string]string{}
 	for _, a := range r.actions {
 		if a.ID == "" || a.Title == "" {
@@ -93,7 +83,6 @@ func (r *Registry) Validate() error {
 	return nil
 }
 
-// Match finds the action bound to key in scope, screen bindings first.
 func (r *Registry) Match(scope Scope, key string) (Action, bool) {
 	for _, want := range []Scope{scope, ScopeGlobal} {
 		for _, a := range r.actions {
@@ -105,7 +94,6 @@ func (r *Registry) Match(scope Scope, key string) (Action, bool) {
 	return Action{}, false
 }
 
-// MatchLeader finds the action of a leader sequence ("v b").
 func (r *Registry) MatchLeader(seq string) (Action, bool) {
 	for _, a := range r.actions {
 		if a.Leader == seq {
@@ -115,7 +103,6 @@ func (r *Registry) MatchLeader(seq string) (Action, bool) {
 	return Action{}, false
 }
 
-// Help lists the actions that apply in scope: the scope's own, then global.
 func (r *Registry) Help(scope Scope) []Action {
 	var own, global []Action
 	for _, a := range r.actions {
@@ -131,7 +118,6 @@ func (r *Registry) Help(scope Scope) []Action {
 	return append(own, global...)
 }
 
-// LeaderGroup lists the actions of one leader group, and the group title.
 func (r *Registry) LeaderGroup(group string) (string, []Action) {
 	var out []Action
 	for _, a := range r.actions {
@@ -142,7 +128,6 @@ func (r *Registry) LeaderGroup(group string) (string, []Action) {
 	return r.groups[group], out
 }
 
-// LeaderGroups returns the named groups, sorted by key.
 func (r *Registry) LeaderGroups() [][2]string {
 	var out [][2]string
 	for k, title := range r.groups {
@@ -152,9 +137,6 @@ func (r *Registry) LeaderGroups() [][2]string {
 	return out
 }
 
-// Filter is the palette search: actions whose title or id match query,
-// substring matches before subsequence ("fuzzy") ones, registry order within
-// each. An empty query lists everything.
 func (r *Registry) Filter(query string) []Action {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -197,7 +179,6 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-// KeyLabel is how an action's keys are shown: "ctrl+b", "1", "space v b".
 func KeyLabel(a Action) string {
 	keys := append([]string(nil), a.Keys...)
 	if a.Leader != "" {

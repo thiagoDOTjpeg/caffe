@@ -24,7 +24,7 @@ func TestCancelAsksNamesAgentsAndRefreshes(t *testing.T) {
 			t.Errorf("dialog lacks %q", want)
 		}
 	}
-	m, _ = press(m, "enter") // the default is Cancel: nothing happens
+	m, _ = press(m, "enter")
 	if len(f.calls) != 0 {
 		t.Fatalf("cancelled on the default button: %v", f.calls)
 	}
@@ -36,7 +36,7 @@ func TestCancelAsksNamesAgentsAndRefreshes(t *testing.T) {
 	if v := plain(m.View().Content); !strings.Contains(v, "(cancelling…)") {
 		t.Error("header does not show the action in flight")
 	}
-	// Pressing again while in flight is refused, without a second call.
+
 	again, _ := press(m, "c", "l", "enter")
 	if !strings.Contains(plain(again.View().Content), "already cancelling") {
 		t.Error("a second cancel was not refused")
@@ -58,7 +58,7 @@ func TestConflictRefreshesAndInforms(t *testing.T) {
 	f := m.src.(*fakeSource)
 	f.set(func(f *fakeSource) {
 		f.cmdErr = fmt.Errorf("run 0112dd6a changed meanwhile: %w", service.ErrConflict)
-		f.snaps["0112dd6a-1"].Run.Status = c.RunCompleted // someone else finished it
+		f.snaps["0112dd6a-1"].Run.Status = c.RunCompleted
 	})
 	m, _ = press(m, "c", "l")
 	m, cmd := press(m, "enter")
@@ -82,7 +82,7 @@ func TestNewRunFormStartsAndSelectsTheRun(t *testing.T) {
 	if m.overlay != overlayNewRun {
 		t.Fatal("n does not open the form")
 	}
-	m, _ = press(m, "enter") // empty request: nothing starts
+	m, _ = press(m, "enter")
 	if m.overlay != overlayNewRun || len(f.started) != 0 {
 		t.Fatal("started an empty request")
 	}
@@ -109,11 +109,11 @@ func TestNewRunFormStartsAndSelectsTheRun(t *testing.T) {
 
 func TestResumeOnlyInterruptedFromRunsScreen(t *testing.T) {
 	m, f := runsModel(t)
-	m, _ = press(m, "4", "R") // cursor on the executing run
+	m, _ = press(m, "4", "R")
 	if len(f.calls) != 0 || !strings.Contains(plain(m.View().Content), "only interrupted runs can be resumed") {
 		t.Fatalf("resumed a live run: %v", f.calls)
 	}
-	m, _ = press(m, "esc", "G") // interrupted run
+	m, _ = press(m, "esc", "G")
 	m, cmd := press(m, "R")
 	if a, _ := m.busy("9c41aa02-3"); a != "resuming" {
 		t.Fatalf("in flight: %q", a)

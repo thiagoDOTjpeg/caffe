@@ -1,5 +1,3 @@
-// Package planner turns a natural-language request into a validated task
-// graph. It never executes anything in the project.
 package planner
 
 import (
@@ -21,25 +19,20 @@ type PlanningInput struct {
 	RunID       string
 	UserRequest string
 	ProjectPath string
-	Context     string // project overview, see CollectContext
+	Context     string
 	MaxTasks    int
-	Dir         string // where the provider may keep its prompt, output and plan
+	Dir         string
 }
 
-// LLMProvider produces a plan. Implementations must return only plans that
-// pass ExecutionPlan.Validate.
 type LLMProvider interface {
 	GeneratePlan(ctx context.Context, input PlanningInput) (*contracts.ExecutionPlan, error)
 }
 
-// AgentProvider plans by asking an existing coding agent through the runtime,
-// so no direct LLM API integration is needed.
 type AgentProvider struct {
 	Agents *agents.Manager
 	Kind   string
 	Args   []string
-	// OnSession and OnBlocked let the orchestrator persist and surface the
-	// planning agent like any other.
+
 	OnSession func(runID string, s agents.Session)
 	OnBlocked func(runID string, blocked bool)
 }
@@ -73,9 +66,6 @@ func (p *AgentProvider) GeneratePlan(ctx context.Context, in PlanningInput) (*co
 	return ParsePlan(res.Report, in.MaxTasks)
 }
 
-// ParsePlan decodes and validates a plan produced by an LLM. The input is
-// untrusted: unknown fields are rejected so a malformed answer is not
-// half-understood.
 func ParsePlan(data []byte, maxTasks int) (*contracts.ExecutionPlan, error) {
 	raw, err := contracts.ExtractJSON(data)
 	if err != nil {
@@ -83,8 +73,7 @@ func ParsePlan(data []byte, maxTasks int) (*contracts.ExecutionPlan, error) {
 	}
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
-	// The shared report instructions ask every agent for status and summary,
-	// so the planner adds them to its plan; accept them, nothing else.
+
 	var report struct {
 		contracts.ExecutionPlan
 		Status  string `json:"status"`
@@ -113,23 +102,19 @@ const (
 	maxReadmeLines    = 40
 )
 
-// CollectContext gives the planner a cheap overview of the project: its
-// top two directory levels and the start of its README. The planning agent can
-// read more on its own.
 func CollectContext(projectPath string) (string, error) {
 	var b strings.Builder
 	b.WriteString("Files (two levels):\n")
 	n := 0
 	err := filepath.WalkDir(projectPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil // unreadable entries are simply not part of the overview
+			return nil
 		}
 		rel, _ := filepath.Rel(projectPath, path)
 		if rel == "." {
 			return nil
 		}
-		// Slash paths on every platform, as Git prints them: the overview is
-		// prompt text, and agents and tests should see the same on Windows.
+
 		rel = filepath.ToSlash(rel)
 		name := d.Name()
 		if d.IsDir() && (strings.HasPrefix(name, ".") || skipDirs[name]) {

@@ -13,7 +13,6 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// workspaceRoot is the checkout a workspace id names.
 func (s *Service) workspaceRoot(ctx context.Context, id string) (string, error) {
 	if id == "" || id == MainWorkspace {
 		return s.cfg.Project.Path, nil
@@ -28,9 +27,6 @@ func (s *Service) workspaceRoot(ctx context.Context, id string) (string, error) 
 	return t.WorktreePath, nil
 }
 
-// ResolvePath turns p (relative to the workspace, or absolute) into an
-// absolute path that, after following symlinks, is inside the workspace
-// (NFR-S2). Paths come from reports and output, so they are untrusted.
 func (s *Service) ResolvePath(ctx context.Context, workspaceID, p string) (string, error) {
 	root, err := s.workspaceRoot(ctx, workspaceID)
 	if err != nil {
@@ -46,18 +42,15 @@ func (s *Service) ResolvePath(ctx context.Context, workspaceID, p string) (strin
 	return p, nil
 }
 
-// FileContent is a file of a workspace. Source code is shown as is (like a
-// diff), not redacted.
 type FileContent struct {
-	Path      string // resolved, absolute
+	Path      string
 	Text      string
 	Size      int64
 	Truncated bool
-	Binary    bool // a NUL byte in the first 8 KiB; Text is empty
+	Binary    bool
 	ModTime   time.Time
 }
 
-// ReadFile reads up to max bytes of a file inside a workspace.
 func (s *Service) ReadFile(ctx context.Context, workspaceID, p string, max int64) (*FileContent, error) {
 	path, err := s.ResolvePath(ctx, workspaceID, p)
 	if err != nil {
@@ -88,29 +81,23 @@ func (s *Service) ReadFile(ctx context.Context, workspaceID, p string, max int64
 	return fc, nil
 }
 
-// Change marks of FileList.Marks.
 const (
 	MarkAdded    = "A"
 	MarkModified = "M"
 	MarkDeleted  = "D"
-	MarkManual   = "●" // uncommitted: a manual edit, or an agent still writing
+	MarkManual   = "●"
 )
 
-// FileList is the content of a workspace for the explorer.
 type FileList struct {
-	Paths []string // slash-separated, relative to the workspace; deleted files included
-	// Marks: committed changes of a developer task relative to its diff base,
-	// overridden by MarkManual for uncommitted files.
-	Marks map[string]string
-	Base  string // the diff base the marks are relative to; "" for main
+	Paths []string
 
-	// git status of the checkout (WS-06).
+	Marks map[string]string
+	Base  string
+
 	Branch                                  string
 	Staged, Unstaged, Untracked, Conflicted int
 }
 
-// Files lists a workspace (git ls-files: tracked and untracked, not
-// ignored) with its change marks.
 func (s *Service) Files(ctx context.Context, workspaceID string) (*FileList, error) {
 	if s.git == nil {
 		return nil, fmt.Errorf("listing files needs Git")
@@ -169,7 +156,7 @@ func (s *Service) Files(ctx context.Context, workspaceID string) (*FileList, err
 	}
 	for p := range fl.Marks {
 		if !listed[p] {
-			fl.Paths = append(fl.Paths, p) // deleted: still shown, with its mark
+			fl.Paths = append(fl.Paths, p)
 		}
 	}
 	return fl, nil

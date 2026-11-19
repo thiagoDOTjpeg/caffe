@@ -1,5 +1,3 @@
-// Package app wires the modules together and exposes them as the `caffe` CLI.
-// It contains no orchestration logic.
 package app
 
 import (
@@ -23,23 +21,20 @@ import (
 	"caffe/internal/service"
 )
 
-// App is an opened Caffè project.
 type App struct {
 	Cfg *config.Config
-	// Svc answers every read: CLI commands never touch the store or the
-	// runtime themselves. It reads through its own read-only connection.
+
 	Svc *service.Service
-	// Orch performs run, resume, cancel and clean.
+
 	Orch *core.Orchestrator
-	// Interrupted lists runs found without a live owner at startup.
+
 	Interrupted []string
 
-	store   *persistence.Store // the engine's writing connection
+	store   *persistence.Store
 	roStore *persistence.Store
 	logFile *os.File
 }
 
-// FindRoot walks up from dir to the nearest directory holding .caffe/config.yaml.
 func FindRoot(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
@@ -72,8 +67,6 @@ func newLogger(root string, verbose bool) (zerolog.Logger, *os.File, error) {
 	return zerolog.New(w).Level(level).With().Timestamp().Logger(), f, nil
 }
 
-// Open loads and validates the project configuration, opens the database
-// (running migrations) and detects runs whose owner died.
 func Open(ctx context.Context, dir string, verbose bool) (*App, error) {
 	root, err := FindRoot(dir)
 	if err != nil {
@@ -102,7 +95,6 @@ func Open(ctx context.Context, dir string, verbose bool) (*App, error) {
 	spec := cfg.Agent(c.RolePlanner)
 	orch.Planner = &planner.AgentProvider{Agents: am, Kind: spec.Kind, Args: spec.Args, OnSession: orch.PlannerSession, OnBlocked: orch.PlannerBlocked}
 
-	// Opened after persistence.Open, which created and migrated the file.
 	ro, err := persistence.OpenReadOnly(ctx, cfg.Persistence.Path)
 	if err != nil {
 		return nil, errors.Join(err, store.Close(), logFile.Close())
@@ -118,8 +110,6 @@ func (a *App) Close() error {
 	return errors.Join(a.roStore.Close(), a.store.Close(), a.logFile.Close())
 }
 
-// Init creates the project configuration and database in dir, which must be
-// the root of a Git repository. Existing configuration is never overwritten.
 func Init(ctx context.Context, dir string) (created bool, root string, err error) {
 	if root, err = filepath.Abs(dir); err != nil {
 		return false, "", err
@@ -133,7 +123,7 @@ func Init(ctx context.Context, dir string) (created bool, root string, err error
 		if err := config.Write(root, cfg); err != nil {
 			return false, root, err
 		}
-		// Keep orchestrator files out of `git status` without editing .gitignore.
+
 		if err := gm.ExcludeLocally(ctx, ".caffe/", ".caffe-report-*.json"); err != nil {
 			return false, root, err
 		}
@@ -141,7 +131,7 @@ func Init(ctx context.Context, dir string) (created bool, root string, err error
 	} else if statErr != nil {
 		return false, root, statErr
 	}
-	// Opening validates the configuration and creates/migrates the database.
+
 	a, err := Open(ctx, root, false)
 	if err != nil {
 		return created, root, err

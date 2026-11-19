@@ -82,7 +82,7 @@ func TestPaletteRunsTheSelectedAction(t *testing.T) {
 	if m.overlay != overlayPalette || m.paletteQuery != "agen" {
 		t.Fatalf("palette state: overlay=%d query=%q", m.overlay, m.paletteQuery)
 	}
-	// q is text inside the palette, not "close".
+
 	m, _ = press(m, "backspace", "backspace", "backspace", "backspace", "q", "u")
 	if m.overlay != overlayPalette || m.paletteQuery != "qu" {
 		t.Fatalf("typing q in the palette: overlay=%d query=%q", m.overlay, m.paletteQuery)
@@ -91,7 +91,7 @@ func TestPaletteRunsTheSelectedAction(t *testing.T) {
 	if m.overlay != overlayNone || m.screen != screenAgents {
 		t.Errorf("enter: overlay=%d screen=%s", m.overlay, screenNames[m.screen])
 	}
-	// esc closes without running anything.
+
 	m, _ = press(m, ":", "r", "u", "n", "s", "esc")
 	if m.overlay != overlayNone || m.screen != screenAgents {
 		t.Errorf("esc: overlay=%d screen=%s", m.overlay, screenNames[m.screen])
@@ -111,7 +111,7 @@ func TestLeaderSequences(t *testing.T) {
 	if m.layout().Sidebar.Visible() {
 		t.Error("space v b did not hide the sidebar")
 	}
-	// An unknown group closes the menu instead of trapping keys.
+
 	m, _ = press(m, "space", "z")
 	if m.overlay != overlayNone {
 		t.Error("unknown leader group kept the menu open")

@@ -14,8 +14,6 @@ import (
 	"caffe/internal/proctree/ptest"
 )
 
-// The test binary doubles as the commands the sessions run, so the tests need
-// no shell and run on Windows too.
 func TestMain(m *testing.M) {
 	if os.Getenv("CAFFE_SESSION_HELPER") == "1" {
 		os.Exit(helper(os.Args[1:]))
@@ -25,9 +23,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// lines N CODE     print line-1 … line-N, exit CODE
-// spawn FILE       start a sleeping child, write its pid to FILE, sleep
-// sleep            sleep for a minute
 func helper(args []string) int {
 	switch args[0] {
 	case "lines":
@@ -98,7 +93,7 @@ func TestBufferIsBounded(t *testing.T) {
 	if len(lines) != BufferLines {
 		t.Fatalf("%d lines buffered", len(lines))
 	}
-	// The oldest lines are dropped (10 501 lines with the stderr one); order is kept.
+
 	if lines[0] != "line-502" || lines[len(lines)-2] != fmt.Sprintf("line-%d", BufferLines+500) {
 		t.Fatalf("first %q, second to last %q", lines[0], lines[len(lines)-2])
 	}
@@ -116,8 +111,6 @@ func TestStartFailureIsASession(t *testing.T) {
 	}
 }
 
-// Stopping a session, or all of them, leaves no process behind: not the
-// command and not what it started.
 func TestStopLeavesNoProcessBehind(t *testing.T) {
 	dir := t.TempDir()
 	m := NewManager(t.TempDir())

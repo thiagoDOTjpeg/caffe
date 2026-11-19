@@ -15,18 +15,12 @@ test:
 race:
 	go test -race ./...
 
-# Everything that must pass before a change is done.
 check: vet race
 	@test -z "$$(gofmt -l .)" || (echo "gofmt needed:"; gofmt -l .; exit 1)
 
-# Real agents through a real Herdr. Costs model tokens; not part of `check`.
-# Needs a running Herdr session, see docs/development.md.
 e2e:
 	CAFFE_E2E=1 go test -count=1 -v -timeout 20m ./tests/integration/
 
-# Windows test kit, built on Linux, so Windows needs no Go: dist/windows (and
-# dist/caffe-windows-kit.zip), plus the Linux build of the TUI spike in
-# dist/linux. Instructions: scripts/windows/LEIA-ME.md.
 KIT := dist/windows
 windows-kit:
 	rm -rf dist/windows dist/linux dist/caffe-windows-kit.zip

@@ -52,7 +52,7 @@ func TestRunsCursorKeptByIDAcrossRefresh(t *testing.T) {
 	if m.runs.cursor != "531fd2a9-2" {
 		t.Fatalf("cursor %q", m.runs.cursor)
 	}
-	f.set(func(f *fakeSource) { // a new run appears at the top
+	f.set(func(f *fakeSource) {
 		f.runs = append([]service.RunSummary{{ID: "ffff0000-new", Status: c.RunPending}}, f.runs...)
 	})
 	m = drive(t, m, func() tea.Msg { return refreshMsg{} })
@@ -75,7 +75,7 @@ func TestRunsFilterAndActiveOnly(t *testing.T) {
 	if got := m.runs.visibleRuns(m.live.runs); len(got) != 1 || got[0].ID != "531fd2a9-2" {
 		t.Fatalf("filter slow: %v", got)
 	}
-	// While filtering, screen keys are text: "4" is not a screen switch.
+
 	if m, _ = press(m, "j"); m.runs.filter != "slowj" || m.screen != screenRuns {
 		t.Errorf("filter %q screen %d", m.runs.filter, m.screen)
 	}

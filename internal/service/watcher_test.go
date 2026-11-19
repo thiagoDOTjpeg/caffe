@@ -44,9 +44,8 @@ func TestWatcherReportsCommitsFromOtherConnections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectQuiet(t, w, 8*tick) // nothing happened: nothing reported
+	expectQuiet(t, w, 8*tick)
 
-	// Reads by the consumer itself are not changes.
 	if _, err := f.svc.RunSnapshot(ctx, "1111"); err != nil {
 		t.Fatal(err)
 	}
@@ -57,9 +56,8 @@ func TestWatcherReportsCommitsFromOtherConnections(t *testing.T) {
 	if ch := expectChange(t, w, 10*tick); ch.Seq != e.Seq {
 		t.Errorf("change Seq = %d, want %d", ch.Seq, e.Seq)
 	}
-	expectQuiet(t, w, 5*tick) // one commit, one change
+	expectQuiet(t, w, 5*tick)
 
-	// A slow consumer gets one coalesced change carrying the newest Seq.
 	var last *c.Event
 	for i := 0; i < 5; i++ {
 		last = &c.Event{RunID: e.RunID, Type: c.EventWarning}
@@ -91,10 +89,10 @@ func TestWatcherPauseAndResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	w.Pause()
-	time.Sleep(2 * tick) // let an in-flight check finish
+	time.Sleep(2 * tick)
 	must(t, f.w.AddEvent(ctx, &c.Event{RunID: "11111111-0000-0000-0000-000000000000", Type: c.EventWarning}))
 	expectQuiet(t, w, 8*tick)
-	// Resuming checks at once and reports what happened while paused.
+
 	w.Resume()
 	expectChange(t, w, 3*tick)
 	expectQuiet(t, w, 5*tick)

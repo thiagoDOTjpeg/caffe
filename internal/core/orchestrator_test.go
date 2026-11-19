@@ -22,8 +22,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// env is a complete orchestrator on a real Git repository and a real SQLite
-// database, with only the agent runtime faked.
 type env struct {
 	t     *testing.T
 	o     *Orchestrator
@@ -33,8 +31,6 @@ type env struct {
 	sc    *script
 }
 
-// script plays the agents: it reads the prompt file an agent was pointed at
-// and writes whatever report the test's handler returns.
 type script struct {
 	mu      sync.Mutex
 	prompts map[c.Role][]string
@@ -148,7 +144,6 @@ const (
 	rejectReport  = `{"status":"completed","summary":"not yet","approved":false,"findings":[{"severity":"high","file":"feature.txt","line":1,"description":"content-must-say-fixed"}]}`
 )
 
-// goodAgents is a well-behaved cast: the developer creates feature.txt.
 func goodAgents(role c.Role, cwd, prompt string) string {
 	switch role {
 	case c.RolePlanner:
@@ -185,8 +180,6 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 	}
 	impl := tasks["impl"]
 
-	// Isolation: the change lives on its own branch in its own worktree, and
-	// the main checkout is untouched and clean. Nothing was merged.
 	if !strings.HasPrefix(impl.BranchName, "caffe/") || !strings.HasSuffix(impl.BranchName, "/impl") {
 		t.Errorf("branch = %q", impl.BranchName)
 	}
@@ -206,11 +199,10 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 		t.Error("main branch moved: something was merged")
 	}
 
-	// Two different agent kinds were orchestrated, as configured.
 	if e.sc.kinds[c.RoleResearcher] != "codex" || e.sc.kinds[c.RoleDeveloper] != "claude" {
 		t.Errorf("kinds = %v", e.sc.kinds)
 	}
-	// Results flow downstream: the developer saw the research, the reviewer the diff.
+
 	if dev := e.sc.seen(c.RoleDeveloper); len(dev) != 1 || !strings.Contains(dev[0], "research-summary-xyz") {
 		t.Errorf("developer prompt lacks upstream research: %d prompts", len(dev))
 	}
@@ -218,7 +210,6 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 		t.Error("reviewer prompt lacks the diff path")
 	}
 
-	// Validation was executed by the orchestrator; the real exit code is stored.
 	execs, _ := e.store.ListExecutions(context.Background(), run.ID)
 	var validated bool
 	for _, ex := range execs {
@@ -250,13 +241,11 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 		t.Errorf("agents left running: %v", live)
 	}
 
-	// Every agent and execution is evented, in lifecycle order, and every
-	// artifact has its event. Seq orders them across the whole log.
 	evs, err := e.store.EventsSince(context.Background(), 0, run.ID, 10_000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := map[string]int64{} // "type|id" → seq of first occurrence
+	first := map[string]int64{}
 	artifactEvents := 0
 	for _, ev := range evs {
 		id := ev.AgentID
@@ -271,7 +260,7 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 		}
 	}
 	agentsList, _ := e.store.ListAgents(context.Background(), run.ID)
-	if len(agentsList) != 4 { // planner, researcher, developer, reviewer
+	if len(agentsList) != 4 {
 		t.Errorf("agents = %d, want 4", len(agentsList))
 	}
 	for _, a := range agentsList {
@@ -283,7 +272,7 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 	}
 	for _, ex := range execs {
 		if ex.AgentID == "" {
-			continue // validation commands: no agent
+			continue
 		}
 		st, ok1 := first[c.EventExecutionStarted+"|"+ex.ID]
 		ag, ok2 := first[c.EventAgentStarted+"|"+ex.AgentID]
@@ -296,7 +285,7 @@ func TestFullRunPlansDelegatesReviewsAndValidates(t *testing.T) {
 		t.Errorf("artifact.added events = %d, artifacts = %d", artifactEvents, len(arts))
 	}
 
-	if n := len(e.rt.Prompts); n != 4 { // planner, researcher, developer, reviewer
+	if n := len(e.rt.Prompts); n != 4 {
 		t.Errorf("prompts sent = %d, want 4", n)
 	}
 }
@@ -312,7 +301,7 @@ func TestRunWithExplicitID(t *testing.T) {
 	if err != nil || run.ID != id || run.Status != c.RunCompleted {
 		t.Fatalf("run = %+v, %v", run, err)
 	}
-	// Reusing the id fails before anything is created or started.
+
 	prompts := len(e.rt.Prompts)
 	if _, err := e.o.RunWithID(ctx, id, "g", plan); err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("duplicate id: %v", err)
@@ -337,13 +326,13 @@ func TestReviewerRejectionTriggersCorrection(t *testing.T) {
 	e.sc.handle = func(role c.Role, cwd, prompt string) string {
 		switch role {
 		case c.RoleDeveloper:
-			if strings.Contains(prompt, "content-must-say-fixed") { // the correction
+			if strings.Contains(prompt, "content-must-say-fixed") {
 				os.WriteFile(filepath.Join(cwd, "feature.txt"), []byte("fixed\n"), 0o644)
 				return okReport
 			}
 		case c.RoleReviewer:
 			if reviews++; reviews == 1 {
-				// A reviewer that breaks its read-only rule: must not end up on the branch.
+
 				os.WriteFile(filepath.Join(cwd, "reviewer-was-here.txt"), []byte("x"), 0o644)
 				return rejectReport
 			}
@@ -402,10 +391,10 @@ func TestReviewNeverApprovedFailsRunAndKeepsWorktree(t *testing.T) {
 	if tasks["review"].Attempts != 1 {
 		t.Errorf("a rejected review must not be retried: attempts=%d", tasks["review"].Attempts)
 	}
-	if n := len(e.sc.seen(c.RoleReviewer)); n != 2 { // initial + after the single allowed correction
+	if n := len(e.sc.seen(c.RoleReviewer)); n != 2 {
 		t.Errorf("reviews = %d, want 2", n)
 	}
-	// Failed work is preserved for debugging, even when cleaning.
+
 	actions, err := e.o.Clean(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -449,7 +438,7 @@ func TestConcurrentDevelopersAreIsolatedAndBounded(t *testing.T) {
 		plan.Tasks = append(plan.Tasks, c.PlanTask{ID: k, Title: k, Description: "write shared.txt", Role: c.RoleDeveloper, AcceptanceCriteria: []string{"x"}})
 	}
 	e.sc.handle = func(role c.Role, cwd, prompt string) string {
-		// Every developer writes the SAME path; with shared directories they would clash.
+
 		os.WriteFile(filepath.Join(cwd, "shared.txt"), []byte(filepath.Base(cwd)+"\n"), 0o644)
 		time.Sleep(40 * time.Millisecond)
 		if b, _ := os.ReadFile(filepath.Join(cwd, "shared.txt")); strings.TrimSpace(string(b)) != filepath.Base(cwd) {
@@ -496,7 +485,7 @@ func TestDependentDeveloperBuildsOnDependencyBranch(t *testing.T) {
 	if err != nil || run.Status != c.RunCompleted {
 		t.Fatalf("run = %s (%s), err = %v", run.Status, run.Error, err)
 	}
-	// top's diff contains only its own change, not base's.
+
 	diff, _ := os.ReadFile(filepath.Join(e.o.RunDir(run.ID), "top", "changes.diff"))
 	if !strings.Contains(string(diff), "top.txt") || strings.Contains(string(diff), "base.txt") {
 		t.Errorf("top diff is not relative to its dependency:\n%s", diff)
@@ -506,7 +495,7 @@ func TestDependentDeveloperBuildsOnDependencyBranch(t *testing.T) {
 func TestDeveloperClaimWithoutChangesIsNotSuccess(t *testing.T) {
 	e := newEnv(t, func(cfg *config.Config) { cfg.Orchestration.MaxTaskRetries = 1 })
 	plan := &c.ExecutionPlan{Goal: "g", Tasks: []c.PlanTask{{ID: "impl", Title: "t", Description: "d", Role: c.RoleDeveloper, AcceptanceCriteria: []string{"x"}}}}
-	e.sc.handle = func(c.Role, string, string) string { return okReport } // says done, changes nothing
+	e.sc.handle = func(c.Role, string, string) string { return okReport }
 	run, err := e.o.Run(context.Background(), "g", plan)
 	if err != nil {
 		t.Fatal(err)
@@ -515,7 +504,7 @@ func TestDeveloperClaimWithoutChangesIsNotSuccess(t *testing.T) {
 	if run.Status != c.RunFailed || impl.Status != c.TaskFailed || impl.Attempts != 2 || !strings.Contains(impl.Error, "no changes") {
 		t.Fatalf("run=%s impl=%s attempts=%d err=%q", run.Status, impl.Status, impl.Attempts, impl.Error)
 	}
-	// The retry was told a previous attempt had happened in this worktree.
+
 	if p := e.sc.seen(c.RoleDeveloper); len(p) != 2 || strings.Contains(p[0], "previous attempt") || !strings.Contains(p[1], "previous attempt") {
 		t.Errorf("retry prompt handling wrong (%d prompts)", len(p))
 	}
@@ -542,7 +531,6 @@ func TestInvalidReportAndInvalidPlanAreRejected(t *testing.T) {
 		t.Errorf("an invalid plan created %d tasks", len(tasks))
 	}
 
-	// A report that is not a valid report fails the task.
 	e2 := newEnv(t, func(cfg *config.Config) { cfg.Orchestration.MaxTaskRetries = 0 })
 	e2.sc.handle = func(c.Role, string, string) string { return `{"status":"totally done","summary":"x"}` }
 	plan := &c.ExecutionPlan{Goal: "g", Tasks: []c.PlanTask{{ID: "r", Title: "t", Description: "d", Role: c.RoleResearcher, AcceptanceCriteria: []string{"x"}}}}
@@ -571,7 +559,7 @@ func TestCancelFromAnotherProcessStopsAgents(t *testing.T) {
 	started := make(chan struct{}, 1)
 	e.sc.handle = func(role c.Role, cwd, prompt string) string {
 		started <- struct{}{}
-		<-release // an agent that never finishes on its own
+		<-release
 		return ""
 	}
 	defer close(release)
@@ -590,7 +578,7 @@ func TestCancelFromAnotherProcessStopsAgents(t *testing.T) {
 	}()
 	<-started
 	runs, _ := e.store.ListRuns(context.Background(), true)
-	// `caffe cancel` is another process: it only talks to the database.
+
 	other := &Orchestrator{Cfg: e.o.Cfg, Store: e.store, RT: e.rt, Git: e.o.Git, Log: zerolog.Nop()}
 	if _, err := other.Cancel(context.Background(), runs[0].ID[:8]); err != nil {
 		t.Fatal(err)
@@ -615,8 +603,6 @@ func TestCancelFromAnotherProcessStopsAgents(t *testing.T) {
 	}
 }
 
-// crash builds the state a killed orchestrator leaves behind: research is
-// done, impl was running with a live agent in its worktree.
 func (e *env) crash(agentAlive bool) (run *c.Run, implExec *c.Execution, wt string) {
 	t := e.t
 	t.Helper()
@@ -690,7 +676,6 @@ func TestRestartDoesNotLoseOrDuplicateRunningWork(t *testing.T) {
 	run, implExec, wt := e.crash(true)
 	ctx := context.Background()
 
-	// Startup: the dead owner is detected, nothing is restarted by itself.
 	ids, err := e.o.Recover(ctx)
 	if err != nil || len(ids) != 1 {
 		t.Fatalf("recover = %v, %v", ids, err)
@@ -706,7 +691,6 @@ func TestRestartDoesNotLoseOrDuplicateRunningWork(t *testing.T) {
 		t.Fatal("empty preset plan accepted")
 	}
 
-	// The surviving agent finishes a moment after we resume.
 	agentName := agents.AgentName(implExec.ID, c.RoleDeveloper)
 	time.AfterFunc(60*time.Millisecond, func() {
 		os.WriteFile(filepath.Join(wt, "feature.txt"), []byte("from-surviving-agent\n"), 0o644)
@@ -717,14 +701,14 @@ func TestRestartDoesNotLoseOrDuplicateRunningWork(t *testing.T) {
 	if err != nil || resumed.Status != c.RunCompleted {
 		t.Fatalf("resume: run=%s (%s) err=%v", resumed.Status, resumed.Error, err)
 	}
-	// Not duplicated: no second developer was started, research was not redone.
+
 	if n := len(e.sc.seen(c.RoleDeveloper)); n != 0 {
 		t.Errorf("developer was prompted again %d times", n)
 	}
 	if n := len(e.sc.seen(c.RoleResearcher)); n != 0 {
 		t.Errorf("completed research was re-run %d times", n)
 	}
-	// Not lost: the surviving agent's work is what got reviewed and validated.
+
 	tasks := e.tasks(run.ID)
 	if got := gitRun(t, e.repo, "show", tasks["impl"].BranchName+":feature.txt"); got != "from-surviving-agent" {
 		t.Errorf("branch content = %q", got)
@@ -751,7 +735,7 @@ func TestResumeWithVanishedAgentRecordsUnknownAndContinuesInWorktree(t *testing.
 	e := newEnv(t, nil)
 	run, implExec, wt := e.crash(false)
 	ctx := context.Background()
-	// The dead agent left partial, uncommitted work behind.
+
 	os.WriteFile(filepath.Join(wt, "partial.txt"), []byte("half done\n"), 0o644)
 	e.sc.handle = func(role c.Role, cwd, prompt string) string {
 		if role == c.RoleDeveloper {
@@ -823,7 +807,7 @@ func TestCleanRemovesOnlyCompletedWorktreesAndKeepsBranches(t *testing.T) {
 		t.Fatal(run.Status, err)
 	}
 	impl := e.tasks(run.ID)["impl"]
-	// A leased worktree is kept, with the reason.
+
 	human := &persistence.Lease{Path: impl.WorktreePath, HolderKind: persistence.LeaseHuman, HolderID: "studio-1"}
 	if err := e.store.AcquireLease(context.Background(), human); err != nil {
 		t.Fatal(err)

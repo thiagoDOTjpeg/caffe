@@ -40,7 +40,6 @@ func TestDefaultRoundTrips(t *testing.T) {
 	}
 }
 
-// The example from the specification must load as-is.
 func TestSpecExampleLoads(t *testing.T) {
 	root := write(t, `
 project:
@@ -108,7 +107,7 @@ func TestInvalidSettingsAreNeverIgnored(t *testing.T) {
 			t.Errorf("%s: want error mentioning %q, got %v", name, tc.want, err)
 		}
 	}
-	// Several problems are reported together, not one per run.
+
 	_, err := Load(write(t, "orchestration:\n  max_concurrent_agents: 0\n  max_task_retries: 99\n"))
 	if err == nil || !strings.Contains(err.Error(), "max_concurrent_agents") || !strings.Contains(err.Error(), "max_task_retries") {
 		t.Errorf("want both problems reported, got %v", err)
@@ -122,7 +121,7 @@ func TestMissingProject(t *testing.T) {
 }
 
 func TestStudioSection(t *testing.T) {
-	// Absent: defaults. The spec example has no studio section at all.
+
 	cfg, err := Load(write(t, "project:\n  name: x\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +129,7 @@ func TestStudioSection(t *testing.T) {
 	if cfg.Studio.Theme != "caffe" || cfg.Studio.Mouse || cfg.Studio.ReduceMotion || !cfg.Studio.Avatars || cfg.Studio.Editor != "" {
 		t.Errorf("defaults = %+v", cfg.Studio)
 	}
-	// Partial: given keys override, the others keep their defaults.
+
 	cfg, err = Load(write(t, "studio:\n  theme: high-contrast\n  mouse: true\n  editor: nvim -p\n"))
 	if err != nil {
 		t.Fatal(err)

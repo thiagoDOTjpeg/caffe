@@ -1,4 +1,3 @@
-// Package contracts holds the domain entities shared by every module.
 package contracts
 
 import "time"
@@ -17,8 +16,6 @@ const (
 	RunInterrupted RunStatus = "interrupted"
 )
 
-// Terminal reports whether no orchestrator process should own the run any more.
-// Interrupted is not terminal: it can be resumed.
 func (s RunStatus) Terminal() bool {
 	return s == RunCompleted || s == RunFailed || s == RunCancelled
 }
@@ -44,11 +41,10 @@ const (
 	RoleDeveloper  Role = "developer"
 	RoleReviewer   Role = "reviewer"
 	RoleValidator  Role = "validator"
-	// RolePlanner is not a task role; it only selects the agent that plans.
+
 	RolePlanner Role = "planner"
 )
 
-// TaskRoles are the roles a plan may assign to a task.
 var TaskRoles = []Role{RoleResearcher, RoleDeveloper, RoleReviewer, RoleValidator}
 
 func (r Role) ValidForTask() bool {
@@ -60,7 +56,6 @@ func (r Role) ValidForTask() bool {
 	return false
 }
 
-// ReadOnly roles must not modify project files.
 func (r Role) ReadOnly() bool { return r == RoleResearcher || r == RoleReviewer || r == RolePlanner }
 
 type ExecutionStatus string
@@ -70,8 +65,8 @@ const (
 	ExecCompleted   ExecutionStatus = "completed"
 	ExecFailed      ExecutionStatus = "failed"
 	ExecCancelled   ExecutionStatus = "cancelled"
-	ExecInterrupted ExecutionStatus = "interrupted" // orchestrator died; outcome not yet reconciled
-	ExecUnknown     ExecutionStatus = "unknown"     // reconciled: agent gone, no report — outcome unknowable
+	ExecInterrupted ExecutionStatus = "interrupted"
+	ExecUnknown     ExecutionStatus = "unknown"
 )
 
 type ArtifactType string
@@ -92,7 +87,7 @@ type Run struct {
 	CreatedAt   time.Time
 	StartedAt   *time.Time
 	CompletedAt *time.Time
-	HeartbeatAt *time.Time // liveness of the owning orchestrator process
+	HeartbeatAt *time.Time
 	Error       string
 	Metadata    map[string]string
 }
@@ -100,12 +95,12 @@ type Run struct {
 type Task struct {
 	ID                 string
 	RunID              string
-	Key                string // plan-level id, unique within the run; safe for branch and path names
+	Key                string
 	Title              string
 	Description        string
 	Role               Role
 	Status             TaskStatus
-	Dependencies       []string // task IDs
+	Dependencies       []string
 	AcceptanceCriteria []string
 	AssignedAgentID    string
 	WorktreePath       string
@@ -121,10 +116,10 @@ type Task struct {
 type Agent struct {
 	ID               string
 	RunID            string
-	Name             string // runtime target name, unique among live agents
+	Name             string
 	Kind             string
 	Role             Role
-	Status           string // last runtime status observed
+	Status           string
 	WorkspaceID      string
 	PaneID           string
 	RuntimeSessionID string
@@ -136,14 +131,14 @@ type Agent struct {
 type Execution struct {
 	ID          string
 	TaskID      string
-	AgentID     string // empty when the orchestrator ran a command itself
+	AgentID     string
 	Attempt     int
 	Status      ExecutionStatus
-	Prompt      string // prompt file path, or the command line for validation commands
-	Output      string // redacted tail; the full output is an artifact
+	Prompt      string
+	Output      string
 	StartedAt   time.Time
 	CompletedAt *time.Time
-	ExitCode    *int // only for commands the orchestrator executed itself
+	ExitCode    *int
 	Error       string
 }
 
@@ -158,9 +153,6 @@ type Artifact struct {
 }
 
 type Event struct {
-	// Seq is the event's position in the append-only log. It strictly grows
-	// with insertion order across all runs and processes; readers use it as
-	// a cursor. Zero until the event is stored.
 	Seq       int64
 	ID        string
 	RunID     string

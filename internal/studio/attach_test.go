@@ -15,7 +15,7 @@ func (p *fakePauser) Pause()  { p.paused++ }
 func (p *fakePauser) Resume() { p.resumed++ }
 
 func TestAttachHiddenWhenUnsupported(t *testing.T) {
-	m, f := roomModel(t) // attachArg nil: the runtime cannot attach
+	m, f := roomModel(t)
 	if v := plain(m.View().Content); strings.Contains(v, "[a] attach") {
 		t.Error("attach offered by a runtime that cannot")
 	}
@@ -44,7 +44,7 @@ func TestAttachHandsOverTheTerminalAndRefreshesOnReturn(t *testing.T) {
 	if exec == nil || p.paused != 1 {
 		t.Fatalf("no hand-off: exec %v paused %d", exec != nil, p.paused)
 	}
-	// The user detaches: the watcher resumes and everything is re-read.
+
 	m.live.pending = false
 	res, after := m.Update(attachDoneMsg{agent: "c8eccebbd-reviewer"})
 	m = res.(model)
@@ -54,7 +54,7 @@ func TestAttachHandsOverTheTerminalAndRefreshesOnReturn(t *testing.T) {
 	if v := plain(m.View().Content); !strings.Contains(v, "detached from c8eccebbd-reviewer") {
 		t.Error("no toast on return")
 	}
-	// A failing attach command is reported and still restores the watcher.
+
 	res, _ = m.Update(attachDoneMsg{agent: "x", err: errors.New("exit status 1")})
 	if m = res.(model); p.resumed != 2 || !strings.Contains(plain(m.View().Content), "attach to x: exit status 1") {
 		t.Error("failed attach not reported")

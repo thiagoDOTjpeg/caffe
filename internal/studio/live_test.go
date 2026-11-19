@@ -17,14 +17,13 @@ import (
 	"caffe/internal/service"
 )
 
-// fakeSource serves a run and an event log that tests change between loads.
 type fakeSource struct {
 	mu     sync.Mutex
 	runs   []service.RunSummary
 	snaps  map[string]*service.RunView
 	events []c.Event
 	err    error
-	afters []int64 // EventsSince calls
+	afters []int64
 
 	report     string
 	started    []service.StartRunRequest
@@ -34,16 +33,16 @@ type fakeSource struct {
 	outErr     error
 	rtObs      map[string]service.RuntimeObservation
 	outCalls   int
-	attachArg  []string // nil: the runtime cannot attach
+	attachArg  []string
 	execs      map[string]*service.ExecutionDetail
-	prompts    map[string]string // execution id → prompt text
-	artifacts  map[string]string // artifact id → text
+	prompts    map[string]string
+	artifacts  map[string]string
 	ws         []service.Workspace
-	files      map[string]string // "workspace:path" → text
+	files      map[string]string
 	lists      map[string]*service.FileList
 	diffs      map[string]*service.Diff
-	dir        string   // ResolvePath of any workspace; "": not found
-	validation []string // ValidationCommands
+	dir        string
+	validation []string
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -282,13 +281,9 @@ func shrinkTimings(t *testing.T) {
 	t.Cleanup(func() { debounce, backoffMin, backoffMax = d, lo, hi })
 }
 
-// drive runs cmd and every command it leads to, as Bubble Tea does (each in
-// its own goroutine, results to Update one at a time), until nothing arrives
-// for a quiet period: the model has settled. Long timers (toast expiry, the
-// health and live-agent ticks) fire after it and are dropped.
 func drive(t *testing.T, m model, cmd tea.Cmd) model {
 	t.Helper()
-	const quiet = 50 * time.Millisecond // fake sources answer in microseconds
+	const quiet = 50 * time.Millisecond
 	msgs := make(chan tea.Msg, 256)
 	var run func(tea.Cmd)
 	run = func(c tea.Cmd) {
@@ -363,7 +358,7 @@ func TestChangeRefreshesAndDedupes(t *testing.T) {
 	if len(m.live.feed) != 3 || f.afters[len(f.afters)-1] != 2 {
 		t.Errorf("feed %d, last EventsSince after %v", len(m.live.feed), f.afters)
 	}
-	// A replayed event (Seq ≤ lastSeq) is dropped.
+
 	res, _ := m.Update(loadedMsg{runs: f.runs, runID: m.live.runID, snap: m.live.snap, events: f.events})
 	if n := len(res.(model).live.feed); n != 3 {
 		t.Errorf("duplicates kept: feed %d", n)
@@ -372,7 +367,7 @@ func TestChangeRefreshesAndDedupes(t *testing.T) {
 
 func TestChangeWhilePendingIsNotLost(t *testing.T) {
 	m := liveModel(newFake())
-	m.live.pending = true // a load is in flight
+	m.live.pending = true
 	res, cmd := m.Update(changeMsg{Seq: 9})
 	m = res.(model)
 	if !m.live.dirty || cmd != nil {
@@ -418,7 +413,7 @@ func TestRecoveryClearsStale(t *testing.T) {
 	f := newFake()
 	f.err = errors.New("disk I/O error")
 	m := liveModel(f)
-	res, cmd := m.Update(loadedMsg{err: f.err}) // first failure schedules a retry
+	res, cmd := m.Update(loadedMsg{err: f.err})
 	m = res.(model)
 	f.set(func(f *fakeSource) { f.err = nil })
 	m = drive(t, m, cmd)

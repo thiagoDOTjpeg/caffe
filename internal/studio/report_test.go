@@ -85,7 +85,7 @@ func TestReportViewOpensScrollsAndCloses(t *testing.T) {
 }
 
 func TestReportFromLeaderAndError(t *testing.T) {
-	m := overviewModel(t) // the fake has no report: Report fails
+	m := overviewModel(t)
 	m, cmd := press(m, "space", "r", "o")
 	if m.report == nil {
 		t.Fatal("space r o does not open the report")

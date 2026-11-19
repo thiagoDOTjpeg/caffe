@@ -10,7 +10,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// boardColumns maps task statuses to Task Board columns (ux-specification §2.2).
 var boardColumns = []struct {
 	title    string
 	statuses []c.TaskStatus
@@ -23,8 +22,6 @@ var boardColumns = []struct {
 	{"FAILED", []c.TaskStatus{c.TaskFailed, c.TaskCancelled}},
 }
 
-// columnOf is the board column of a status; unknown statuses go to PENDING
-// rather than disappearing.
 func columnOf(s c.TaskStatus) int {
 	for i, col := range boardColumns {
 		for _, st := range col.statuses {
@@ -36,7 +33,6 @@ func columnOf(s c.TaskStatus) int {
 	return 0
 }
 
-// board groups tasks into columns, plan order within each.
 func board(tasks []service.TaskView) [][]service.TaskView {
 	cols := make([][]service.TaskView, len(boardColumns))
 	for _, t := range tasks {
@@ -46,14 +42,11 @@ func board(tasks []service.TaskView) [][]service.TaskView {
 	return cols
 }
 
-// tasksView is the Task Board state; the cursor is a task id (§3.6).
 type tasksView struct {
 	cursor string
 	view   taskView
 }
 
-// cursorPos is the column and row of the cursor; the first card when the
-// cursor's task is gone.
 func (v tasksView) cursorPos(cols [][]service.TaskView) (col, row int) {
 	for i, cards := range cols {
 		for j, t := range cards {
@@ -70,7 +63,6 @@ func (v tasksView) cursorPos(cols [][]service.TaskView) (col, row int) {
 	return 0, 0
 }
 
-// tasksMove moves the cursor dc columns (skipping empty ones) or dr rows.
 func (m model) tasksMove(dc, dr int) model {
 	if m.live.snap == nil {
 		return m
@@ -93,8 +85,6 @@ func (m model) tasksMove(dc, dr int) model {
 	return m
 }
 
-// columnWidths gives empty columns the width of their title and shares the
-// rest among the others.
 func columnWidths(cols [][]service.TaskView, width int) []int {
 	ws := make([]int, len(cols))
 	rest, full := width, 0
@@ -114,7 +104,6 @@ func columnWidths(cols [][]service.TaskView, width int) []int {
 	return ws
 }
 
-// card is the text of one task on the board: its title line and detail lines.
 func card(t service.TaskView, keys map[string]service.TaskView, now time.Time) []string {
 	b := taskBadge(t.Status)
 	lines := []string{b.Symbol + " " + t.Key}
@@ -180,7 +169,6 @@ func (m model) tasksScreen(width, height int) string {
 	ws := columnWidths(cols, width-1)
 	ccol, crow := m.tasks.cursorPos(cols)
 
-	// Each column is a list of cells (marker + text, plain) with a tone.
 	type cell struct {
 		text string
 		tone ui.Tone
@@ -204,12 +192,12 @@ func (m model) tasksScreen(width, height int) string {
 		rows = max(rows, len(grid[i]))
 	}
 	var head strings.Builder
-	head.WriteString("  ") // titles line up with the card symbols, after the cursor marker
+	head.WriteString("  ")
 	for i, col := range boardColumns {
 		head.WriteString(fmt.Sprintf("%-*s", ws[i], clip(col.title, ws[i]-1)))
 	}
 	out = append(out, head.String())
-	boardRows := max(min(rows, height-len(out)-8), 1) // keep room for the details
+	boardRows := max(min(rows, height-len(out)-8), 1)
 	for r := range boardRows {
 		var b strings.Builder
 		b.WriteString(" ")
@@ -232,7 +220,6 @@ func (m model) tasksScreen(width, height int) string {
 	return strings.Join(out, "\n")
 }
 
-// cursorTask is the task under the Task Board cursor.
 func (m model) cursorTask() (service.TaskView, bool) {
 	if m.live.snap == nil || len(m.live.snap.Tasks) == 0 {
 		return service.TaskView{}, false
@@ -245,7 +232,6 @@ func (m model) cursorTask() (service.TaskView, bool) {
 	return cols[col][row], true
 }
 
-// taskDetails is the details block below the board.
 func taskDetails(t service.TaskView, keys map[string]service.TaskView, width int) []string {
 	rule := " ─ " + t.Key + " "
 	out := []string{rule + strings.Repeat("─", max(width-len([]rune(rule))-1, 0))}

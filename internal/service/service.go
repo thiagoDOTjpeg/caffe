@@ -1,8 +1,3 @@
-// Package service is Caffè's application API: the only way consumers (the
-// CLI, Caffè Studio) read engine state or ask the engine to act. Consumers
-// never touch persistence, the runtime or managed worktrees directly.
-//
-// This file holds the queries. They never modify state.
 package service
 
 import (
@@ -23,23 +18,19 @@ import (
 	"caffe/internal/runtime"
 )
 
-// ErrNotFound is returned when a run, execution or artifact does not exist.
 var ErrNotFound = errors.New("not found")
 
-// Service answers queries over a read-only store.
 type Service struct {
 	cfg   *config.Config
-	store *persistence.Store // from persistence.OpenReadOnly
+	store *persistence.Store
 	rt    runtime.Runtime
-	git   *git.Manager // nil: queries that need Git return an error
+	git   *git.Manager
 	now   func() time.Time
-	exe   string // caffe binary launched by StartRun/ResumeRun; "" = this executable
+	exe   string
 
-	engine Engine // performs CancelRun and Clean; nil: they are unsupported
+	engine Engine
 }
 
-// New builds a Service. store should come from persistence.OpenReadOnly so
-// snapshots never take the write lock.
 func New(cfg *config.Config, store *persistence.Store, rt runtime.Runtime, gm *git.Manager) *Service {
 	return &Service{cfg: cfg, store: store, rt: rt, git: gm, now: time.Now}
 }
@@ -51,8 +42,6 @@ func notFound(err error) error {
 	return err
 }
 
-// ---------- views ----------
-
 type RunSummary struct {
 	ID          string
 	Request     string
@@ -63,34 +52,30 @@ type RunSummary struct {
 	StartedAt   *time.Time
 	CompletedAt *time.Time
 	HeartbeatAt *time.Time
-	// OwnerAlive: a process is driving the run (fresh heartbeat). False for
-	// finished and interrupted runs, and for runs whose owner just died but
-	// were not yet flagged interrupted.
+
 	OwnerAlive bool
 }
 
 type TaskView struct {
 	c.Task
-	DependsOn []string // keys, plan order
-	Reason    string   // see TaskReason
+	DependsOn []string
+	Reason    string
 }
 
 type ExecutionView struct {
 	c.Execution
 	TaskKey string
 	Role    c.Role
-	// ExitCodeObserved: the exit code was observed by the orchestrator
-	// (validation commands). Agent-reported results are claims and live in
-	// the report, never here.
+
 	ExitCodeObserved bool
 }
 
 type AgentView struct {
 	c.Agent
-	TaskKey     string         // of the agent's latest execution
-	Execution   *ExecutionView // latest, nil for planning agents
+	TaskKey     string
+	Execution   *ExecutionView
 	Visual      VisualState
-	Elapsed     time.Duration // of the latest execution, to now if still running
+	Elapsed     time.Duration
 	Observation RuntimeObservation
 }
 
@@ -100,32 +85,27 @@ type RunView struct {
 	Agents     []AgentView
 	Executions []ExecutionView
 	Artifacts  []*c.Artifact
-	// Seq: every event with Seq <= this is reflected here. Continue with
-	// EventsSince(Seq).
+
 	Seq int64
 }
 
 type ExecutionDetail struct {
 	ExecutionView
 	RunID     string
-	Agent     *c.Agent      // nil for validation commands
-	Artifacts []*c.Artifact // of the execution's task
-	// Report is the execution's own report (its directory), else the task's
-	// latest; nil when none was delivered or it is unreadable.
+	Agent     *c.Agent
+	Artifacts []*c.Artifact
+
 	Report *c.Report
-	// ClaimsUnverified: Report.Tests are the agent's claims
-	// (contracts.LabelClaimed); see core.ClaimsUnverified.
+
 	ClaimsUnverified bool
 }
 
 type ArtifactContent struct {
 	Artifact  *c.Artifact
-	Text      string // redacted
+	Text      string
 	Size      int64
 	Truncated bool
 }
-
-// ---------- queries ----------
 
 func (s *Service) summary(r *c.Run) RunSummary {
 	sum := RunSummary{ID: r.ID, Request: r.UserRequest, Status: r.Status, Error: r.Error, BaseCommit: r.Metadata["base_commit"],
@@ -135,7 +115,6 @@ func (s *Service) summary(r *c.Run) RunSummary {
 	return sum
 }
 
-// Runs lists runs, newest first.
 func (s *Service) Runs(ctx context.Context, activeOnly bool) ([]RunSummary, error) {
 	runs, err := s.store.ListRuns(ctx, activeOnly)
 	if err != nil {
@@ -148,9 +127,6 @@ func (s *Service) Runs(ctx context.Context, activeOnly bool) ([]RunSummary, erro
 	return out, nil
 }
 
-// RunSnapshot returns a consistent view of one run (id or unambiguous
-// prefix), with derived fields. It does not ask the runtime: agent visual
-// states are derived from stored state only (see AgentRuntimeStatus, F-15).
 func (s *Service) RunSnapshot(ctx context.Context, runID string) (*RunView, error) {
 	snap, err := s.store.RunSnapshot(ctx, runID)
 	if err != nil {
@@ -174,7 +150,7 @@ func (s *Service) RunSnapshot(ctx context.Context, runID string) (*RunView, erro
 			v.Tasks = append(v.Tasks, tv)
 		}
 	}
-	latest := map[string]*ExecutionView{} // agent id → latest execution
+	latest := map[string]*ExecutionView{}
 	for _, e := range snap.Executions {
 		ev := ExecutionView{Execution: *e, ExitCodeObserved: e.ExitCode != nil}
 		if t := byID[e.TaskID]; t != nil {
@@ -183,7 +159,7 @@ func (s *Service) RunSnapshot(ctx context.Context, runID string) (*RunView, erro
 		v.Executions = append(v.Executions, ev)
 		if e.AgentID != "" {
 			cp := ev
-			latest[e.AgentID] = &cp // executions are ordered oldest first
+			latest[e.AgentID] = &cp
 		}
 	}
 	for _, a := range snap.Agents {
@@ -204,19 +180,14 @@ func (s *Service) RunSnapshot(ctx context.Context, runID string) (*RunView, erro
 	return v, nil
 }
 
-// EventsSince returns up to limit events after seq, for one run or all
-// ("" runID), oldest first.
 func (s *Service) EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error) {
 	return s.store.EventsSince(ctx, after, runID, limit)
 }
 
-// EventsBefore returns up to limit events before seq (0: the newest), for
-// one run or all (""), oldest first.
 func (s *Service) EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error) {
 	return s.store.EventsBefore(ctx, before, runID, limit)
 }
 
-// Events returns every event of a run in log order, paging internally.
 func (s *Service) Events(ctx context.Context, runID string) ([]c.Event, error) {
 	var all []c.Event
 	var after int64
@@ -233,9 +204,6 @@ func (s *Service) Events(ctx context.Context, runID string) ([]c.Event, error) {
 	}
 }
 
-// AgentRuntimeStatus asks the runtime about each agent, keyed by agent id.
-// It never fails as a whole: a per-agent problem is in that agent's Err, and
-// an agent the runtime does not know is Known && !Found.
 func (s *Service) AgentRuntimeStatus(ctx context.Context, agents []AgentView) map[string]RuntimeObservation {
 	out := make(map[string]RuntimeObservation, len(agents))
 	for _, a := range agents {
@@ -252,7 +220,6 @@ func (s *Service) AgentRuntimeStatus(ctx context.Context, agents []AgentView) ma
 	return out
 }
 
-// Execution returns one execution with its task, agent and artifacts.
 func (s *Service) Execution(ctx context.Context, id string) (*ExecutionDetail, error) {
 	ex, runID, err := s.store.GetExecution(ctx, id)
 	if err != nil {
@@ -274,7 +241,7 @@ func (s *Service) Execution(ctx context.Context, id string) (*ExecutionDetail, e
 			d.Agent = &a
 		}
 	}
-	var own, latest string // report paths
+	var own, latest string
 	for _, a := range snap.Artifacts {
 		if a.TaskID != ex.TaskID {
 			continue
@@ -283,7 +250,7 @@ func (s *Service) Execution(ctx context.Context, id string) (*ExecutionDetail, e
 		if a.Type == c.ArtifactReport {
 			latest = a.Path
 			if ex.AgentID != "" && filepath.Dir(a.Path) == filepath.Dir(ex.Prompt) {
-				own = a.Path // agent files share the directory of prompt.md
+				own = a.Path
 			}
 		}
 	}
@@ -301,9 +268,6 @@ func (s *Service) Execution(ctx context.Context, id string) (*ExecutionDetail, e
 	return d, nil
 }
 
-// ReadPrompt returns up to max bytes of what an execution was asked: the
-// prompt file of an agent execution, or the command line of a validation
-// command.
 func (s *Service) ReadPrompt(ctx context.Context, executionID string, max int64) (*ArtifactContent, error) {
 	ex, _, err := s.store.GetExecution(ctx, executionID)
 	if err != nil {
@@ -318,10 +282,6 @@ func (s *Service) ReadPrompt(ctx context.Context, executionID string, max int64)
 	return readBounded(ex.Prompt, max)
 }
 
-// ReadArtifact returns up to max bytes of an artifact's file, redacted. Only
-// files inside the project's artifact directory or managed worktrees are
-// read: the path comes from the database, and the database is not trusted
-// to point anywhere on the host.
 func (s *Service) ReadArtifact(ctx context.Context, id string, max int64) (*ArtifactContent, error) {
 	if max <= 0 {
 		return nil, fmt.Errorf("ReadArtifact: max must be positive, got %d", max)
@@ -341,8 +301,6 @@ func (s *Service) ReadArtifact(ctx context.Context, id string, max int64) (*Arti
 	return out, nil
 }
 
-// readBounded reads up to max bytes of a regular file, redacted. The caller
-// has checked that path is one Caffè may read.
 func readBounded(path string, max int64) (*ArtifactContent, error) {
 	if max <= 0 {
 		return nil, fmt.Errorf("max must be positive, got %d", max)
@@ -367,8 +325,6 @@ func readBounded(path string, max int64) (*ArtifactContent, error) {
 		Text: runtime.Redact(strings.ToValidUTF8(string(buf), "�"))}, nil
 }
 
-// within reports whether path resolves to a location strictly inside dir,
-// following symlinks so a link cannot point the reader elsewhere.
 func within(path, dir string) bool {
 	rp, err := filepath.EvalSymlinks(path)
 	if err != nil {
@@ -382,7 +338,6 @@ func within(path, dir string) bool {
 	return err == nil && rel != "." && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel)
 }
 
-// Report renders the consolidated Markdown report of a run.
 func (s *Service) Report(ctx context.Context, runID string) (string, error) {
 	r, err := s.store.GetRun(ctx, runID)
 	if err != nil {
@@ -391,11 +346,8 @@ func (s *Service) Report(ctx context.Context, runID string) (string, error) {
 	return core.BuildReport(ctx, s.store, r.ID)
 }
 
-// RuntimeInfo is what the runtime can do; an alias so consumers need not
-// import the runtime package.
 type RuntimeInfo = runtime.Capabilities
 
-// Capabilities asks the runtime what it can do.
 func (s *Service) Capabilities(ctx context.Context) (*RuntimeInfo, error) {
 	return s.rt.Capabilities(ctx)
 }

@@ -10,9 +10,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Every state of every family has a symbol and a label, and within a family
-// no two states share a symbol: without colour (mono, NO_COLOR, colour
-// blindness) the symbol and the words still tell them apart.
 func TestEveryStateIsDistinguishableWithoutColour(t *testing.T) {
 	families := map[string][]badge{}
 	for _, s := range []c.TaskStatus{c.TaskPending, c.TaskReady, c.TaskAssigned, c.TaskRunning, c.TaskBlocked,
@@ -44,7 +41,7 @@ func TestEveryStateIsDistinguishableWithoutColour(t *testing.T) {
 			rendered[out] = true
 		}
 	}
-	// An unknown state is shown by name, never as a blank.
+
 	if b := taskBadge("levitating"); b.Label != "levitating" || b.Symbol == "" {
 		t.Errorf("unknown state = %+v", b)
 	}

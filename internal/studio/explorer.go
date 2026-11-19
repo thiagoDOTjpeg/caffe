@@ -13,19 +13,16 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// explorer is the file tree of the selected workspace. The index is built
-// once per load; only expanded directories are walked to draw it, so a
-// 100 k-file repository costs what is on screen.
 type explorer struct {
 	ws      string
 	list    *service.FileList
-	kids    map[string][]node // directory ("" = root) → entries, directories first
-	dirMark map[string]bool   // directories containing a marked file
+	kids    map[string][]node
+	dirMark map[string]bool
 	open    map[string]bool
 	cursor  int
 	err     error
 	loaded  bool
-	focused bool // keys go to the tree, not the viewer
+	focused bool
 }
 
 type node struct {
@@ -44,7 +41,6 @@ type filesMsg struct {
 	err  error
 }
 
-// wsID is the id of the selected workspace.
 func (m model) wsID() string {
 	if m.ws.selected.ID == "" {
 		return service.MainWorkspace
@@ -52,13 +48,12 @@ func (m model) wsID() string {
 	return m.ws.selected.ID
 }
 
-// loadTree loads the selected workspace's files unless they are loaded.
 func (m model) loadTree() (model, tea.Cmd) {
 	id := m.wsID()
 	if m.src == nil || (m.tree.ws == id && m.tree.loaded && m.tree.err == nil) {
 		return m, nil
 	}
-	if m.tree.ws == id { // a reload: keep what is expanded and where the cursor is
+	if m.tree.ws == id {
 		m.tree.loaded = false
 	} else {
 		m.tree = explorer{ws: id, focused: true}
@@ -120,7 +115,6 @@ func index(l *service.FileList) (map[string][]node, map[string]bool) {
 	return kids, marked
 }
 
-// rows are the visible entries: the root and every expanded directory.
 func (t explorer) rows() []row {
 	var out []row
 	var walk func(dir string, depth int)
@@ -149,7 +143,6 @@ func (m model) treeCursor() (row, bool) {
 	return r[m.tree.cursor], true
 }
 
-// treeOpen toggles a directory or opens a file in the viewer.
 func (m model) treeOpen() (model, tea.Cmd) {
 	r, ok := m.treeCursor()
 	if !ok {
@@ -166,7 +159,6 @@ func (m model) treeOpen() (model, tea.Cmd) {
 	return m.openFile(m.tree.ws, r.path)
 }
 
-// treeLeft collapses the directory under the cursor, else goes to its parent.
 func (m model) treeLeft() model {
 	r, ok := m.treeCursor()
 	if !ok {
@@ -194,7 +186,6 @@ func cloneSet(s map[string]bool) map[string]bool {
 	return out
 }
 
-// workspaceScreen is the explorer next to the viewer (ux-specification §2.6).
 func (m model) workspaceScreen(width, height int) string {
 	ew := min(36, width/3)
 	left := m.explorerLines(ew, height)
@@ -265,8 +256,6 @@ func (m model) explorerLines(width, height int) []string {
 	return append(out, git...)[:height]
 }
 
-// gitLines is the GIT block under the tree (WS-06): branch, uncommitted
-// files by kind, and a task's committed changes against its diff base.
 func (m model) gitLines(width int) []string {
 	l := m.tree.list
 	if l == nil {
@@ -302,5 +291,4 @@ func (m model) gitLines(width int) []string {
 	return out
 }
 
-// clipStyled clips a line that may hold colour codes.
 func clipStyled(s string, w int) string { return strings.TrimRight(ui.Fit(s, w), " ") }

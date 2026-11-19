@@ -13,7 +13,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Re-record with: go test ./internal/studio/ -run Golden -update
 var update = flag.Bool("update", false, "rewrite golden files")
 
 func golden(t *testing.T, name, got string) {
@@ -53,7 +52,7 @@ func TestGoldenLayout(t *testing.T) {
 		themed.theme = ui.ThemeByName(name, false)
 		golden(t, "theme-"+name+"-120x40", render(themed, 120, 40))
 	}
-	// Toggles: panel opened in compact mode, sidebar hidden in full mode, screen 3.
+
 	golden(t, "layout-80x24-panel", render(m, 80, 24, "`"))
 	golden(t, "layout-120x40-nosidebar-agents", render(m, 120, 40, "ctrl+b", "3"))
 }

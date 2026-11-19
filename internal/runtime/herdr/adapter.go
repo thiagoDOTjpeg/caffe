@@ -16,16 +16,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// Adapter implements runtime.Runtime on top of the Herdr CLI.
-//
-// Mapping (herdr 0.9.5):
-//
-//	CreateWorkspace -> herdr workspace create --cwd P --label L --no-focus
-//	StartAgent      -> herdr agent start NAME --kind K --pane ID --timeout MS [-- args]
-//	SendPrompt      -> herdr agent prompt NAME TEXT
-//	GetAgentStatus  -> herdr agent get NAME
-//	ReadAgentOutput -> herdr agent read NAME --source recent-unwrapped
-//	StopAgent       -> herdr workspace close ID
 type Adapter struct {
 	cli          cli
 	startTimeout time.Duration
@@ -36,7 +26,6 @@ var (
 	_ runtime.Attacher = (*Adapter)(nil)
 )
 
-// New builds an adapter. session selects a named Herdr session ("" = default).
 func New(executable, session string, commandTimeout time.Duration, log zerolog.Logger) *Adapter {
 	return &Adapter{
 		cli:          cli{exe: executable, session: session, timeout: commandTimeout, log: log.With().Str("component", "herdr").Logger()},
@@ -44,8 +33,6 @@ func New(executable, session string, commandTimeout time.Duration, log zerolog.L
 	}
 }
 
-// classify maps Herdr error codes onto the runtime's sentinel errors, keeping
-// the original error in the chain.
 func classify(err error) error {
 	if err == nil {
 		return nil
@@ -69,7 +56,7 @@ func classify(err error) error {
 	default:
 		switch {
 		case errors.Is(he.Err, context.DeadlineExceeded):
-			sentinel = runtime.ErrUncertain // we gave up waiting; Herdr may still have acted
+			sentinel = runtime.ErrUncertain
 		case errors.Is(he.Err, exec.ErrNotFound), errors.Is(he.Err, fs.ErrNotExist):
 			sentinel = runtime.ErrUnavailable
 		default:
@@ -96,10 +83,6 @@ var (
 	kindsRE   = regexp.MustCompile(`possible values: ([^\]]+)\]`)
 )
 
-// Capabilities asks the installed Herdr what it supports instead of assuming:
-// the version, that a server is reachable, and the agent kinds `agent start`
-// accepts. A kind only counts if its executable is on PATH, since Herdr
-// launches agents by their canonical executable name.
 func (a *Adapter) Capabilities(ctx context.Context) (*runtime.Capabilities, error) {
 	out, err := a.cli.run(ctx, "version", []string{"--version"})
 	if err != nil {
@@ -153,7 +136,7 @@ func (a *Adapter) StartAgent(ctx context.Context, kind, paneID, name string, arg
 	if len(args) > 0 {
 		argv = append(append(argv, "--"), args...)
 	}
-	// Herdr waits up to startTimeout itself; give the process a little longer.
+
 	c := a.cli
 	c.timeout = a.startTimeout + 10*time.Second
 	var res struct {
@@ -163,8 +146,7 @@ func (a *Adapter) StartAgent(ctx context.Context, kind, paneID, name string, arg
 	if err == nil {
 		return res.Agent.session(name), nil
 	}
-	// Blocked at startup, or we stopped waiting: the agent may well exist.
-	// Report what is actually there rather than guessing.
+
 	if errors.Is(err, runtime.ErrNotReady) || errors.Is(err, runtime.ErrUncertain) {
 		var got struct {
 			Agent agentInfo `json:"agent"`
@@ -195,7 +177,7 @@ func (a *Adapter) GetAgentStatus(ctx context.Context, agent string) (runtime.Age
 	case runtime.StatusIdle, runtime.StatusWorking, runtime.StatusBlocked, runtime.StatusDone, runtime.StatusUnknown:
 		return s, nil
 	default:
-		return runtime.StatusUnknown, nil // a status this adapter predates proves nothing
+		return runtime.StatusUnknown, nil
 	}
 }
 
@@ -215,7 +197,6 @@ func (a *Adapter) StopAgent(ctx context.Context, workspaceID string) error {
 	return err
 }
 
-// AttachCommand implements runtime.Attacher: `herdr [--session S] agent attach NAME`.
 func (a *Adapter) AttachCommand(agent string) ([]string, error) {
 	if agent == "" {
 		return nil, errors.New("attach: empty agent name")

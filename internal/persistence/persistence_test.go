@@ -59,13 +59,12 @@ func TestRoundTripAndReopen(t *testing.T) {
 	}
 	s.Close()
 
-	// Data must survive a restart, and migrations must not re-run.
 	s2, err := Open(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer s2.Close()
-	got, err := s2.GetRun(ctx, "run") // prefix lookup
+	got, err := s2.GetRun(ctx, "run")
 	if err != nil || got.UserRequest != "do it" || got.Metadata["k"] != "v" {
 		t.Fatalf("run = %+v, %v", got, err)
 	}
@@ -97,7 +96,7 @@ func TestUpdateTaskIsCompareAndSwap(t *testing.T) {
 	if err := s.UpdateTask(ctx, &a, c.TaskPending, ""); err != nil {
 		t.Fatal(err)
 	}
-	// A second worker holding the stale "pending" view must lose.
+
 	stale := *tasks[0]
 	stale.Status = c.TaskReady
 	if err := s.UpdateTask(ctx, &stale, c.TaskPending, ""); !errors.Is(err, ErrConflict) {
@@ -137,7 +136,7 @@ func TestStaleRunsBecomeInterrupted(t *testing.T) {
 	if err := s.SaveExecution(ctx, &c.Execution{ID: "e1", TaskID: "a", Attempt: 1, Status: c.ExecRunning, StartedAt: Now()}); err != nil {
 		t.Fatal(err)
 	}
-	// A fresh heartbeat protects the run.
+
 	if _, err := s.Heartbeat(ctx, r.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -156,12 +155,10 @@ func TestStaleRunsBecomeInterrupted(t *testing.T) {
 	}
 }
 
-// Two stores on one file stand in for two caffe processes writing at once.
-// Every event must be seen exactly once by a reader paging with EventsSince.
 func TestEventsSinceIsAGaplessCursorAcrossWriters(t *testing.T) {
 	ctx := context.Background()
 	s1, path := open(t)
-	seed(t, s1) // run-1
+	seed(t, s1)
 	if err := s1.CreateRun(ctx, &c.Run{ID: "run-2", ProjectPath: "/p", UserRequest: "r", Status: c.RunPending, CreatedAt: Now()}); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +187,6 @@ func TestEventsSinceIsAGaplessCursorAcrossWriters(t *testing.T) {
 		}(s, []string{"run-1", "run-2"}[i])
 	}
 
-	// Page through while the writers are still writing.
 	seen := map[string]bool{}
 	var last int64
 	deadline := time.Now().Add(10 * time.Second)
@@ -233,7 +229,6 @@ func TestEventsSinceIsAGaplessCursorAcrossWriters(t *testing.T) {
 		t.Fatalf("cursor saw %d events, log has %d", len(seen), len(all))
 	}
 
-	// Per-run filter, and Seq on ListEvents agrees with EventsSince.
 	run2, err := s1.EventsSince(ctx, 0, "run-2", 10_000)
 	if err != nil {
 		t.Fatal(err)
@@ -243,7 +238,7 @@ func TestEventsSinceIsAGaplessCursorAcrossWriters(t *testing.T) {
 			t.Fatalf("filter leaked %s", e.RunID)
 		}
 	}
-	if len(run2) != perWriter+1 { // + run.created
+	if len(run2) != perWriter+1 {
 		t.Fatalf("run-2 has %d events, want %d", len(run2), perWriter+1)
 	}
 	listed, _ := s1.ListEvents(ctx, "run-2")
@@ -265,7 +260,6 @@ func TestReadOnlyStore(t *testing.T) {
 	}
 	defer r.Close()
 
-	// Reads work; writes are refused by SQLite itself.
 	if got, err := r.GetRun(ctx, "run-1"); err != nil || got.UserRequest != "do it" {
 		t.Fatalf("read: %v, %v", got, err)
 	}
@@ -273,7 +267,6 @@ func TestReadOnlyStore(t *testing.T) {
 		t.Fatal("write through the read-only store succeeded")
 	}
 
-	// A read transaction sees one snapshot and does not block the writer.
 	var before, inside, after int
 	count := func(q interface {
 		QueryRowContext(context.Context, string, ...any) *sql.Row
@@ -307,7 +300,6 @@ func TestReadOnlyStore(t *testing.T) {
 		t.Fatalf("snapshot not stable: before=%d inside=%d after=%d", before, inside, after)
 	}
 
-	// The writer may close entirely (WAL files checkpointed away): readers keep working.
 	w.Close()
 	if _, err := r.GetRun(ctx, "run-1"); err != nil {
 		t.Fatalf("read after writer closed: %v", err)
@@ -319,10 +311,6 @@ func TestReadOnlyStore(t *testing.T) {
 	r2.Close()
 }
 
-// A writer commits execution i and then marker event i, each in its own
-// transaction, like the engine does. A consistent snapshot can never reflect
-// marker i (Seq) without execution i. A torn read — executions read, then the
-// writer commits more, then Seq read — would break exactly that.
 func TestRunSnapshotIsConsistentUnderConcurrentWrites(t *testing.T) {
 	ctx := context.Background()
 	w, path := open(t)
@@ -360,7 +348,7 @@ func TestRunSnapshotIsConsistentUnderConcurrentWrites(t *testing.T) {
 			writing = false
 		default:
 		}
-		snap, err := r.RunSnapshot(ctx, "run") // prefix, as the CLI allows
+		snap, err := r.RunSnapshot(ctx, "run")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -445,7 +433,7 @@ func TestBackupKeepsNewest(t *testing.T) {
 func TestEventsBeforePagesBackwards(t *testing.T) {
 	ctx := context.Background()
 	s, _ := open(t)
-	seed(t, s) // run-1
+	seed(t, s)
 	if err := s.CreateRun(ctx, &c.Run{ID: "run-2", ProjectPath: "/p", UserRequest: "r", Status: c.RunPending, CreatedAt: Now()}); err != nil {
 		t.Fatal(err)
 	}
@@ -456,7 +444,7 @@ func TestEventsBeforePagesBackwards(t *testing.T) {
 		}
 	}
 	all, _ := s.EventsSince(ctx, 0, "run-1", 1000)
-	// Walk run-1 backwards in pages of 2: every event once, in order.
+
 	var back []c.Event
 	for before := int64(0); ; {
 		page, err := s.EventsBefore(ctx, before, "run-1", 2)

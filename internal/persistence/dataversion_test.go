@@ -8,14 +8,6 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// Change detection for consumers (docs/studio/technical-decisions.md, ADR-002)
-// relies on PRAGMA data_version: it changes on a connection when *another*
-// connection commits, and not otherwise. These tests pin that behaviour for
-// modernc.org/sqlite in WAL mode; BenchmarkDataVersion measures its cost.
-//
-// data_version is per connection, so it must be read on one pinned
-// *sql.Conn: two pooled connections have unrelated values.
-
 func dataVersion(t testing.TB, conn *sql.Conn) int64 {
 	t.Helper()
 	var v int64
@@ -54,14 +46,14 @@ func TestDataVersionDetectsEveryCommitFromAnotherConnection(t *testing.T) {
 		}
 		prev = v
 	}
-	// Reads, by any connection, do not count as changes.
+
 	if _, err := r.ListRuns(ctx, false); err != nil {
 		t.Fatal(err)
 	}
 	if v := dataVersion(t, conn); v != prev {
 		t.Fatalf("a read changed data_version: %d → %d", prev, v)
 	}
-	// A rolled-back write is not a change either.
+
 	tx, err := w.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)

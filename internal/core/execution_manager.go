@@ -21,7 +21,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// execTask is the scheduler's TaskFunc: it applies the policy of the task's role.
 func (s *session) execTask(ctx context.Context, t *c.Task) error {
 	switch t.Role {
 	case c.RoleResearcher:
@@ -38,8 +37,6 @@ func (s *session) execTask(ctx context.Context, t *c.Task) error {
 
 func short(id string) string { return strings.ReplaceAll(id, "-", "")[:8] }
 
-// ---------- researcher ----------
-
 func (s *session) runResearcher(ctx context.Context, t *c.Task) error {
 	project := s.Cfg.Project.Path
 	before, err := s.Git.Status(ctx, project)
@@ -49,15 +46,12 @@ func (s *session) runResearcher(ctx context.Context, t *c.Task) error {
 	if _, err := s.runAgent(ctx, &agentRun{owner: t, role: c.RoleResearcher, cwd: project, tracked: true}); err != nil {
 		return err
 	}
-	// Read-only is a policy we can only verify after the fact. The user may be
-	// editing the checkout too, so this is a warning, and nothing is reverted.
+
 	if after, err := s.Git.Status(context.WithoutCancel(ctx), project); err == nil && after != before {
 		s.warn(s.run.ID, t.ID, fmt.Sprintf("the project checkout changed while read-only task %s ran; check `git status`", t.Key))
 	}
 	return nil
 }
-
-// ---------- developer ----------
 
 func (s *session) runDeveloper(ctx context.Context, t *c.Task) error {
 	snap := s.sched.Snapshot(t)
@@ -65,7 +59,7 @@ func (s *session) runDeveloper(ctx context.Context, t *c.Task) error {
 	if wt == "" {
 		base := s.run.Metadata["base_commit"]
 		if dep := s.graph.Nearest(t, c.RoleDeveloper); dep != nil {
-			// Build on the work this task depends on, not on the original base.
+
 			if b := s.sched.Snapshot(dep).BranchName; b != "" {
 				base = b
 			}
@@ -89,7 +83,7 @@ func (s *session) runDeveloper(ctx context.Context, t *c.Task) error {
 	return s.withLease(ctx, t, t, wt, func() error {
 		ar := &agentRun{owner: t, role: c.RoleDeveloper, cwd: wt, tracked: true}
 		ar.data.Branch = snap.BranchName
-		// Any attempt after the first inherits a worktree in an unknown state.
+
 		ar.data.Interrupted, ar.data.PriorError = snap.Attempts > 1, snap.Error
 		if _, err := s.runAgent(ctx, ar); err != nil {
 			return err
@@ -102,18 +96,11 @@ func (s *session) diffPath(dev *c.Task) string {
 	return filepath.Join(s.RunDir(s.run.ID), dev.Key, "changes.diff")
 }
 
-// diffBase is the commit a developer task's work started from.
 func (s *session) diffBase(ctx context.Context, dev *c.Task, wt string) (string, error) {
 	return DiffBase(ctx, s.Git, wt, s.graph, dev, s.run.Metadata["base_commit"],
 		func(t *c.Task) string { return s.sched.Snapshot(t).BranchName })
 }
 
-// DiffBase is the commit a developer task's changes are measured from: the
-// merge-base of the worktree's HEAD with the branch of the nearest developer
-// task it depends on (it started from that branch), or the run's base commit
-// when there is none. branchOf reads a task's branch; the engine passes a
-// locked read of its in-memory state, readers of persisted state pass
-// t.BranchName.
 func DiffBase(ctx context.Context, gm *git.Manager, worktree string, g *Graph, dev *c.Task, runBase string,
 	branchOf func(*c.Task) string) (string, error) {
 	if dep := g.Nearest(dev, c.RoleDeveloper); dep != nil {
@@ -124,9 +111,6 @@ func DiffBase(ctx context.Context, gm *git.Manager, worktree string, g *Graph, d
 	return runBase, nil
 }
 
-// collectChanges puts a developer's work on its branch and stores the diff.
-// A developer that claims completion without changing anything has not
-// completed anything.
 func (s *session) collectChanges(ctx context.Context, dev *c.Task, wt string) error {
 	if _, err := s.Git.CommitAll(ctx, wt, fmt.Sprintf("caffe: %s [%s]", dev.Title, dev.Key)); err != nil {
 		return fmt.Errorf("commit worktree: %w", err)
@@ -158,11 +142,6 @@ func (s *session) collectChanges(ctx context.Context, dev *c.Task, wt string) er
 		Description: fmt.Sprintf("changes of task %s relative to %s (%d files)", dev.Key, base, len(files))})
 }
 
-// ---------- reviewer ----------
-
-// runReviewer reviews the developer task this task depends on. A rejection
-// sends the findings back to a developer agent in the same worktree and
-// reviews again, up to max_review_rounds times.
 func (s *session) runReviewer(ctx context.Context, t *c.Task) error {
 	dev := s.graph.Nearest(t, c.RoleDeveloper)
 	if dev == nil {
@@ -178,8 +157,7 @@ func (s *session) runReviewer(ctx context.Context, t *c.Task) error {
 	wt := s.sched.Snapshot(dev).WorktreePath
 	lock := s.wtLock(wt)
 	for round := 0; ; round++ {
-		// The review commits leftovers and discards the reviewer's own edits:
-		// it writes too, so it holds the lease like a correction does.
+
 		var rep *c.Report
 		err := s.withLease(ctx, t, dev, wt, func() (err error) {
 			rep, err = s.reviewOnce(ctx, t, dev, wt)
@@ -204,8 +182,7 @@ func (s *session) runReviewer(ctx context.Context, t *c.Task) error {
 
 func (s *session) reviewOnce(ctx context.Context, t, dev *c.Task, wt string) (*c.Report, error) {
 	lock := s.wtLock(wt)
-	// Make sure the diff reflects the worktree as it is now (it may hold
-	// changes from an interrupted correction).
+
 	lock.Lock()
 	err := s.collectChanges(ctx, dev, wt)
 	lock.Unlock()
@@ -221,9 +198,7 @@ func (s *session) reviewOnce(ctx context.Context, t, dev *c.Task, wt string) (*c
 	ar := &agentRun{owner: t, role: c.RoleReviewer, cwd: wt, tracked: true}
 	ar.data.DiffPath, ar.data.BaseCommit = s.diffPath(dev), base
 	rep, err := s.runAgent(ctx, ar)
-	// A reviewer must not change the tree it reviews. The worktree is ours and
-	// fully committed, so discarding stray edits is safe and keeps them out of
-	// the developer's branch.
+
 	if dirty, derr := s.Git.IsDirty(context.WithoutCancel(ctx), wt); derr == nil && dirty {
 		s.warn(s.run.ID, t.ID, fmt.Sprintf("reviewer %s modified the worktree it was reviewing; the changes were discarded", t.Key))
 		if rerr := s.Git.Restore(context.WithoutCancel(ctx), wt); rerr != nil {
@@ -233,8 +208,6 @@ func (s *session) reviewOnce(ctx context.Context, t, dev *c.Task, wt string) (*c
 	return rep, err
 }
 
-// correct runs a developer agent on a rejected change. The developer task
-// goes completed -> reviewing -> completed (or failed).
 func (s *session) correct(ctx context.Context, dev *c.Task, wt string, findings []c.Finding, lock, unlock func()) error {
 	db := context.WithoutCancel(ctx)
 	if err := s.sched.Transition(db, dev, c.TaskReviewing, "review rejected, correcting", func(t *c.Task) { t.Attempts++ }); err != nil {
@@ -258,8 +231,6 @@ func (s *session) correct(ctx context.Context, dev *c.Task, wt string, findings 
 	}
 }
 
-// ---------- validator ----------
-
 func (s *session) runValidator(ctx context.Context, t *c.Task) error {
 	cwd := s.Cfg.Project.Path
 	if dev := s.graph.Nearest(t, c.RoleDeveloper); dev != nil {
@@ -273,15 +244,11 @@ func (s *session) runValidator(ctx context.Context, t *c.Task) error {
 	if len(s.Cfg.Validation.Commands) > 0 {
 		return s.runCommands(ctx, t, cwd)
 	}
-	// No commands configured: an agent finds and runs the checks. Its exit
-	// codes are claims, and are labelled as such in the report.
+
 	_, err := s.runAgent(ctx, &agentRun{owner: t, role: c.RoleValidator, cwd: cwd, tracked: true})
 	return err
 }
 
-// runCommands executes the configured validation commands itself and records
-// their real exit codes. Commands are split on whitespace and run without a
-// shell, so pipes, globs and variables are not interpreted.
 func (s *session) runCommands(ctx context.Context, t *c.Task, cwd string) error {
 	db := context.WithoutCancel(ctx)
 	if err := s.sched.Transition(ctx, t, c.TaskRunning, "running validation commands", nil); err != nil {
@@ -351,8 +318,6 @@ func (s *session) runCommands(ctx context.Context, t *c.Task, cwd string) error 
 	return nil
 }
 
-// runCommand runs argv in dir with its output going to logPath and returns the
-// real exit code (-1 if the process could not be started or was killed).
 func runCommand(ctx context.Context, timeout time.Duration, dir string, argv []string, logPath string) (int, error) {
 	out, err := os.Create(logPath)
 	if err != nil {
@@ -365,19 +330,13 @@ func runCommand(ctx context.Context, timeout time.Duration, dir string, argv []s
 	cmd.Dir = dir
 	cmd.Stdout, cmd.Stderr = out, out
 	cmd.WaitDelay = 5 * time.Second
-	// The command and everything it starts form one process tree (a process
-	// group on Unix, a job object on Windows), killed as a whole on
-	// timeout/cancel and after the command exits: `go test` and friends spawn
-	// children that would otherwise outlive the validation.
+
 	tree, err := proctree.Start(cmd)
 	if err == nil {
 		err = cmd.Wait()
 		tree.Kill()
 	}
-	// A command we killed has no result of its own. Its exit status is an
-	// artefact of how it was killed (-1 after SIGKILL on Unix, the code given
-	// to TerminateJobObject on Windows), never something to record as the
-	// command's exit code.
+
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded):
 		return -1, fmt.Errorf("timed out after %s", timeout)
@@ -389,7 +348,7 @@ func runCommand(ctx context.Context, timeout time.Duration, dir string, argv []s
 	case err == nil:
 		return 0, nil
 	case errors.As(err, &exitErr):
-		return exitErr.ExitCode(), nil // a non-zero exit is a result, not an error
+		return exitErr.ExitCode(), nil
 	default:
 		return -1, err
 	}
@@ -411,22 +370,15 @@ func fileTail(path string, n int64) string {
 	return strings.ToValidUTF8(string(buf[:read]), "")
 }
 
-// ---------- agent executions ----------
-
 type agentRun struct {
-	owner *c.Task // the task this execution belongs to
+	owner *c.Task
 	role  c.Role
 	cwd   string
 	data  agents.PromptData
-	// tracked: owner is the task the scheduler dispatched, so its
-	// running/blocked status follows the agent. False for corrections, where
-	// owner is the developer task being fixed on behalf of a reviewer.
+
 	tracked bool
 }
 
-// runAgent performs one agent execution for a task: persists it, runs the
-// agent (or re-attaches to one that survived a restart), stores what it
-// produced and validates its report.
 func (s *session) runAgent(ctx context.Context, ar *agentRun) (*c.Report, error) {
 	db := context.WithoutCancel(ctx)
 	owner := s.sched.Snapshot(ar.owner)
@@ -473,8 +425,7 @@ func (s *session) runAgent(ctx context.Context, ar *agentRun) (*c.Report, error)
 		agent.Name, agent.WorkspaceID, agent.PaneID, agent.RuntimeSessionID = sess.Name, sess.WorkspaceID, sess.PaneID, sess.TerminalID
 		agent.Status, agent.CurrentTaskID, agent.LastHeartbeat = "running", owner.ID, &now
 		ex.AgentID = agent.ID
-		// Persist the session before anything else: after a crash this row is
-		// the only way to find the agent again.
+
 		if err := errors.Join(s.Store.SaveAgent(db, agent), s.Store.SaveExecution(db, ex)); err != nil {
 			log.Error().Err(err).Str("agent", sess.Name).Msg("could not persist agent session")
 		}
@@ -520,8 +471,7 @@ func (s *session) runAgent(ctx context.Context, ar *agentRun) (*c.Report, error)
 		}
 	}
 	if errors.Is(err, agents.ErrNoReport) && res != nil && res.OutputPath != "" {
-		// The usual causes (agent not signed in, a dialog the runtime does not
-		// recognise as blocking) are only visible on its screen.
+
 		err = fmt.Errorf("%w; its last screen is in %s", err, res.OutputPath)
 	}
 	var report *c.Report
@@ -556,8 +506,6 @@ func (s *session) runAgent(ctx context.Context, ar *agentRun) (*c.Report, error)
 	return report, nil
 }
 
-// attachHint tells a human how to reach a blocked agent, if the runtime can
-// attach them to it (runtime.Attacher).
 func (s *session) attachHint(agent string) string {
 	if at, ok := s.RT.(runtime.Attacher); ok {
 		if argv, err := at.AttachCommand(agent); err == nil {
@@ -567,11 +515,6 @@ func (s *session) attachHint(agent string) string {
 	return "open it in the agent runtime (this runtime cannot attach from Caffè)"
 }
 
-// reattach decides what to do with an execution that a previous orchestrator
-// process left unfinished for this task. If its agent is still alive, or its
-// report is already on disk, the execution is continued and nothing is
-// prompted again. Otherwise its outcome is unknowable: it is recorded as
-// unknown and the caller starts a new execution that is told about it.
 func (s *session) reattach(ctx context.Context, ar *agentRun) (*c.Execution, *c.Agent, *agents.Session) {
 	s.mu.Lock()
 	ex := s.resumable[ar.owner.ID]
@@ -612,8 +555,6 @@ func (s *session) reattach(ctx context.Context, ar *agentRun) (*c.Execution, *c.
 
 const maxUpstreamChars = 4000
 
-// upstream collects the latest report of each direct dependency. It reads
-// from stored artifacts, so it works the same after a restart.
 func (s *session) upstream(ctx context.Context, t *c.Task) []agents.Upstream {
 	arts, err := s.Store.ListArtifacts(ctx, s.run.ID)
 	if err != nil {

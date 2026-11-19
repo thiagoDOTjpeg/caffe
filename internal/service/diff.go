@@ -12,31 +12,24 @@ import (
 	"caffe/internal/core"
 )
 
-// maxDiffBytes bounds a diff returned to a consumer.
 const maxDiffBytes = 4 << 20
 
-// DiffSource says where a diff came from.
 type DiffSource string
 
 const (
-	DiffLive   DiffSource = "live"   // computed now from the task's worktree
-	DiffStored DiffSource = "stored" // the artifact the engine wrote (the worktree is gone)
+	DiffLive   DiffSource = "live"
+	DiffStored DiffSource = "stored"
 )
 
-// Diff is a developer task's committed changes relative to its diff base.
-// It is code under review, so it is not redacted.
 type Diff struct {
 	TaskKey   string
-	Base      string // commit the diff starts from; "" for a stored diff
+	Base      string
 	Text      string
-	Files     []string // live only
+	Files     []string
 	Source    DiffSource
 	Truncated bool
 }
 
-// TaskDiff returns a developer task's changes: live from its worktree when
-// the worktree still exists (same rule as the engine: core.DiffBase,
-// committed changes only), otherwise the latest stored diff artifact.
 func (s *Service) TaskDiff(ctx context.Context, taskID string) (*Diff, error) {
 	task, err := s.store.GetTask(ctx, taskID)
 	if err != nil {
@@ -57,7 +50,7 @@ func (s *Service) TaskDiff(ctx context.Context, taskID string) (*Diff, error) {
 	var latest *c.Artifact
 	for _, a := range snap.Artifacts {
 		if a.TaskID == task.ID && a.Type == c.ArtifactDiff {
-			latest = a // ordered oldest first
+			latest = a
 		}
 	}
 	if latest == nil {
@@ -66,8 +59,6 @@ func (s *Service) TaskDiff(ctx context.Context, taskID string) (*Diff, error) {
 	return s.storedDiff(task, latest)
 }
 
-// diffBase is the commit a developer task's changes start from (the
-// engine's rule, core.DiffBase).
 func (s *Service) diffBase(ctx context.Context, task *c.Task, runBase string, tasks []*c.Task) (string, error) {
 	g, err := core.NewGraph(tasks)
 	if err != nil {
@@ -123,8 +114,7 @@ func (s *Service) storedDiff(task *c.Task, a *c.Artifact) (*Diff, error) {
 	if len(buf) > maxDiffBytes {
 		buf, d.Truncated = buf[:maxDiffBytes], true
 	}
-	// The engine stores the diff with one trailing newline; give the same
-	// text as a live diff.
+
 	d.Text = strings.TrimSuffix(strings.ToValidUTF8(string(buf), ""), "\n")
 	return d, nil
 }

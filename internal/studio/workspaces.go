@@ -11,9 +11,8 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// workspaces is the selected workspace and the selector overlay's state.
 type workspaces struct {
-	selected service.Workspace // zero: main
+	selected service.Workspace
 	list     []service.Workspace
 	loaded   bool
 	err      error
@@ -25,7 +24,6 @@ type workspacesMsg struct {
 	err  error
 }
 
-// label names the selected workspace for the header and the status bar.
 func (w workspaces) label() string {
 	if w.selected.Kind != "task" {
 		return service.MainWorkspace

@@ -10,7 +10,7 @@ import (
 func TestWorkspaces(t *testing.T) {
 	ctx := context.Background()
 	svc, gm, tasks := stackedRepo(t)
-	must(t, gm.ExcludeLocally(ctx, ".caffe/")) // as caffe init does
+	must(t, gm.ExcludeLocally(ctx, ".caffe/"))
 	must(t, os.WriteFile(filepath.Join(tasks["base"].WorktreePath, "wip.txt"), []byte("x"), 0o644))
 	must(t, gm.RemoveWorktree(ctx, tasks["top"].WorktreePath))
 

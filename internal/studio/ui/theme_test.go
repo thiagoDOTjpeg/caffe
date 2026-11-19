@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// SGR colour codes: 30–37/90–97 (basic), 38;… (extended) foregrounds.
 func hasColour(s string) bool {
 	for _, code := range []string{"[3", "[9", ";3", ";9", "38;"} {
 		if strings.Contains(s, "\x1b"+code) || strings.Contains(s, code+"8;") {
@@ -23,22 +22,22 @@ func TestThemes(t *testing.T) {
 			t.Errorf("mono theme emits colour for tone %d: %q", tone, out)
 		}
 	}
-	// NO_COLOR wins over the configured theme.
+
 	if ThemeByName("caffe", true).Name != "mono" {
 		t.Error("NO_COLOR did not force mono")
 	}
-	// The caffè accent is the brand Caramel #C5A27B (197,162,123).
+
 	if out := ThemeByName("caffe", false).Render(ToneAccent, "x"); !strings.Contains(out, "197;162;123") {
 		t.Errorf("caffe accent is not Caramel: %q", out)
 	}
-	// High contrast never dims text.
+
 	if out := ThemeByName("high-contrast", false).Render(ToneMuted, "x"); out != "x" {
 		t.Errorf("high-contrast muted text is styled: %q", out)
 	}
 	if ThemeByName("nope", false).Name != "caffe" {
 		t.Error("unknown theme did not fall back to caffe")
 	}
-	// Styling never changes what is written, only how.
+
 	for _, name := range Themes {
 		th := ThemeByName(name, false)
 		for _, tone := range all {

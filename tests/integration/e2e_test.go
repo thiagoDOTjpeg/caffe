@@ -1,21 +1,3 @@
-// Package integration holds the end-to-end test against a real Herdr and real
-// coding agents. It spends model tokens and needs a human once (see below),
-// so it only runs with CAFFE_E2E=1:
-//
-//	make e2e
-//
-// Environment:
-//
-//	CAFFE_E2E_SESSION     Herdr session to use (default: the default session).
-//	                     Use a dedicated headless one to keep agents out of
-//	                     your own workspaces: `herdr --session caffe-e2e server`
-//	CAFFE_E2E_RESEARCHER  agent kind for the researcher (default claude)
-//	CAFFE_E2E_DEVELOPER   agent kind for the developer  (default claude)
-//
-// The test creates a brand-new repository, which no agent trusts yet. Each
-// agent kind therefore shows its "trust this folder?" dialog once. caffe never
-// answers such dialogs: the task goes to `blocked` and the test log prints the
-// `herdr agent attach` command to run. Answer it and the test continues.
 package integration
 
 import (
@@ -73,7 +55,6 @@ func TestEndToEndWithRealHerdr(t *testing.T) {
 		return out.String(), err
 	}
 
-	// 1. A test Git repository.
 	git("init", "-q", "-b", "main")
 	git("config", "user.email", "e2e@localhost")
 	git("config", "user.name", "caffe e2e")
@@ -100,7 +81,6 @@ func TestEndToEndWithRealHerdr(t *testing.T) {
 		t.Fatalf("Herdr or a configured agent kind is not available:\n%s\n%v", out, err)
 	}
 
-	// 2-5. A harmless task: workspace, agent, prompt and result all go through Herdr.
 	plan := `{"goal":"Add a hello file","tasks":[
 	 {"id":"research","title":"Inspect the project","description":"List the files in the project root and read README.md. Report what the project contains.","role":"researcher","dependencies":[],"acceptance_criteria":["The files in the project root are listed in the summary"]},
 	 {"id":"impl","title":"Create hello.txt","description":"Create a file named hello.txt in the root of your working directory containing exactly one line: hello from caffe","role":"developer","dependencies":["research"],"acceptance_criteria":["hello.txt contains the line 'hello from caffe'"]},
@@ -112,7 +92,6 @@ func TestEndToEndWithRealHerdr(t *testing.T) {
 		t.Fatalf("run failed: %v", err)
 	}
 
-	// 6. The generated artifact.
 	branches := git("branch", "--list", "caffe/*", "--format=%(refname:short)")
 	if strings.Count(branches, "\n") != 0 || !strings.HasSuffix(branches, "/impl") {
 		t.Fatalf("want exactly one developer branch, got %q", branches)
@@ -127,7 +106,6 @@ func TestEndToEndWithRealHerdr(t *testing.T) {
 		t.Error("the main checkout was modified")
 	}
 
-	// 7. State transitions, in order, for every task.
 	for _, task := range []string{"research", "impl", "validate"} {
 		last := -1
 		for _, step := range []string{"pending → ready", "ready → assigned", "assigned → running", "→ completed"} {

@@ -6,7 +6,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// special keys, encoded the way Bubble Tea decodes them from the terminal.
 var special = map[string]tea.Key{
 	"space":     {Code: tea.KeySpace, Text: " "},
 	"esc":       {Code: tea.KeyEscape},
@@ -18,8 +17,6 @@ var special = map[string]tea.Key{
 	"shift+tab": {Code: tea.KeyTab, Mod: tea.ModShift},
 }
 
-// keyPress builds the message for a key name like "q", "ctrl+c" or "space",
-// as a real terminal would produce it, so tests exercise the real key names.
 func keyPress(s string) tea.KeyPressMsg {
 	if k, ok := special[s]; ok {
 		return tea.KeyPressMsg(k)

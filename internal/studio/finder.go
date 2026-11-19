@@ -11,9 +11,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// File finder (WS-07): fuzzy match over the workspace's file list (the
-// explorer's, so no second git ls-files).
-
 const maxFinderResults = 200
 
 type finder struct {
@@ -30,15 +27,12 @@ func (m model) openFinder() (model, tea.Cmd) {
 	return m.loadTree()
 }
 
-// fuzzy scores path against query (lower is better); ok is false when the
-// query's runes do not all appear in order. Gaps cost; a match inside the
-// file name beats one in the directories.
 func fuzzy(p, query string) (score int, ok bool) {
 	lp, q := strings.ToLower(p), []rune(strings.ToLower(query))
 	if len(q) == 0 {
 		return len(p), true
 	}
-	// Matched from the end, so the runes land in the file name when they can.
+
 	base := len([]rune(p)) - len([]rune(path.Base(p)))
 	r := []rune(lp)
 	i, last := len(q)-1, -1

@@ -29,7 +29,7 @@ func setup(t *testing.T) (*Manager, *runtime.Fake, Request) {
 func TestExecuteDeliversReportAndCleansUp(t *testing.T) {
 	m, rt, req := setup(t)
 	rt.OnPrompt = func(_, _, cwd, prompt string) {
-		// The agent is told where the prompt is, not sent the prompt itself.
+
 		if strings.Contains(prompt, "full prompt") {
 			t.Errorf("prompt body leaked into terminal input: %q", prompt)
 		}
@@ -64,8 +64,7 @@ func TestExecuteDeliversReportAndCleansUp(t *testing.T) {
 
 func TestIdleIsNotCompletion(t *testing.T) {
 	m, rt, req := setup(t)
-	// The agent goes idle immediately and never writes a report, even after
-	// the reminder.
+
 	_, err := m.Execute(context.Background(), req)
 	if !errors.Is(err, ErrNoReport) {
 		t.Fatalf("want ErrNoReport, got %v", err)
@@ -78,13 +77,10 @@ func TestIdleIsNotCompletion(t *testing.T) {
 	}
 }
 
-// Seen with a real agent: it started a background command, went idle while
-// waiting for it, and delivered afterwards. Brief idleness must not trigger
-// the reminder.
 func TestBriefIdlenessIsNotNudged(t *testing.T) {
 	m, rt, req := setup(t)
 	m.IdleNudgeAfter = 5 * time.Second
-	rt.OnPrompt = func(_, _, cwd, _ string) { // returns at once: the agent looks idle
+	rt.OnPrompt = func(_, _, cwd, _ string) {
 		time.AfterFunc(80*time.Millisecond, func() {
 			os.WriteFile(ReportPath(cwd, execID), []byte(`{"status":"completed","summary":"after background work"}`), 0o644)
 		})
@@ -120,7 +116,7 @@ func TestBlockedAtStartupWaitsForHuman(t *testing.T) {
 	var transitions []bool
 	req.OnBlocked = func(b bool) {
 		transitions = append(transitions, b)
-		if b { // the human answers the dialog a moment later
+		if b {
 			time.AfterFunc(20*time.Millisecond, func() { rt.SetStatus("c0a1b2c3d-developer", runtime.StatusIdle) })
 		}
 	}
@@ -139,7 +135,7 @@ func TestUncertainPromptIsNotResentWhenAgentIsWorking(t *testing.T) {
 	m, rt, req := setup(t)
 	rt.PromptErr = fmt.Errorf("%w: timeout", runtime.ErrUncertain)
 	rt.OnPrompt = func(_, _, cwd, _ string) {
-		time.Sleep(30 * time.Millisecond) // still "working" when the orchestrator checks
+		time.Sleep(30 * time.Millisecond)
 		os.WriteFile(ReportPath(cwd, execID), []byte(`{"status":"completed","summary":"ok"}`), 0o644)
 	}
 	if _, err := m.Execute(context.Background(), req); err != nil {
@@ -166,7 +162,7 @@ func TestCancellationStopsAgent(t *testing.T) {
 
 func TestAttachDoesNotPromptAgain(t *testing.T) {
 	m, rt, req := setup(t)
-	// An agent started by a previous orchestrator process, already done.
+
 	ws, _ := rt.CreateWorkspace(context.Background(), req.Cwd, "x")
 	rt.StartAgent(context.Background(), "claude", ws.PaneID, "old-agent", nil)
 	os.WriteFile(ReportPath(req.Cwd, execID), []byte(`{"status":"completed","summary":"from before"}`), 0o644)
@@ -180,7 +176,6 @@ func TestAttachDoesNotPromptAgain(t *testing.T) {
 		t.Fatalf("re-attach must not prompt: %q", rt.Prompts)
 	}
 
-	// Gone agent, no report: unknowable outcome, reported as such.
 	req.Attach = &Session{Name: "vanished"}
 	if _, err := m.Execute(context.Background(), req); !errors.Is(err, ErrAgentGone) {
 		t.Fatalf("want ErrAgentGone, got %v", err)

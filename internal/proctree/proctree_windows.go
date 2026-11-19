@@ -11,19 +11,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// Tree is a command and every process it starts: on Windows, a job
-// object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. Children of a process in a
-// job are in the job too, so terminating (or closing) the job ends the tree.
 type Tree struct {
 	once sync.Once
-	// job is set right after Start, while Cancel may already run on another
-	// goroutine: hence atomic. 0 if the job could not be set up.
+
 	job atomic.Uintptr
 	cmd *exec.Cmd
 }
 
-// Start starts cmd inside a new kill-on-close job; cancelling cmd's context
-// terminates the whole job instead of the command only.
 func Start(cmd *exec.Cmd) (*Tree, error) {
 	t := &Tree{cmd: cmd}
 	cmd.Cancel = func() error {
@@ -35,17 +29,11 @@ func Start(cmd *exec.Cmd) (*Tree, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	// ponytail: the process is assigned to the job right after it started, so
-	// a child it spawns in that instant escapes the job. Creating it suspended
-	// (CREATE_SUSPENDED) and resuming after the assignment closes that gap, but
-	// os/exec does not expose the thread handle needed to resume it.
+
 	t.job.Store(uintptr(newKillOnCloseJob(cmd.Process.Pid)))
 	return t, nil
 }
 
-// newKillOnCloseJob puts pid in a new kill-on-close job and returns the job,
-// or 0 if any step fails (the command still runs, but its tree is not
-// contained: the same as before this existed).
 func newKillOnCloseJob(pid int) windows.Handle {
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
@@ -71,12 +59,8 @@ func newKillOnCloseJob(pid int) windows.Handle {
 	return job
 }
 
-// Terminate stops the whole job. Console-less processes have no gentle stop
-// signal on Windows, so this is Kill.
 func (t *Tree) Terminate() { t.Kill() }
 
-// Kill ends every process still in the job (background children) and
-// releases it. Safe to call once the command exited.
 func (t *Tree) Kill() {
 	t.once.Do(func() {
 		if job := windows.Handle(t.job.Swap(0)); job != 0 {

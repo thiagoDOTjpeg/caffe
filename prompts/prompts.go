@@ -1,4 +1,3 @@
-// Package prompts embeds the role prompt templates.
 package prompts
 
 import "embed"

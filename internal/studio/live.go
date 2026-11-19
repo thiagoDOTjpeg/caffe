@@ -12,7 +12,6 @@ import (
 	"caffe/internal/service"
 )
 
-// source is the part of service.Service the live state reads; tests use a fake.
 type source interface {
 	Runs(ctx context.Context, activeOnly bool) ([]service.RunSummary, error)
 	RunSnapshot(ctx context.Context, runID string) (*service.RunView, error)
@@ -44,7 +43,6 @@ type source interface {
 	ValidationCommands() []string
 }
 
-// Timings of architecture §7. Variables so tests can shrink them.
 var (
 	debounce   = 100 * time.Millisecond
 	backoffMin = time.Second
@@ -52,30 +50,28 @@ var (
 )
 
 const (
-	feedCap  = 2000 // events kept in memory (architecture §5.4)
-	feedPage = 500  // events read per refresh; more pages follow at once
+	feedCap  = 2000
+	feedPage = 500
 )
 
-// live is the database-backed state: runs, the selected run's snapshot and
-// the event feed. It keeps its last good value when a refresh fails.
 type live struct {
 	runs     []service.RunSummary
-	runID    string // selected run, kept across refreshes
+	runID    string
 	snap     *service.RunView
 	loaded   bool
 	loadedAt time.Time
 
-	err        error // last failure; nil when fresh
+	err        error
 	staleSince time.Time
 	backoff    time.Duration
 
-	feed    []c.Event // ring of the newest feedCap events, all runs, Seq order
+	feed    []c.Event
 	lastSeq int64
 
-	watchErr error // the watcher could not start: data never refreshes
+	watchErr error
 
-	pending bool // a debounce tick, retry or load is outstanding
-	dirty   bool // a change arrived while pending
+	pending bool
+	dirty   bool
 }
 
 func (l live) stale() bool { return l.err != nil }
@@ -89,12 +85,11 @@ type (
 		runID  string
 		snap   *service.RunView
 		events []c.Event
-		more   bool // the event page was full
+		more   bool
 		err    error
 	}
 )
 
-// waitChange delivers the next watcher change; Update re-arms it.
 func waitChange(ch <-chan service.Change) tea.Cmd {
 	if ch == nil {
 		return nil
@@ -102,7 +97,7 @@ func waitChange(ch <-chan service.Change) tea.Cmd {
 	return func() tea.Msg {
 		ch, ok := <-ch
 		if !ok {
-			return nil // watcher stopped: Studio is exiting
+			return nil
 		}
 		return changeMsg(ch)
 	}
@@ -112,8 +107,6 @@ func after(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg { return refreshMsg{} })
 }
 
-// chooseRun keeps the selected run if it still exists, else picks the newest
-// active run, else the newest run. runs are newest first.
 func chooseRun(runs []service.RunSummary, current string) string {
 	for _, r := range runs {
 		if r.ID == current {
@@ -131,8 +124,6 @@ func chooseRun(runs []service.RunSummary, current string) string {
 	return ""
 }
 
-// load reads everything the live state shows. It runs as a command, off the
-// update loop.
 func (l live) load(src source) tea.Cmd {
 	current, lastSeq, first := l.runID, l.lastSeq, !l.loaded
 	return func() tea.Msg {
@@ -146,7 +137,7 @@ func (l live) load(src source) tea.Cmd {
 			if msg.snap, msg.err = src.RunSnapshot(ctx, msg.runID); msg.err != nil {
 				return msg
 			}
-			if first { // start the feed near the head, not at the beginning of history
+			if first {
 				lastSeq = max(0, msg.snap.Seq-feedCap)
 			}
 		}
@@ -183,7 +174,7 @@ func (m model) updateLive(msg tea.Msg) (model, tea.Cmd) {
 		}
 		if gap(l.lastSeq, msg.events) {
 			m.guard.log.Warn().Int64("last_seq", l.lastSeq).Int64("next_seq", msg.events[0].Seq).Msg("event cursor gap: reloading the feed")
-			l.feed, l.lastSeq, l.loaded = nil, 0, false // the next load starts from a fresh snapshot
+			l.feed, l.lastSeq, l.loaded = nil, 0, false
 			l.pending = true
 			return m, l.load(m.src)
 		}
@@ -212,7 +203,7 @@ func (l *live) apply(msg loadedMsg) {
 	l.err, l.backoff = nil, 0
 	for _, e := range msg.events {
 		if e.Seq <= l.lastSeq {
-			continue // already seen
+			continue
 		}
 		l.feed = append(l.feed, e)
 		l.lastSeq = e.Seq
@@ -222,7 +213,6 @@ func (l *live) apply(msg loadedMsg) {
 	}
 }
 
-// staleLine is the banner shown while data is not fresh.
 func (l live) staleLine() string {
 	if !l.stale() {
 		if l.watchErr != nil {
@@ -233,7 +223,6 @@ func (l live) staleLine() string {
 	return fmt.Sprintf("⚠ stale since %s — %v", l.staleSince.Format("15:04:05"), l.err)
 }
 
-// feedLines renders the newest n events of the selected run, oldest first.
 func (l live) feedLines(n int) []string {
 	if n <= 0 {
 		return nil

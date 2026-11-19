@@ -9,35 +9,29 @@ import (
 	"caffe/internal/runtime"
 )
 
-// VisualState is how an agent is presented. It is derived, separately from
-// task state, and never decides anything: completion comes from the database.
 type VisualState string
 
 const (
 	VisualIdle        VisualState = "idle"
 	VisualStarting    VisualState = "starting"
 	VisualWorking     VisualState = "working"
-	VisualWaiting     VisualState = "waiting" // idle in the runtime, report not delivered yet
+	VisualWaiting     VisualState = "waiting"
 	VisualBlocked     VisualState = "blocked"
-	VisualLost        VisualState = "lost"        // execution running, runtime says the agent is gone
-	VisualInterrupted VisualState = "interrupted" // the orchestrator process died during the execution
-	VisualStopped     VisualState = "stopped"     // agent ended with no execution of its own (planning agents)
+	VisualLost        VisualState = "lost"
+	VisualInterrupted VisualState = "interrupted"
+	VisualStopped     VisualState = "stopped"
 	VisualCompleted   VisualState = "completed"
 	VisualFailed      VisualState = "failed"
 	VisualCancelled   VisualState = "cancelled"
 )
 
-// RuntimeObservation is what the runtime last said about an agent. The zero
-// value means "not asked" (stored state only).
 type RuntimeObservation struct {
-	Known  bool // the runtime answered
-	Found  bool // ...and the agent exists there
+	Known  bool
+	Found  bool
 	Status runtime.AgentStatus
-	Err    error // the runtime could not be asked (Known is false)
+	Err    error
 }
 
-// DeriveVisualState applies the rules of docs/studio/ux-specification.md §4.1,
-// first match wins. exec is the agent's latest execution, nil if it has none.
 func DeriveVisualState(agentStatus string, exec *c.Execution, rt RuntimeObservation) VisualState {
 	if exec != nil {
 		switch exec.Status {
@@ -76,9 +70,6 @@ func DeriveVisualState(agentStatus string, exec *c.Execution, rt RuntimeObservat
 	return VisualIdle
 }
 
-// TaskReason explains why a task is in its state, in one line: what a pending
-// task waits on, that a ready task is queued, why a task failed. Empty when
-// there is nothing to explain.
 func TaskReason(t *c.Task, g *core.Graph, maxConcurrent int, runStatus c.RunStatus) string {
 	reason := t.Error
 	switch t.Status {

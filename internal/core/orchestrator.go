@@ -24,14 +24,10 @@ import (
 	"caffe/internal/runtime"
 )
 
-// StaleAfter is how long a run may go without a heartbeat before its owning
-// process is considered dead.
 const StaleAfter = 15 * time.Second
 
 var errCancelledByUser = errors.New("cancelled by user")
 
-// Orchestrator wires planning, scheduling, execution and recovery together.
-// Everything external is injected.
 type Orchestrator struct {
 	Cfg     *config.Config
 	Store   *persistence.Store
@@ -40,17 +36,16 @@ type Orchestrator struct {
 	Agents  *agents.Manager
 	Planner planner.LLMProvider
 	Log     zerolog.Logger
-	// Progress receives one human-readable line per notable change.
+
 	Progress func(line string)
-	// HeartbeatEvery overrides the liveness interval (tests).
+
 	HeartbeatEvery time.Duration
 
 	mu      sync.Mutex
 	wtLocks map[string]*sync.RWMutex
-	sayMu   sync.Mutex // Progress is called from task goroutines; serialise it
+	sayMu   sync.Mutex
 }
 
-// session is the state of the one run this process is driving.
 type session struct {
 	*Orchestrator
 	run   *c.Run
@@ -58,7 +53,7 @@ type session struct {
 	sched *Scheduler
 
 	mu        sync.Mutex
-	resumable map[string]*c.Execution // task id -> execution interrupted by a previous process
+	resumable map[string]*c.Execution
 }
 
 func (o *Orchestrator) say(format string, a ...any) {
@@ -69,8 +64,6 @@ func (o *Orchestrator) say(format string, a ...any) {
 	}
 }
 
-// event persists an event. Losing one must not abort the run, but it is logged
-// loudly because events are what recovery and inspection rely on.
 func (o *Orchestrator) event(e c.Event) {
 	if err := o.Store.AddEvent(context.Background(), &e); err != nil {
 		o.Log.Error().Err(err).Str("run_id", e.RunID).Str("event_type", e.Type).Msg("could not persist event")
@@ -84,12 +77,8 @@ func (o *Orchestrator) warn(runID, taskID, msg string) {
 	o.say("warning: %s", msg)
 }
 
-// RunDir is where a run's artifacts are stored.
 func (o *Orchestrator) RunDir(runID string) string { return filepath.Join(o.Cfg.ArtifactDir(), runID) }
 
-// wtLock returns the lock of a working directory. Developers take it
-// exclusively, readers and validators share it, so nobody reads a tree that is
-// being rewritten and two developers never write the same one.
 func (o *Orchestrator) wtLock(path string) *sync.RWMutex {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -102,16 +91,10 @@ func (o *Orchestrator) wtLock(path string) *sync.RWMutex {
 	return o.wtLocks[path]
 }
 
-// Run plans and executes a request. With a preset plan the planner is skipped.
-// The returned error is about the orchestration itself; task failures are
-// reflected in the run's status.
 func (o *Orchestrator) Run(ctx context.Context, request string, preset *c.ExecutionPlan) (*c.Run, error) {
 	return o.RunWithID(ctx, "", request, preset)
 }
 
-// RunWithID is Run with a caller-chosen run id, so that a process launching
-// `caffe run` knows the id before the run exists. id must be a canonical
-// (lowercase, hyphenated) UUID that no run has; "" generates one.
 func (o *Orchestrator) RunWithID(ctx context.Context, id, request string, preset *c.ExecutionPlan) (*c.Run, error) {
 	if id == "" {
 		id = uuid.NewString()
@@ -147,7 +130,6 @@ func (o *Orchestrator) RunWithID(ctx context.Context, id, request string, preset
 	return o.drive(ctx, run, preset, nil, nil)
 }
 
-// drive owns a run until it reaches a terminal status.
 func (o *Orchestrator) drive(ctx context.Context, run *c.Run, preset *c.ExecutionPlan, tasks []*c.Task, resumable map[string]*c.Execution) (*c.Run, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
@@ -159,8 +141,6 @@ func (o *Orchestrator) drive(ctx context.Context, run *c.Run, preset *c.Executio
 	return run, errors.Join(err, s.finalize(ctx, err))
 }
 
-// heartbeat keeps the run marked as owned and watches for a cancellation
-// requested by another process (`caffe cancel`).
 func (o *Orchestrator) heartbeat(runID string, cancel context.CancelCauseFunc) (stop func()) {
 	every := o.HeartbeatEvery
 	if every == 0 {
@@ -222,8 +202,7 @@ func (s *session) execute(ctx context.Context, preset *c.ExecutionPlan, tasks []
 			}
 			var err error
 			plan, err = s.plan(ctx)
-			// Planning agents' workspaces are already closed by the agent
-			// manager; record that, or their rows stay "running" forever.
+
 			if serr := s.stopAgents(context.WithoutCancel(ctx), s.run.ID); serr != nil {
 				s.Log.Warn().Err(serr).Str("run_id", s.run.ID).Msg("could not record planning agents as stopped")
 			}
@@ -273,7 +252,7 @@ func (s *session) execute(ctx context.Context, preset *c.ExecutionPlan, tasks []
 		}
 		s.say("%s", line)
 	}
-	// The run status follows the most advanced phase currently in flight.
+
 	s.sched.OnActive = func(active map[c.Role]int) {
 		to := c.RunExecuting
 		switch {
@@ -292,8 +271,6 @@ func (s *session) execute(ctx context.Context, preset *c.ExecutionPlan, tasks []
 	return s.sched.Run(ctx)
 }
 
-// preflight checks, against what the runtime really supports, that every
-// agent kind the run needs can be started.
 func (s *session) preflight(ctx context.Context, roles []c.Role) error {
 	caps, err := s.RT.Capabilities(ctx)
 	if err != nil {
@@ -301,7 +278,7 @@ func (s *session) preflight(ctx context.Context, roles []c.Role) error {
 	}
 	for _, role := range roles {
 		if role == c.RoleValidator && len(s.Cfg.Validation.Commands) > 0 {
-			continue // the orchestrator runs the commands itself
+			continue
 		}
 		if kind := s.Cfg.Agent(role).Kind; !caps.Supports(kind) {
 			return fmt.Errorf("agents.%s.kind=%q cannot be started by this runtime (version %s; available kinds: %s)",
@@ -311,7 +288,6 @@ func (s *session) preflight(ctx context.Context, roles []c.Role) error {
 	return nil
 }
 
-// plan asks the planner, retrying when it returns something invalid.
 func (s *session) plan(ctx context.Context) (*c.ExecutionPlan, error) {
 	overview, err := planner.CollectContext(s.Cfg.Project.Path)
 	if err != nil {
@@ -366,7 +342,6 @@ func tasksFromPlan(runID string, plan *c.ExecutionPlan, maxAttempts int) []*c.Ta
 	return tasks
 }
 
-// finalize records the run's outcome and writes the consolidated report.
 func (s *session) finalize(ctx context.Context, runErr error) error {
 	db := context.Background()
 	stored, err := s.Store.GetRun(db, s.run.ID)
@@ -418,8 +393,6 @@ func (s *session) finalize(ctx context.Context, runErr error) error {
 	return s.Store.AddArtifact(db, &c.Artifact{RunID: s.run.ID, Type: c.ArtifactReport, Path: path, Description: "consolidated run report"})
 }
 
-// PlannerSession persists the planning agent so it shows up in `caffe agents`
-// and can be cleaned up after a crash.
 func (o *Orchestrator) PlannerSession(runID string, sess agents.Session) {
 	now := persistence.Now()
 	a := &c.Agent{ID: "planner-" + sess.Name, RunID: runID, Name: sess.Name, Kind: sess.Kind, Role: c.RolePlanner, Status: "running",
@@ -429,16 +402,12 @@ func (o *Orchestrator) PlannerSession(runID string, sess agents.Session) {
 	}
 }
 
-// PlannerBlocked surfaces a planning agent that waits for a human.
 func (o *Orchestrator) PlannerBlocked(runID string, blocked bool) {
 	if blocked {
 		o.warn(runID, "", "the planning agent is waiting for human input in its Herdr pane")
 	}
 }
 
-// Cancel stops a run. If its owning process is alive, that process notices
-// within one heartbeat and stops its agents itself. Otherwise the leftovers
-// are cleaned up here.
 func (o *Orchestrator) Cancel(ctx context.Context, idOrPrefix string) (*c.Run, error) {
 	run, err := o.Store.GetRun(ctx, idOrPrefix)
 	if err != nil {
@@ -483,8 +452,6 @@ func (o *Orchestrator) Cancel(ctx context.Context, idOrPrefix string) (*c.Run, e
 	return run, errors.Join(errs...)
 }
 
-// stopAgents closes the runtime workspaces of a run's agents that are not
-// known to be stopped.
 func (o *Orchestrator) stopAgents(ctx context.Context, runID string) error {
 	list, err := o.Store.ListAgents(ctx, runID)
 	if err != nil {
@@ -495,8 +462,7 @@ func (o *Orchestrator) stopAgents(ctx context.Context, runID string) error {
 		if a.Status == "stopped" || a.WorkspaceID == "" {
 			continue
 		}
-		// Only close the workspace if it still hosts OUR agent: workspace ids
-		// are reused by the runtime after a restart.
+
 		if _, err := o.RT.GetAgentStatus(ctx, a.Name); err == nil {
 			if err := o.RT.StopAgent(ctx, a.WorkspaceID); err != nil {
 				errs = append(errs, fmt.Errorf("stop agent %s: %w", a.Name, err))
@@ -512,11 +478,6 @@ func (o *Orchestrator) stopAgents(ctx context.Context, runID string) error {
 	return errors.Join(errs...)
 }
 
-// Clean removes the worktrees of finished runs. Worktrees of runs or tasks
-// that did not complete are kept unless includeFailed is set or the
-// configuration says not to preserve them, and leased worktrees are always
-// kept. Branches are never deleted, and Git refuses to remove a worktree with
-// uncommitted changes.
 func (o *Orchestrator) Clean(ctx context.Context, includeFailed bool) ([]string, error) {
 	includeFailed = includeFailed || !o.Cfg.Security.PreserveFailedWorktrees
 	runs, err := o.Store.ListRuns(ctx, false)
@@ -541,16 +502,14 @@ func (o *Orchestrator) Clean(ctx context.Context, includeFailed bool) ([]string,
 			if _, err := os.Stat(t.WorktreePath); errors.Is(err, os.ErrNotExist) {
 				continue
 			}
-			// A leased worktree is in use: by a human editing it in Studio, or
-			// an agent (WS-16).
+
 			if l, err := o.Store.GetLease(ctx, t.WorktreePath); err == nil {
 				actions = append(actions, fmt.Sprintf("kept    %s (leased by %s %s since %s)", t.WorktreePath, l.HolderKind, l.HolderID, l.AcquiredAt.Local().Format("2006-01-02 15:04")))
 				continue
 			} else if !errors.Is(err, persistence.ErrNotFound) {
 				return actions, err
 			}
-			// A worktree is only disposable when both its task and its run
-			// succeeded; anything else is evidence someone may want to look at.
+
 			if (t.Status != c.TaskCompleted || run.Status != c.RunCompleted) && !includeFailed {
 				actions = append(actions, fmt.Sprintf("kept    %s (run %s, task %s %s; use --failed to remove)", t.WorktreePath, run.Status, t.Key, t.Status))
 				continue

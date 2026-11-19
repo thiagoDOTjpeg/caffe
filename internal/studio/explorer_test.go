@@ -35,7 +35,7 @@ func TestExplorerTreeMarksAndOpen(t *testing.T) {
 	if strings.Contains(v, "tool.go") {
 		t.Error("a collapsed directory is drawn open")
 	}
-	m, _ = press(m, "enter", "j", "l") // open cmd, then cmd/app
+	m, _ = press(m, "enter", "j", "l")
 	v = plain(m.View().Content)
 	if !strings.Contains(v, "▾ cmd") || !strings.Contains(v, "M       main.go") || !strings.Contains(v, "tool.go") {
 		t.Errorf("expanded:\n%s", v)
@@ -48,11 +48,11 @@ func TestExplorerTreeMarksAndOpen(t *testing.T) {
 	if v := plain(m.View().Content); !strings.Contains(v, "4 │ func hello() {") {
 		t.Errorf("viewer:\n%s", v)
 	}
-	m, _ = press(m, "h") // back to the tree, at main.go
+	m, _ = press(m, "h")
 	if m.scope() != "explorer" {
 		t.Fatal("h does not return to the explorer")
 	}
-	m, _ = press(m, "h", "h") // to cmd/app, collapse it
+	m, _ = press(m, "h", "h")
 	if v := plain(m.View().Content); strings.Contains(v, "main.go  ") && strings.Contains(v, "▾ app") {
 		t.Errorf("not collapsed:\n%s", v)
 	}

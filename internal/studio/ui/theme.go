@@ -4,29 +4,23 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Tone is the meaning of a piece of text, not its colour. Themes decide the
-// colour; in the mono theme every tone is plain or bold, so meaning must also
-// be carried by the symbol and the words (docs/studio/ux-specification.md §4).
 type Tone int
 
 const (
 	ToneNormal Tone = iota
-	ToneMuted       // secondary information
-	ToneAccent      // brand accent: product mark, active item, focus
-	ToneOK          // completed, healthy
-	ToneWarn        // blocked, waiting on a human, stale
-	ToneError       // failed, unreachable
-	ToneActive      // working right now
+	ToneMuted
+	ToneAccent
+	ToneOK
+	ToneWarn
+	ToneError
+	ToneActive
 )
 
-// Theme renders tones. Body text keeps the terminal's own colours: forcing the
-// Cream foreground or the Espresso background would break light terminals.
 type Theme struct {
 	Name  string
 	tones map[Tone]lipgloss.Style
 }
 
-// Brand palette (docs/brand.md).
 const (
 	Espresso  = "#241A16"
 	Secondary = "#30231D"
@@ -35,11 +29,8 @@ const (
 	Muted     = "#A99583"
 )
 
-// Themes are the accepted names of studio.theme.
 var Themes = []string{"caffe", "high-contrast", "mono"}
 
-// ThemeByName returns a theme; noColor (the NO_COLOR convention) forces mono.
-// Unknown names fall back to caffe: config validation rejects them earlier.
 func ThemeByName(name string, noColor bool) Theme {
 	if noColor {
 		name = "mono"
@@ -54,7 +45,7 @@ func ThemeByName(name string, noColor bool) Theme {
 		}}
 	case "high-contrast":
 		return Theme{Name: "high-contrast", tones: map[Tone]lipgloss.Style{
-			ToneMuted:  lipgloss.NewStyle(), // no dimmed text at all
+			ToneMuted:  lipgloss.NewStyle(),
 			ToneAccent: fg("#FFD27F").Bold(true),
 			ToneOK:     fg("#5CFF5C").Bold(true),
 			ToneWarn:   fg("#FFFF00").Bold(true),
@@ -73,7 +64,6 @@ func ThemeByName(name string, noColor bool) Theme {
 	}
 }
 
-// Render styles s with a tone. Width is unchanged: styles only add escapes.
 func (t Theme) Render(tone Tone, s string) string {
 	st, ok := t.tones[tone]
 	if !ok || s == "" {

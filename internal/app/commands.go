@@ -22,11 +22,8 @@ import (
 	"caffe/internal/studio"
 )
 
-// ErrRunNotCompleted makes `caffe run` and `caffe resume` exit non-zero when the
-// run did not complete, without printing a second error message.
 var ErrRunNotCompleted = errors.New("run did not complete")
 
-// NewRootCommand builds the `caffe` CLI.
 func NewRootCommand() *cobra.Command {
 	var dir string
 	var verbose bool
@@ -43,7 +40,6 @@ func NewRootCommand() *cobra.Command {
 	root.PersistentFlags().StringVarP(&dir, "project", "C", ".", "project directory (or any directory below it)")
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "also write debug logs to stderr")
 
-	// with opens the project for a command and closes it afterwards.
 	with := func(fn func(cmd *cobra.Command, a *App, args []string) error) func(*cobra.Command, []string) error {
 		return func(cmd *cobra.Command, args []string) error {
 			a, err := Open(cmd.Context(), dir, verbose)
@@ -131,7 +127,7 @@ func NewRootCommand() *cobra.Command {
 	runCmd.Flags().BoolVar(&detach, "detach", false, "start the run as a background process and return its id")
 	root.AddCommand(runCmd)
 
-	var studioCmd func(*cobra.Command, []string) error // set below: opens the project, then Studio
+	var studioCmd func(*cobra.Command, []string) error
 	root.AddCommand(&cobra.Command{
 		Use:   "studio",
 		Short: "Open Caffè Studio, the terminal UI (early preview)",
@@ -139,7 +135,7 @@ func NewRootCommand() *cobra.Command {
 			"Runs started from it are separate processes: quitting Studio does not stop them.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := FindRoot(dir); err != nil { // not a project: say how to make one, full screen
+			if _, err := FindRoot(dir); err != nil {
 				abs, _ := filepath.Abs(dir)
 				return studio.Run(cmd.Context(), nil, studio.Project{Root: abs}, studio.Options{NoProject: true, Log: zerolog.Nop()})
 			}
@@ -327,7 +323,7 @@ func NewRootCommand() *cobra.Command {
 						live = append(live, ag)
 					}
 				}
-				// Ask the runtime: the stored status is only what we last saw.
+
 				obs := a.Svc.AgentRuntimeStatus(cmd.Context(), live)
 				for _, ag := range live {
 					if n++; n == 1 {
@@ -390,8 +386,6 @@ func NewRootCommand() *cobra.Command {
 	return root
 }
 
-// printTasks shows a run's task graph with, for every task that is not
-// moving, the reason why (service.TaskReason).
 func printTasks(ctx context.Context, out io.Writer, a *App, runID string) error {
 	snap, err := a.Svc.RunSnapshot(ctx, runID)
 	if err != nil {
@@ -409,8 +403,7 @@ func printTasks(ctx context.Context, out io.Writer, a *App, runID string) error 
 		case c.TaskCompleted:
 			detail = t.BranchName
 		case c.TaskBlocked:
-			// CLI wording, kept from before the service existed. The service's
-			// reason is runtime-neutral; Herdr is the CLI's only runtime.
+
 			detail += " in its Herdr pane"
 		}
 		fmt.Fprintf(w, "  %s\t%s\t%s\t%d/%d\t%s\t%s\n", t.Key, t.Role, t.Status, t.Attempts, t.MaxAttempts, strings.Join(t.DependsOn, ","), oneLine(detail, 90))

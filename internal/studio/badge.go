@@ -6,10 +6,6 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// badge is how a state is shown: a symbol and words always, a tone on top.
-// Colour is never the only carrier of meaning (docs/studio/ux-specification.md,
-// NFR-A2): within each family every symbol is distinct, and the label is
-// printed next to it.
 type badge struct {
 	Symbol string
 	Label  string
@@ -42,7 +38,6 @@ var runBadges = map[c.RunStatus]badge{
 	c.RunInterrupted: {"⏸", "interrupted", ui.ToneWarn},
 }
 
-// Agent visual states, symbols from ux-specification.md §4.1.
 var agentBadges = map[service.VisualState]badge{
 	service.VisualIdle:        {"○", "idle", ui.ToneMuted},
 	service.VisualStarting:    {"◌", "starting", ui.ToneNormal},
@@ -63,7 +58,6 @@ func agentBadge(s service.VisualState) badge {
 	return lookup(agentBadges, s, string(s))
 }
 
-// lookup never hides an unknown state: it is shown by name.
 func lookup[K comparable](m map[K]badge, k K, name string) badge {
 	if b, ok := m[k]; ok {
 		return b

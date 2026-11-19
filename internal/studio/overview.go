@@ -13,11 +13,8 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// healthEvery is how often the runtime is asked whether it is reachable
-// (architecture §7).
 var healthEvery = 10 * time.Second
 
-// health is the last runtime Capabilities result.
 type health struct {
 	info    *service.RuntimeInfo
 	err     error
@@ -50,13 +47,12 @@ func (m model) updateHealth(msg tea.Msg) (model, tea.Cmd) {
 	return m, nil
 }
 
-// runtimeBadge is the runtime indicator of the header and the health block.
 func (h health) badge() badge {
 	switch {
 	case !h.checked:
 		return badge{"◌", "runtime checking…", ui.ToneMuted}
 	case h.err != nil:
-		return badge{"✗", "runtime: " + clip(oneLine(h.err.Error()), 48), ui.ToneError} // the adapter's own words
+		return badge{"✗", "runtime: " + clip(oneLine(h.err.Error()), 48), ui.ToneError}
 	case h.info.Version != "":
 		return badge{"●", "runtime " + h.info.Version, ui.ToneOK}
 	default:
@@ -64,12 +60,10 @@ func (h health) badge() badge {
 	}
 }
 
-// padded renders b padded to w cells before colouring, so columns line up.
 func padded(b badge, th ui.Theme, w int) string {
 	return th.Render(b.Tone, fmt.Sprintf("%-*s", w, b.Symbol+" "+b.Label))
 }
 
-// headerText is the header line; it names the selected run when there is one.
 func (m model) headerText() string {
 	h := "caffè ─ " + m.project.Name
 	if m.ws.selected.Kind == "task" {
@@ -100,7 +94,6 @@ func (m model) headerText() string {
 	return fmt.Sprintf("%s ─ run %s · %s ── %d/%d tasks ── %s %s", h, short(v.Run.ID), status, done, len(v.Tasks), b.Symbol, b.Label)
 }
 
-// overviewScreen is ux-specification §2.1 for the selected run.
 func (m model) overviewScreen(height int) string {
 	l := m.live
 	if !l.loaded {
@@ -198,7 +191,6 @@ func taskElapsed(t c.Task, now time.Time) string {
 	return compact(end.Sub(*t.StartedAt))
 }
 
-// taskNote is the most useful extra fact about a task.
 func taskNote(t service.TaskView) string {
 	switch {
 	case t.Error != "":
@@ -212,7 +204,6 @@ func taskNote(t service.TaskView) string {
 	}
 }
 
-// heartbeat says how recently the run's owner process reported in.
 func heartbeat(r service.RunSummary, now time.Time) badge {
 	switch {
 	case r.Status.Terminal():
@@ -226,8 +217,6 @@ func heartbeat(r service.RunSummary, now time.Time) badge {
 	}
 }
 
-// count is the number of events of type typ for run in the feed (the newest
-// feedCap events, so a lower bound on a long run).
 func (l live) count(runID, typ string) int {
 	n := 0
 	for _, e := range l.feed {

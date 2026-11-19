@@ -14,8 +14,6 @@ import (
 	"caffe/internal/session"
 )
 
-// TestHelperCommand is the command the sessions of these tests run: the test
-// binary itself, selected by -test.run, only when the environment says so.
 func TestHelperCommand(t *testing.T) {
 	switch os.Getenv("CAFFE_STUDIO_HELPER") {
 	case "fail":
@@ -75,8 +73,6 @@ func TestResolveLink(t *testing.T) {
 	}
 }
 
-// until runs cmd and what follows from it, as Bubble Tea does, until cond
-// holds: sessions end on their own time, after drive's quiet period.
 func until(t *testing.T, m model, cmd tea.Cmd, cond func(model) bool) model {
 	t.Helper()
 	msgs := make(chan tea.Msg, 256)
@@ -114,7 +110,6 @@ func until(t *testing.T, m model, cmd tea.Cmd, cond func(model) bool) model {
 	return m
 }
 
-// ended: every session ended and n exist.
 func ended(n int) func(model) bool {
 	return func(m model) bool {
 		all := m.terms.mgr.Sessions()
@@ -151,7 +146,7 @@ func TestCommandSessionShowsOutputAndOpensItsLinks(t *testing.T) {
 			t.Errorf("view lacks %q:\n%s", want, v)
 		}
 	}
-	m, _ = press(m, "enter") // focus the output: cursor on the last link
+	m, _ = press(m, "enter")
 	if m.scope() != "termout" || !strings.Contains(m.View().Content, "enter opens hello_test.go:12") {
 		t.Fatalf("scope %s, view:\n%s", m.scope(), m.View().Content)
 	}
@@ -165,11 +160,11 @@ func TestCommandSessionShowsOutputAndOpensItsLinks(t *testing.T) {
 func TestValidationStopsAtTheFirstFailure(t *testing.T) {
 	m, f := terminalsModel(t)
 	f.validation = []string{helperArgv(""), helperArgv(""), helperArgv("")}
-	// The helper's mode comes from the environment, shared by every step.
+
 	t.Setenv("CAFFE_STUDIO_HELPER", "fail")
 	m, cmd := press(m, "v")
 	m = until(t, m, cmd, ended(1))
-	time.Sleep(100 * time.Millisecond) // a second step would have started by now
+	time.Sleep(100 * time.Millisecond)
 	m = drive(t, m, nil)
 	if all := m.terms.mgr.Sessions(); len(all) != 1 || all[0].Info().Kind != "validation" || all[0].Info().Code != 1 {
 		t.Fatalf("%d sessions after a failing first step", len(all))
@@ -177,7 +172,7 @@ func TestValidationStopsAtTheFirstFailure(t *testing.T) {
 
 	t.Setenv("CAFFE_STUDIO_HELPER", "ok")
 	m, cmd = press(m, "v")
-	m = until(t, m, cmd, ended(4)) // 1 + every step of the second run
+	m = until(t, m, cmd, ended(4))
 	if s := m.terms.mgr.Sessions()[3].Info(); s.Code != 0 {
 		t.Fatalf("last step: %+v", s)
 	}
@@ -197,7 +192,7 @@ func TestQuitAsksWhileSessionsRunAndStopsThem(t *testing.T) {
 	if quits(cmd) || m.overlay != overlayConfirm || !strings.Contains(m.View().Content, "1 terminal session(s) still running") {
 		t.Fatalf("quit did not ask:\n%s", m.View().Content)
 	}
-	// Closing a running session asks too, and stopping ends it.
+
 	m, _ = press(m, "esc", "x")
 	if m.overlay != overlayConfirm {
 		t.Fatal("closing a running session did not ask")

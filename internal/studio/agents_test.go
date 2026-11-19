@@ -59,7 +59,7 @@ func TestAgentCardsContent(t *testing.T) {
 }
 
 func TestAgentCursorMovesAndKeepsID(t *testing.T) {
-	m := agentsModel(t) // 120 wide: 3 cards per row
+	m := agentsModel(t)
 	if n := perRow(m.layout().Main.W); n != 3 {
 		t.Fatalf("per row %d", n)
 	}
@@ -72,11 +72,11 @@ func TestAgentCursorMovesAndKeepsID(t *testing.T) {
 		t.Errorf("j moves a row: %q", m.agents.cursor)
 	}
 	m, _ = press(m, "j", "l", "l")
-	if m.agents.cursor != "fffffffff-4" { // last in sort order
+	if m.agents.cursor != "fffffffff-4" {
 		t.Errorf("clamped at the last card: %q", m.agents.cursor)
 	}
-	// The reviewer finishes and sorts later; the cursor stays on it.
-	m, _ = press(m, "k", "k", "l") // back to c8eccebbd
+
+	m, _ = press(m, "k", "k", "l")
 	m.live.snap.Agents[1].Visual = service.VisualCompleted
 	if agents := sortedAgents(m.live.snap.Agents); agents[m.agents.index(agents)].ID != "c8eccebbd-2" {
 		t.Error("cursor lost its agent after a re-sort")

@@ -50,7 +50,7 @@ func TestGoldenOverview(t *testing.T) {
 func TestOverviewFields(t *testing.T) {
 	v := plain(overviewModel(t).View().Content)
 	for _, want := range []string{
-		"run 0112dd6a · reviewing ── 2/4 tasks ── ● runtime 0.9.5", // header
+		"run 0112dd6a · reviewing ── 2/4 tasks ── ● runtime 0.9.5",
 		"Add a hello file to the project", "14:09:29 (2m 01s)", "Phase  ↻ reviewing", "Base  7f5d944",
 		"■■□□  2 completed · 1 running · 1 pending",
 		"caffe/0112dd6a/impl", "agent c8eccebbd", "waiting on review (running)", "55s",

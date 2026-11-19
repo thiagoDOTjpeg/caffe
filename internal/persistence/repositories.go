@@ -14,8 +14,6 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// querier is satisfied by *sql.DB and *sql.Tx, so reads can run inside a
-// read transaction (RunSnapshot) or on their own.
 type querier interface {
 	QueryContext(ctx context.Context, q string, args ...any) (*sql.Rows, error)
 }
@@ -23,8 +21,6 @@ type querier interface {
 type execer interface {
 	ExecContext(ctx context.Context, q string, args ...any) (sql.Result, error)
 }
-
-// ---------- events ----------
 
 func insertEvent(ctx context.Context, x execer, e *c.Event) error {
 	if e.ID == "" {
@@ -48,18 +44,12 @@ func insertEvent(ctx context.Context, x execer, e *c.Event) error {
 
 func (s *Store) AddEvent(ctx context.Context, e *c.Event) error { return insertEvent(ctx, s.db, e) }
 
-// Events are append-only: nothing ever deletes from the events table, so its
-// rowid only grows and serves as the cursor (Event.Seq) for incremental
-// readers. Deleting events would break that; if retention is ever needed,
-// migrate to an explicit AUTOINCREMENT sequence first.
 const eventCols = `rowid, id, run_id, task_id, agent_id, type, payload, created_at`
 
 func (s *Store) ListEvents(ctx context.Context, runID string) ([]c.Event, error) {
 	return s.queryEvents(ctx, `SELECT `+eventCols+` FROM events WHERE run_id = ? ORDER BY created_at, rowid`, runID)
 }
 
-// EventsSince returns up to limit events with Seq > after, in insertion
-// order, for one run or, with runID "", for all runs.
 func (s *Store) EventsSince(ctx context.Context, after int64, runID string, limit int) ([]c.Event, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("EventsSince: limit must be positive, got %d", limit)
@@ -68,9 +58,6 @@ func (s *Store) EventsSince(ctx context.Context, after int64, runID string, limi
 		after, runID, runID, limit)
 }
 
-// EventsBefore returns up to limit events with Seq < before (0: from the
-// newest), for one run or all, oldest first: the page just before a cursor,
-// for reading a log backwards.
 func (s *Store) EventsBefore(ctx context.Context, before int64, runID string, limit int) ([]c.Event, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("EventsBefore: limit must be positive, got %d", limit)
@@ -103,9 +90,6 @@ func (s *Store) queryEvents(ctx context.Context, q string, args ...any) ([]c.Eve
 	return out, rows.Err()
 }
 
-// ---------- runs ----------
-
-// CreateRun inserts a run and its creation event.
 func (s *Store) CreateRun(ctx context.Context, r *c.Run) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx,
@@ -120,8 +104,6 @@ func (s *Store) CreateRun(ctx context.Context, r *c.Run) error {
 	})
 }
 
-// UpdateRun moves a run from one status to another (compare-and-swap) and
-// records the transition event in the same transaction.
 func (s *Store) UpdateRun(ctx context.Context, r *c.Run, from c.RunStatus) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx,
@@ -138,8 +120,6 @@ func (s *Store) UpdateRun(ctx context.Context, r *c.Run, from c.RunStatus) error
 	})
 }
 
-// Heartbeat marks the run as owned by a live process and returns its current
-// status, so the owner notices a cancellation requested by another process.
 func (s *Store) Heartbeat(ctx context.Context, runID string) (c.RunStatus, error) {
 	var st c.RunStatus
 	err := s.db.QueryRowContext(ctx, `UPDATE runs SET heartbeat_at=? WHERE id=? RETURNING status`, ts(Now()), runID).Scan(&st)
@@ -162,7 +142,6 @@ func scanRun(row interface{ Scan(...any) error }) (*c.Run, error) {
 	return &r, nil
 }
 
-// GetRun finds a run by id or unambiguous id prefix.
 func (s *Store) GetRun(ctx context.Context, idOrPrefix string) (*c.Run, error) {
 	return getRun(ctx, s.db, idOrPrefix)
 }
@@ -204,7 +183,6 @@ func likePrefix(p string) string {
 	return string(out) + "%"
 }
 
-// ListRuns returns runs newest first. activeOnly keeps non-terminal ones.
 func (s *Store) ListRuns(ctx context.Context, activeOnly bool) ([]*c.Run, error) {
 	q := `SELECT ` + runCols + ` FROM runs`
 	if activeOnly {
@@ -226,9 +204,6 @@ func (s *Store) ListRuns(ctx context.Context, activeOnly bool) ([]*c.Run, error)
 	return out, rows.Err()
 }
 
-// ---------- tasks ----------
-
-// CreateTasks inserts a run's task graph atomically.
 func (s *Store) CreateTasks(ctx context.Context, tasks []*c.Task) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		for i, t := range tasks {
@@ -255,9 +230,6 @@ func (s *Store) CreateTasks(ctx context.Context, tasks []*c.Task) error {
 	})
 }
 
-// UpdateTask persists a task's mutable fields, but only if its stored status
-// is still `from`. Exactly one caller can win a given transition, which is
-// what stops two workers from dispatching the same task.
 func (s *Store) UpdateTask(ctx context.Context, t *c.Task, from c.TaskStatus, reason string) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx,
@@ -328,18 +300,11 @@ func listTasks(ctx context.Context, q querier, runID string) ([]*c.Task, error) 
 	return out, deps.Err()
 }
 
-// ---------- agents ----------
-
-// Agent status values written by the engine. Only the transitions into
-// running and stopped are evented; "starting" is a placeholder before the
-// runtime session exists.
 const (
 	agentRunning = "running"
 	agentStopped = "stopped"
 )
 
-// SaveAgent upserts an agent. Moving into running or stopped records
-// agent.started / agent.stopped in the same transaction.
 func (s *Store) SaveAgent(ctx context.Context, a *c.Agent) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		var prevStatus, prevTask string
@@ -363,7 +328,7 @@ func (s *Store) SaveAgent(ctx context.Context, a *c.Agent) error {
 		case agentRunning:
 			typ, taskID = c.EventAgentStarted, a.CurrentTaskID
 		case agentStopped:
-			typ, taskID = c.EventAgentStopped, prevTask // the task is cleared when the agent stops
+			typ, taskID = c.EventAgentStopped, prevTask
 		default:
 			return nil
 		}
@@ -372,7 +337,6 @@ func (s *Store) SaveAgent(ctx context.Context, a *c.Agent) error {
 	})
 }
 
-// ListAgents returns the agents of one run, or of every run when runID is "".
 func (s *Store) ListAgents(ctx context.Context, runID string) ([]*c.Agent, error) {
 	return listAgents(ctx, s.db, runID)
 }
@@ -408,7 +372,7 @@ func (s *Store) GetAgent(ctx context.Context, id string) (*c.Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, a := range all { // ponytail: linear scan, add a WHERE id=? query if agent counts get large
+	for _, a := range all {
 		if a.ID == id {
 			return a, nil
 		}
@@ -416,11 +380,6 @@ func (s *Store) GetAgent(ctx context.Context, id string) (*c.Agent, error) {
 	return nil, fmt.Errorf("agent %q: %w", id, ErrNotFound)
 }
 
-// ---------- executions ----------
-
-// SaveExecution upserts an execution. The first save of an id records
-// execution.started in the same transaction. Its end is evented by the
-// engine (execution.<status>), which knows the outcome's context.
 func (s *Store) SaveExecution(ctx context.Context, e *c.Execution) error {
 	var exit any
 	if e.ExitCode != nil {
@@ -450,7 +409,6 @@ func (s *Store) SaveExecution(ctx context.Context, e *c.Execution) error {
 	})
 }
 
-// ListExecutions returns a run's executions, oldest first.
 func (s *Store) ListExecutions(ctx context.Context, runID string) ([]*c.Execution, error) {
 	return listExecutions(ctx, s.db, runID)
 }
@@ -481,8 +439,6 @@ func listExecutions(ctx context.Context, q querier, runID string) ([]*c.Executio
 	}
 	return out, rows.Err()
 }
-
-// ---------- artifacts ----------
 
 func (s *Store) AddArtifact(ctx context.Context, a *c.Artifact) error {
 	if a.ID == "" {
@@ -526,11 +482,6 @@ func listArtifacts(ctx context.Context, q querier, runID string) ([]*c.Artifact,
 	return out, rows.Err()
 }
 
-// ---------- recovery ----------
-
-// MarkStaleRunsInterrupted flags runs whose owning process stopped heartbeating
-// as interrupted, together with their running executions. It decides nothing
-// about the work itself: that is reconciled on resume.
 func (s *Store) MarkStaleRunsInterrupted(ctx context.Context, staleAfter time.Duration) ([]string, error) {
 	cutoff := ts(Now().Add(-staleAfter))
 	var ids []string

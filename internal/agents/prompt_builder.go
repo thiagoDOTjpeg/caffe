@@ -10,36 +10,30 @@ import (
 	"caffe/prompts"
 )
 
-// PromptData is everything a role prompt can reference.
 type PromptData struct {
 	UserRequest string
 	ProjectPath string
 	Cwd         string
 	ReportPath  string
 
-	// task roles
 	TaskKey     string
 	Title       string
 	Description string
 	Criteria    []string
 	Upstream    []Upstream
 
-	// developer
 	Branch      string
-	Interrupted bool   // a previous attempt left this worktree in an unknown state
-	PriorError  string // why the previous attempt stopped, when known
+	Interrupted bool
+	PriorError  string
 	Findings    []contracts.Finding
 
-	// reviewer
 	DiffPath   string
 	BaseCommit string
 
-	// planner
 	Context  string
 	MaxTasks int
 }
 
-// Upstream is the result of a dependency, passed on as untrusted information.
 type Upstream struct {
 	Key        string
 	Role       contracts.Role
@@ -51,7 +45,6 @@ var parseTemplates = sync.OnceValues(func() (*template.Template, error) {
 	return template.New("prompts").Option("missingkey=error").ParseFS(prompts.FS, "*.md")
 })
 
-// Render builds the prompt for a role.
 func Render(role contracts.Role, data PromptData) (string, error) {
 	t, err := parseTemplates()
 	if err != nil {

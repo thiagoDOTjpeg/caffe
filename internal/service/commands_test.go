@@ -39,16 +39,16 @@ func TestCancelRunAndClean(t *testing.T) {
 	}
 	e := &fakeEngine{}
 	f.svc.WithEngine(e)
-	sum, err := f.svc.CancelRun(ctx, "1111") // prefix
+	sum, err := f.svc.CancelRun(ctx, "1111")
 	if err != nil || sum.Status != c.RunCancelled || e.cancelled[0] != "11111111-0000-0000-0000-000000000000" {
 		t.Fatalf("cancel: %+v %v %v", sum, err, e.cancelled)
 	}
-	// Lost the race to another writer: a conflict, never a retry.
+
 	e.cancelErr = fmt.Errorf("run x is not executing: %w", persistence.ErrConflict)
 	if _, err := f.svc.CancelRun(ctx, "1111"); !errors.Is(err, ErrConflict) || len(e.cancelled) != 2 {
 		t.Errorf("conflict: %v (calls %d)", err, len(e.cancelled))
 	}
-	// Already finished: a conflict without calling the engine.
+
 	run, _ := f.w.GetRun(ctx, "1111")
 	from := run.Status
 	run.Status = c.RunCompleted
@@ -87,7 +87,7 @@ func TestAttachAgent(t *testing.T) {
 	if err != nil || strings.Join(cmd.Args, " ") != "herdr agent attach c3-developer" {
 		t.Fatalf("attach: %v %v", cmd, err)
 	}
-	if _, err := f.svc.AttachAgent(ctx, "ag-res"); !errors.Is(err, ErrConflict) { // stopped
+	if _, err := f.svc.AttachAgent(ctx, "ag-res"); !errors.Is(err, ErrConflict) {
 		t.Errorf("stopped agent: %v", err)
 	}
 	if _, err := f.svc.AttachAgent(ctx, "nope"); !errors.Is(err, ErrNotFound) {

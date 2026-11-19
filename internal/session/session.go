@@ -1,7 +1,3 @@
-// Package session runs command sessions for Studio: an argv (never a shell)
-// in a workspace, as its own process tree, with its output in a bounded ring
-// buffer and a log file. Sessions live for the Manager's lifetime; StopAll
-// ends every one of them.
 package session
 
 import (
@@ -18,60 +14,53 @@ import (
 	"caffe/internal/proctree"
 )
 
-// State is where a session is in its life.
 type State string
 
 const (
 	Running State = "running"
-	Exited  State = "exited"  // the command ended by itself; see Code
-	Stopped State = "stopped" // ended by Stop
-	Failed  State = "failed"  // never started; see Err
+	Exited  State = "exited"
+	Stopped State = "stopped"
+	Failed  State = "failed"
 )
 
 const (
-	// BufferLines bounds each session's in-memory output (NFR-P3); the log
-	// file keeps everything.
 	BufferLines = 10_000
-	// stopGrace is how long Stop waits after SIGTERM before SIGKILL.
+
 	stopGrace = 3 * time.Second
-	// notifyEvery batches output notifications (≤ 20/s per session).
+
 	notifyEvery = 50 * time.Millisecond
 	maxLine     = 1 << 20
 )
 
-// Info is a consistent copy of a session's state.
 type Info struct {
 	ID        int
-	Kind      string // what started it: "command", "validation", …
-	Workspace string // label shown next to the session
+	Kind      string
+	Workspace string
 	Dir       string
 	Argv      []string
 	State     State
-	Code      int // exit code; -1 when killed, stopped or never started
+	Code      int
 	Err       error
 	Started   time.Time
-	Ended     time.Time // zero while running
+	Ended     time.Time
 	LogPath   string
 }
 
-// Session is one command run.
 type Session struct {
 	done chan struct{}
 
 	mu       sync.Mutex
 	info     Info
-	lines    []string // ring buffer of the last BufferLines lines
-	head     int      // index of the oldest line once the ring is full
-	dirty    bool     // output since the last notification
+	lines    []string
+	head     int
+	dirty    bool
 	stopping bool
 	tree     *proctree.Tree
 }
 
-// Manager owns the sessions of one Studio.
 type Manager struct {
 	logDir string
-	// Notify, if set, is called from a session goroutine when a session got
-	// new output (batched) or changed state. It must not block.
+
 	Notify func(id int)
 
 	mu       sync.Mutex
@@ -79,11 +68,8 @@ type Manager struct {
 	sessions []*Session
 }
 
-// NewManager writes session logs under logDir (created on demand).
 func NewManager(logDir string) *Manager { return &Manager{logDir: logDir} }
 
-// Start runs argv in dir. A command that cannot start still becomes a
-// session, in state Failed, so the UI can show why.
 func (m *Manager) Start(kind, workspace, dir string, argv []string) *Session {
 	m.mu.Lock()
 	m.next++
@@ -123,12 +109,12 @@ func (s *Session) start(logDir string) error {
 		log.Close()
 		return err
 	}
-	// proctree.Start sets cmd.Cancel, which needs CommandContext.
+
 	cmd := exec.CommandContext(context.Background(), s.info.Argv[0], s.info.Argv[1:]...)
 	cmd.Dir = s.info.Dir
-	cmd.Stdout, cmd.Stderr = w, w // one stream: keeps stdout/stderr interleaving
+	cmd.Stdout, cmd.Stderr = w, w
 	tree, err := proctree.Start(cmd)
-	w.Close() // the children hold their own copy
+	w.Close()
 	if err != nil {
 		r.Close()
 		log.Close()
@@ -144,11 +130,11 @@ func (s *Session) start(logDir string) error {
 		defer r.Close()
 		defer log.Close()
 		s.readLines(io.TeeReader(r, log))
-		io.Copy(log, r) // after a line too long to split: keep logging
+		io.Copy(log, r)
 	}()
 	go func() {
 		err := cmd.Wait()
-		tree.Kill() // background children would keep the pipe open
+		tree.Kill()
 		<-read
 		s.mu.Lock()
 		s.info.Ended = time.Now()
@@ -191,7 +177,6 @@ func (s *Session) readLines(r io.Reader) {
 	}
 }
 
-// watch sends batched notifications until the session ends, then one more.
 func (m *Manager) watch(s *Session) {
 	t := time.NewTicker(notifyEvery)
 	defer t.Stop()
@@ -218,25 +203,20 @@ func (m *Manager) notify(id int) {
 	}
 }
 
-// Info returns a copy of the session's state.
 func (s *Session) Info() Info {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.info
 }
 
-// Lines returns the buffered output, oldest first.
 func (s *Session) Lines() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append(append([]string(nil), s.lines[s.head:]...), s.lines[:s.head]...)
 }
 
-// Done is closed once the session ended and its output was read.
 func (s *Session) Done() <-chan struct{} { return s.done }
 
-// Stop terminates the session's process tree: SIGTERM, then SIGKILL after a
-// grace period. It returns once the session ended.
 func (s *Session) Stop() {
 	s.mu.Lock()
 	tree := s.tree
@@ -258,14 +238,12 @@ func (s *Session) Stop() {
 	}
 }
 
-// Sessions returns every session, oldest first.
 func (m *Manager) Sessions() []*Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return append([]*Session(nil), m.sessions...)
 }
 
-// Get returns the session with id, or nil.
 func (m *Manager) Get(id int) *Session {
 	for _, s := range m.Sessions() {
 		if s.info.ID == id {
@@ -275,8 +253,6 @@ func (m *Manager) Get(id int) *Session {
 	return nil
 }
 
-// Remove forgets a session that is no longer running; it reports whether it
-// did. Its log file stays.
 func (m *Manager) Remove(id int) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -289,7 +265,6 @@ func (m *Manager) Remove(id int) bool {
 	return false
 }
 
-// Running counts the sessions still running.
 func (m *Manager) Running() int {
 	n := 0
 	for _, s := range m.Sessions() {
@@ -300,7 +275,6 @@ func (m *Manager) Running() int {
 	return n
 }
 
-// StopAll stops every running session concurrently and waits for all.
 func (m *Manager) StopAll() {
 	var wg sync.WaitGroup
 	for _, s := range m.Sessions() {

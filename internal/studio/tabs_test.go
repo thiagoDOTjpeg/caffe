@@ -24,7 +24,7 @@ func TestTabsAndSplit(t *testing.T) {
 	if len(m.tabs) != 2 || m.file.path != "b.go" {
 		t.Fatalf("tabs %d, active %s", len(m.tabs), m.file.path)
 	}
-	open("main", "a.go") // already open: activated, not duplicated
+	open("main", "a.go")
 	if len(m.tabs) != 2 || m.file.path != "a.go" || m.tabs[0] != m.file {
 		t.Fatalf("reopen: tabs %d, active %s", len(m.tabs), m.file.path)
 	}

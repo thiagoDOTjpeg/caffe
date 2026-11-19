@@ -1,7 +1,3 @@
-// Package studio is Caffè Studio, the terminal UI (docs/studio/). It is a
-// presentation layer only: everything it shows or does goes through
-// internal/service. It must not import persistence, core, runtime or git;
-// boundary_test.go enforces that.
 package studio
 
 import (
@@ -23,52 +19,41 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Project identifies the project Studio is opened on.
 type Project struct {
 	Name string
 	Root string
 }
 
-// Options configures a Studio session. Zero values mean a real terminal.
 type Options struct {
-	Input  io.Reader // nil: the terminal
-	Output io.Writer // nil: the terminal
-	// Dir holds Studio's own files (crash logs); usually .caffe/studio.
+	Input  io.Reader
+	Output io.Writer
+
 	Dir string
-	// Theme is studio.theme from the configuration; NO_COLOR in the
-	// environment forces the mono theme.
+
 	Theme string
 	Log   zerolog.Logger
-	// NoProject: p.Root is a directory that is not in a Caffè project; Studio
-	// shows how to create one and svc must be nil.
+
 	NoProject bool
 }
 
-// Run starts Studio and blocks until the user quits or ctx is cancelled
-// (SIGINT/SIGTERM). The terminal is restored on every exit path, including a
-// panic: Bubble Tea recovers it and restores the terminal, after the crash
-// guard has written the panic and stack to Dir. Runs started from Studio are
-// separate processes and are not affected by Studio exiting.
 func Run(ctx context.Context, svc *service.Service, p Project, opts Options) error {
-	// A closed terminal (SIGHUP) ends Studio like SIGINT/SIGTERM do, so the
-	// sessions are stopped instead of left running.
+
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGHUP)
 	defer stop()
 	guard := &crashGuard{dir: opts.Dir, log: opts.Log}
 	var src source
-	if svc != nil { // a nil *Service must not become a non-nil interface
+	if svc != nil {
 		src = svc
 	}
 	m := newModel(src, p, guard)
 	m.noProject = opts.NoProject
 	if svc != nil {
 		m.terms = newTerminals(filepath.Join(opts.Dir, "sessions"))
-		// Every exit path, panic and signal included, ends the sessions
-		// (NFR-R4); quitting normally asked first.
+
 		defer m.terms.mgr.StopAll()
 	}
 	if err := m.registry.Validate(); err != nil {
-		return err // a programming error: refuse to start with ambiguous keys
+		return err
 	}
 	if svc != nil {
 		w, err := svc.Watch(ctx, 0)
@@ -99,21 +84,18 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 		return fmt.Errorf("Caffè Studio crashed: %w", err)
 	case ctx.Err() != nil && (errors.Is(err, tea.ErrProgramKilled) || errors.Is(err, context.Canceled)):
 		opts.Log.Info().Msg("studio stopped by signal")
-		return nil // asked to stop: not a failure
+		return nil
 	default:
 		return err
 	}
 }
 
-// crashGuard writes a crash log for a panic and re-raises it, so that Bubble
-// Tea still restores the terminal and Run reports where the details are.
 type crashGuard struct {
 	dir  string
 	log  zerolog.Logger
-	file string // set once a crash was written
+	file string
 }
 
-// protect runs fn; if fn panics, the panic is logged and re-raised.
 func (g *crashGuard) protect(fn func()) {
 	defer func() {
 		if r := recover(); r != nil {

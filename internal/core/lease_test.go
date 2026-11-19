@@ -19,8 +19,6 @@ import (
 
 func fastPoll(cfg *config.Config) { cfg.Runtime.PollInterval = 100 * time.Millisecond }
 
-// hookLease makes fn run before the n-th lease acquisition (1-based) whose
-// tracked task is key.
 func hookLease(t *testing.T, key string, n int, fn func(path string)) {
 	var mu sync.Mutex
 	seen := 0
@@ -36,8 +34,6 @@ func hookLease(t *testing.T, key string, n int, fn func(path string)) {
 	t.Cleanup(func() { leaseHook = nil })
 }
 
-// humanUntilBlocked takes a human lease on path and gives it up once task
-// key of the only run is blocked for it; the channel closes then.
 func (e *env) humanUntilBlocked(path, key string, release func(l *persistence.Lease)) <-chan struct{} {
 	ctx := context.Background()
 	l := &persistence.Lease{Path: path, HolderKind: persistence.LeaseHuman, HolderID: "studio-test"}
@@ -111,7 +107,7 @@ func TestCorrectionWaitsForAHumanLease(t *testing.T) {
 		return goodAgents(role, cwd, prompt)
 	}
 	var held <-chan struct{}
-	// The reviewer's acquisitions: 1 review, 2 correction, 3 second review.
+
 	hookLease(t, "review", 2, func(path string) {
 		held = e.humanUntilBlocked(path, "review", func(l *persistence.Lease) { e.store.ReleaseLease(context.Background(), l) })
 	})
@@ -125,7 +121,6 @@ func TestCorrectionWaitsForAHumanLease(t *testing.T) {
 	}
 }
 
-// An abandoned human lease is taken over only once the worktree is clean.
 func TestExpiredHumanLeaseBlocksWhileDirty(t *testing.T) {
 	e := newEnv(t, fastPoll)
 	e.sc.handle = goodAgents
@@ -138,7 +133,7 @@ func TestExpiredHumanLeaseBlocksWhileDirty(t *testing.T) {
 	hookLease(t, "impl", 1, func(path string) {
 		os.WriteFile(filepath.Join(path, "manual.txt"), []byte("unsaved work\n"), 0o644)
 		held = e.humanUntilBlocked(path, "impl", func(*persistence.Lease) {
-			// Studio is gone (no heartbeat) and the human cleaned up.
+
 			os.Remove(filepath.Join(path, "manual.txt"))
 		})
 		old := persistence.Now().Add(-time.Minute).Format("2006-01-02T15:04:05.000000000Z")

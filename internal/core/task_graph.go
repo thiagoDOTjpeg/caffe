@@ -6,15 +6,11 @@ import (
 	c "caffe/internal/contracts"
 )
 
-// Graph is the dependency DAG of one run. It is not safe for concurrent use:
-// the Scheduler guards it.
 type Graph struct {
-	tasks []*c.Task // plan order
+	tasks []*c.Task
 	byID  map[string]*c.Task
 }
 
-// NewGraph indexes tasks and rejects dangling dependencies and cycles. Plans
-// are validated before they are stored; this guards against a damaged database.
 func NewGraph(tasks []*c.Task) (*Graph, error) {
 	g := &Graph{tasks: tasks, byID: make(map[string]*c.Task, len(tasks))}
 	for _, t := range tasks {
@@ -27,7 +23,7 @@ func NewGraph(tasks []*c.Task) (*Graph, error) {
 			}
 		}
 	}
-	// Depth-first search with three colours.
+
 	state := map[string]int{}
 	var visit func(t *c.Task) error
 	visit = func(t *c.Task) error {
@@ -64,7 +60,6 @@ func (g *Graph) Deps(t *c.Task) []*c.Task {
 	return out
 }
 
-// Promotable returns the pending tasks whose dependencies are all completed.
 func (g *Graph) Promotable() []*c.Task {
 	var out []*c.Task
 	for _, t := range g.tasks {
@@ -82,8 +77,6 @@ func (g *Graph) Promotable() []*c.Task {
 	return out
 }
 
-// Doomed returns the not-yet-started tasks that can never run because a
-// dependency failed or was cancelled, with the dependency responsible.
 func (g *Graph) Doomed() map[*c.Task]*c.Task {
 	out := map[*c.Task]*c.Task{}
 	for _, t := range g.tasks {
@@ -100,8 +93,6 @@ func (g *Graph) Doomed() map[*c.Task]*c.Task {
 	return out
 }
 
-// Waiting explains why a task is not running yet: the dependencies that are
-// not completed.
 func (g *Graph) Waiting(t *c.Task) []*c.Task {
 	var out []*c.Task
 	for _, d := range g.Deps(t) {
@@ -112,8 +103,6 @@ func (g *Graph) Waiting(t *c.Task) []*c.Task {
 	return out
 }
 
-// Nearest returns the closest ancestor of t with the given role, searching
-// breadth-first so that a direct dependency wins over a transitive one.
 func (g *Graph) Nearest(t *c.Task, role c.Role) *c.Task {
 	seen := map[string]bool{t.ID: true}
 	queue := g.Deps(t)

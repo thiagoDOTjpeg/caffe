@@ -11,13 +11,11 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Content search (WS-08): type, enter searches; enter again opens the hit.
-
 const maxSearchHits = 500
 
 type grep struct {
 	query   string
-	ran     string // the query the results are for
+	ran     string
 	ws      string
 	res     *service.SearchResult
 	err     error
@@ -44,7 +42,7 @@ func (m model) openGrep() (model, tea.Cmd) {
 
 func (m model) updateGrep(msg grepMsg) model {
 	if msg.ws != m.grep.ws || msg.query != m.grep.ran {
-		return m // superseded
+		return m
 	}
 	m.grep.res, m.grep.err, m.grep.running, m.grep.sel = msg.res, msg.err, false, 0
 	return m

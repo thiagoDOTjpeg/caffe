@@ -17,22 +17,13 @@ import (
 	"caffe/internal/runtime"
 )
 
-// Run hosting (docs/studio/technical-decisions.md, ADR-010): a run started by
-// a consumer is its own `caffe` process, detached from the consumer's
-// session, so it survives the consumer exiting. The consumer learns the id
-// up front (--run-id) and observes the run through the database.
-
-// StartRunRequest is what StartRun launches.
 type StartRunRequest struct {
 	Request  string
-	PlanFile string // optional: a plan JSON file instead of the planner
+	PlanFile string
 }
 
-// launchTimeout bounds how long StartRun/ResumeRun wait for the child to
-// show up in the database.
 const launchTimeout = 10 * time.Second
 
-// executable is the caffe binary to launch; tests replace it.
 func (s *Service) executable() (string, error) {
 	if s.exe != "" {
 		return s.exe, nil
@@ -40,9 +31,6 @@ func (s *Service) executable() (string, error) {
 	return os.Executable()
 }
 
-// StartRun launches `caffe run --run-id <new id>` detached and returns the id
-// once the run row exists. If the child exits before that, the error carries
-// the end of its console output.
 func (s *Service) StartRun(ctx context.Context, req StartRunRequest) (string, error) {
 	if strings.TrimSpace(req.Request) == "" {
 		return "", errors.New("empty request")
@@ -56,7 +44,7 @@ func (s *Service) StartRun(ctx context.Context, req StartRunRequest) (string, er
 		}
 		args = append(args, "--plan", abs)
 	}
-	// "--" ends flag parsing: a request that starts with "-" stays a request.
+
 	args = append(args, "--", req.Request)
 	err := s.launch(ctx, id, args, func(ctx context.Context) (bool, error) {
 		_, err := s.store.GetRun(ctx, id)
@@ -71,8 +59,6 @@ func (s *Service) StartRun(ctx context.Context, req StartRunRequest) (string, er
 	return id, nil
 }
 
-// ResumeRun launches `caffe resume <id>` detached and returns once the new
-// process has claimed the run (it is no longer interrupted).
 func (s *Service) ResumeRun(ctx context.Context, runID string) error {
 	run, err := s.store.GetRun(ctx, runID)
 	if err != nil {
@@ -97,8 +83,6 @@ func ignoreNotFound(err error) error {
 	return err
 }
 
-// launch starts exe -C <project> args..., in its own session, with output in
-// the run's console.log, and waits until ready reports true or the child exits.
 func (s *Service) launch(ctx context.Context, runID string, args []string, ready func(context.Context) (bool, error)) error {
 	exe, err := s.executable()
 	if err != nil {
@@ -113,19 +97,18 @@ func (s *Service) launch(ctx context.Context, runID string, args []string, ready
 	if err != nil {
 		return err
 	}
-	defer logFile.Close() // the child keeps its own descriptor
+	defer logFile.Close()
 
-	// Not CommandContext: cancelling the caller must not kill the run.
 	cmd := exec.Command(exe, append([]string{"-C", s.cfg.Project.Path}, args...)...)
 	cmd.Dir = s.cfg.Project.Path
-	cmd.Stdin = nil // /dev/null
+	cmd.Stdin = nil
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	cmd.SysProcAttr = detachedAttr()
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start %s: %w", exe, err)
 	}
 	exited := make(chan error, 1)
-	go func() { exited <- cmd.Wait() }() // always reaped, even after we return
+	go func() { exited <- cmd.Wait() }()
 
 	deadline := time.NewTimer(launchTimeout)
 	defer deadline.Stop()
@@ -141,7 +124,7 @@ func (s *Service) launch(ctx context.Context, runID string, args []string, ready
 		}
 		select {
 		case werr := <-exited:
-			// It may have become ready just before exiting (e.g. a very short run).
+
 			if ok, err := ready(context.WithoutCancel(ctx)); err == nil && ok {
 				return nil
 			}
@@ -156,7 +139,6 @@ func (s *Service) launch(ctx context.Context, runID string, args []string, ready
 	}
 }
 
-// consoleTail returns the redacted end of a console log, for error messages.
 func consoleTail(path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {

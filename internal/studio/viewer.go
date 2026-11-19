@@ -14,28 +14,23 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Limits of NFR-P4: above plainSize a file is shown without highlighting;
-// nothing above maxFileRead is read.
 const (
 	plainSize   = 2 << 20
 	maxFileRead = 16 << 20
 )
 
-// viewer shows one file of a workspace, read-only (ADR-003: editing is the
-// $EDITOR hand-off in M2a).
 type viewer struct {
-	ws     string // workspace id
-	path   string // as asked, relative to the workspace
+	ws     string
+	path   string
 	file   *service.FileContent
 	lines  []string
-	lexer  chroma.Lexer // nil: plain
+	lexer  chroma.Lexer
 	err    error
 	loaded bool
 	scroll int
-	// disk: what the watcher saw happen to the file after it was shown
-	// ("" nothing; "reloaded"; "deleted").
+
 	disk  string
-	label string // the workspace's name when the buffer was opened
+	label string
 }
 
 type fileMsg struct {
@@ -50,7 +45,7 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	}
 	m.tree.focused = false
 	for _, t := range m.tabs {
-		if t.ws == ws && t.path == path { // buffers are keyed by (workspace, path)
+		if t.ws == ws && t.path == path {
 			m.file = t
 			m.fileGen++
 			return m, watchFile(m.fileGen)
@@ -60,18 +55,16 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	return m, m.readFile(ws, path)
 }
 
-// openAt shows path of workspace ws on the Workspace screen at line.
 func (m model) openAt(ws, path string, line int) (model, tea.Cmd) {
 	m.screen, m.diff, m.inspect, m.report = screenWorkspace, nil, nil, nil
 	m, read := m.openFile(ws, path)
 	if m.file != nil {
-		m.file.scroll = max(line-3, 0) // a little context above the line
+		m.file.scroll = max(line-3, 0)
 	}
 	m, tree := m.loadTree()
 	return m, tea.Batch(read, tree)
 }
 
-// readFile (re)reads a buffer; the text on screen stays until it arrives.
 func (m model) readFile(ws, path string) tea.Cmd {
 	src := m.src
 	return func() tea.Msg {
@@ -82,7 +75,7 @@ func (m model) readFile(ws, path string) tea.Cmd {
 
 func (m model) updateFile(msg fileMsg) (model, tea.Cmd) {
 	if m.file == nil || m.file.ws != msg.ws || m.file.path != msg.path {
-		return m, nil // a later open replaced it
+		return m, nil
 	}
 	v := &viewer{ws: msg.ws, path: msg.path, file: msg.file, err: msg.err, loaded: true, scroll: m.file.scroll, disk: m.file.disk, label: m.file.label}
 	if msg.err == nil && !msg.file.Binary {
@@ -109,8 +102,6 @@ func (m model) viewerScroll(delta int) model {
 	return m
 }
 
-// viewerScreen renders the visible rows only: highlighting cost does not
-// grow with the file.
 func (m model) viewerScreen(v *viewer, width, height int) string {
 	title := " " + v.path
 	switch {
@@ -151,10 +142,6 @@ func (m model) viewerScreen(v *viewer, width, height int) string {
 	return strings.Join(out, "\n")
 }
 
-// highlight styles lines with the theme's tones, clipped to width runes.
-// ponytail: only the visible lines are tokenised, so a construct that opens
-// above the window (a block comment, a raw string) is not recognised inside
-// it; tokenise from a cached line state if that shows in practice.
 func highlight(lexer chroma.Lexer, lines []string, width int, th ui.Theme) []string {
 	if lexer == nil {
 		out := make([]string, len(lines))
@@ -190,8 +177,6 @@ func highlight(lexer chroma.Lexer, lines []string, width int, th ui.Theme) []str
 	return out[:min(len(out), len(lines))]
 }
 
-// tone maps a token to a theme tone, so highlighting follows the theme (and
-// is plain in mono).
 func tone(t chroma.TokenType) ui.Tone {
 	switch {
 	case t.InCategory(chroma.Comment):

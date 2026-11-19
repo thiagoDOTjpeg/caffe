@@ -16,22 +16,18 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Terminal Manager (EX-02 … EX-06): command sessions run in a workspace,
-// with streamed output, file:line links, validation runs and a shell
-// hand-off. Sessions live for Studio's lifetime (architecture §8).
-
 type terminals struct {
-	mgr   *session.Manager // nil: no sessions (layout tests)
-	notes chan int         // session output/state notifications
+	mgr   *session.Manager
+	notes chan int
 	ws    map[int]service.Workspace
-	sel   int // selected session id
-	// typing a new command line
+	sel   int
+
 	typing bool
 	input  string
-	// focus: the output has a line cursor (links); else it follows the end
+
 	focus  bool
-	cursor int // line index while focused
-	scroll int // lines above the end while not focused
+	cursor int
+	scroll int
 }
 
 func newTerminals(logDir string) terminals {
@@ -39,7 +35,7 @@ func newTerminals(logDir string) terminals {
 	t.mgr.Notify = func(int) {
 		select {
 		case t.notes <- 0:
-		default: // a redraw is already pending
+		default:
 		}
 	}
 	return t
@@ -47,8 +43,6 @@ func newTerminals(logDir string) terminals {
 
 type sessionMsg struct{}
 
-// termStartedMsg: a session started; rest are the commands that follow it
-// if it succeeds (a validation run).
 type termStartedMsg struct {
 	s    *session.Session
 	ws   service.Workspace
@@ -56,7 +50,6 @@ type termStartedMsg struct {
 	err  error
 }
 
-// termEndedMsg: a session of a validation chain ended.
 type termEndedMsg struct {
 	s    *session.Session
 	ws   service.Workspace
@@ -100,7 +93,7 @@ func (m model) updateTerminals(msg tea.Msg) (model, tea.Cmd) {
 		return m, func() tea.Msg { <-msg.s.Done(); return termEndedMsg{msg.s, msg.ws, msg.rest} }
 	case termEndedMsg:
 		if i := msg.s.Info(); i.State != session.Exited || i.Code != 0 {
-			return m, nil // a failed or stopped step ends the validation run
+			return m, nil
 		}
 		return m, m.startIn(msg.ws, "validation", msg.rest)
 	case termLinkMsg:
@@ -129,8 +122,6 @@ func (m model) updateTerminals(msg tea.Msg) (model, tea.Cmd) {
 	return m, nil
 }
 
-// startIn starts argvs[0] in ws, resolving its directory through the
-// service; the rest follow while each step succeeds.
 func (m model) startIn(ws service.Workspace, kind string, argvs [][]string) tea.Cmd {
 	if m.src == nil || m.terms.mgr == nil || len(argvs) == 0 {
 		return nil
@@ -205,7 +196,7 @@ func (m model) termFocus() model {
 	}
 	lines := s.Lines()
 	m.terms.focus, m.terms.cursor = true, max(len(lines)-1-m.terms.scroll, 0)
-	for i := len(lines) - 1 - m.terms.scroll; i >= 0; i-- { // the last link above the view's end
+	for i := len(lines) - 1 - m.terms.scroll; i >= 0; i-- {
 		if _, ok := findLink(lines[i]); ok {
 			m.terms.cursor = i
 			break
@@ -258,7 +249,7 @@ func (m model) termInputKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.terms.input = string(r[:len(r)-1])
 		}
 	case "enter":
-		// Split like validation.commands: argv only, never a shell.
+
 		argv := strings.Fields(m.terms.input)
 		if len(argv) == 0 {
 			return m, nil
@@ -313,8 +304,6 @@ func (m model) termClose() (model, tea.Cmd) {
 		}), nil
 }
 
-// shellCmd is the user's interactive shell: $SHELL, else sh; on Windows
-// %COMSPEC%, else cmd.exe.
 func shellCmd(env func(string) string, goos, dir string) *exec.Cmd {
 	sh := env("SHELL")
 	if goos == "windows" {
@@ -330,8 +319,6 @@ func shellCmd(env func(string) string, goos, dir string) *exec.Cmd {
 	return cmd
 }
 
-// openShell hands the terminal to a shell in the selected workspace (EX-05,
-// ADR-004); Studio resumes when it exits.
 func (m model) openShell() (model, tea.Cmd) {
 	if m.src == nil {
 		return m, nil
@@ -346,7 +333,6 @@ func (m model) openShell() (model, tea.Cmd) {
 	}
 }
 
-// quit asks first while sessions run (EX-06); Run stops them on every exit.
 func (m model) quit() (model, tea.Cmd) {
 	if m.terms.mgr == nil {
 		return m, tea.Quit
@@ -363,8 +349,6 @@ func (m model) quit() (model, tea.Cmd) {
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[^\[]|[\x00-\x08\x0b-\x1f\x7f]`)
 
-// plainText makes command output safe to draw: no escape sequences, no control
-// characters, tabs as spaces.
 func plainText(s string) string {
 	return ansiRe.ReplaceAllString(strings.ReplaceAll(s, "\t", "    "), "")
 }

@@ -14,18 +14,14 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// Diff view (WS-05): a developer task's changes against its diff base, with
-// the changed files on the left, unified or side by side.
-
-// sideBySideWidth: below it the two halves are too narrow to read.
 const sideBySideWidth = 120
 
 type diffView struct {
 	task   service.TaskView
 	diff   *service.Diff
 	files  []dfile
-	rows   []drow // unified
-	pairs  []pair // side by side
+	rows   []drow
+	pairs  []pair
 	side   bool
 	scroll int
 	err    error
@@ -34,19 +30,19 @@ type diffView struct {
 
 type dfile struct {
 	path       string
-	added, del bool // whole file
+	added, del bool
 	adds, dels int
-	row, pair  int // first row in rows / pairs
+	row, pair  int
 }
 
 type drow struct {
-	kind     byte // 'f' file header, 'h' hunk, '+', '-', ' ', 'm' meta
+	kind     byte
 	text     string
-	old, new int // line numbers; 0: none
+	old, new int
 	file     int
 }
 
-type pair struct{ l, r int } // indexes into rows; -1: blank; l == r: full width
+type pair struct{ l, r int }
 
 type diffMsg struct {
 	taskID string
@@ -69,7 +65,6 @@ func (m model) openDiff(t service.TaskView) (model, tea.Cmd) {
 	}
 }
 
-// openWorkspaceDiff opens the diff of the selected task workspace.
 func (m model) openWorkspaceDiff() (model, tea.Cmd) {
 	w := m.ws.selected
 	if w.Kind != "task" {
@@ -98,7 +93,6 @@ func (m model) updateDiff(msg diffMsg) model {
 	return m
 }
 
-// parseDiff reads `git diff` output into rows and the files they belong to.
 func parseDiff(text string) ([]dfile, []drow) {
 	var files []dfile
 	var rows []drow
@@ -137,13 +131,12 @@ func parseDiff(text string) ([]dfile, []drow) {
 			old++
 			nw++
 		case l != "":
-			rows = append(rows, drow{kind: 'm', text: l, file: f}) // "\ No newline…", "Binary files … differ"
+			rows = append(rows, drow{kind: 'm', text: l, file: f})
 		}
 	}
 	return files, rows
 }
 
-// hunkStart reads "@@ -a,b +c,d @@".
 func hunkStart(h string) (old, nw int) {
 	for _, f := range strings.Fields(h) {
 		n, _, _ := strings.Cut(f[1:], ",")
@@ -159,7 +152,6 @@ func hunkStart(h string) (old, nw int) {
 	return old, nw
 }
 
-// pairRows lines up deletions with the additions that follow them.
 func pairRows(rows []drow, files []dfile) []pair {
 	var out []pair
 	for i := 0; i < len(rows); {
@@ -190,7 +182,7 @@ func pairRows(rows []drow, files []dfile) []pair {
 			out = append(out, pair{i, i})
 			i++
 		default:
-			out = append(out, pair{i, i}) // full width
+			out = append(out, pair{i, i})
 			i++
 		}
 	}
@@ -204,8 +196,6 @@ func (d *diffView) length() int {
 	return len(d.rows)
 }
 
-// rowAt is the unified row shown at index i of the current mode (the right
-// side, else the left, of a pair).
 func (d *diffView) rowAt(i int) drow {
 	if !d.side {
 		return d.rows[i]
@@ -231,7 +221,6 @@ func (m model) diffScroll(delta int) model {
 	return m
 }
 
-// diffFile jumps to the next (+1) or previous (-1) file.
 func (m model) diffFile(delta int) model {
 	d := *m.diff
 	if len(d.files) == 0 {
@@ -264,8 +253,6 @@ func (m model) diffToggleSide() (model, tea.Cmd) {
 	return m, nil
 }
 
-// diffOpenFile opens the file at the top of the view in the task's
-// worktree, selecting that workspace.
 func (m model) diffOpenFile() (model, tea.Cmd) {
 	d := m.diff
 	if !d.loaded || d.err != nil || d.length() == 0 {
@@ -360,7 +347,6 @@ func (m model) diffScreen(width, height int) string {
 	return strings.Join(out, "\n")
 }
 
-// diffLines renders the visible rows only.
 func (m model) diffLines(width, height int) []string {
 	d := m.diff
 	out := make([]string, 0, height)
@@ -383,7 +369,7 @@ func (m model) diffLines(width, height int) []string {
 			return m.diffRow(d.rows[idx], half, false)
 		}
 		l, r := side(p.l), side(p.r)
-		if p.l == p.r { // context: old number on the left, new on the right
+		if p.l == p.r {
 			ctx := d.rows[p.l]
 			l = m.numbered(ctx.old, ' ', ctx.text, half)
 			r = m.numbered(ctx.new, ' ', ctx.text, half)

@@ -12,17 +12,13 @@ import (
 	"caffe/internal/studio/ui"
 )
 
-// runsView is the Runs screen state (ux-specification §2.4). The cursor is
-// kept by run id, so refreshes never move it (§3.6).
 type runsView struct {
 	cursor     string
 	filter     string
-	filtering  bool // keys go to the filter text
+	filtering  bool
 	activeOnly bool
 }
 
-// visibleRuns applies the filter: a case-insensitive match on id, status or
-// request, and the active toggle.
 func (v runsView) visibleRuns(runs []service.RunSummary) []service.RunSummary {
 	q := strings.ToLower(v.filter)
 	var out []service.RunSummary
@@ -38,7 +34,6 @@ func (v runsView) visibleRuns(runs []service.RunSummary) []service.RunSummary {
 	return out
 }
 
-// cursorIndex is the cursor's row, or 0 when its run is not visible.
 func (v runsView) cursorIndex(runs []service.RunSummary) int {
 	for i, r := range runs {
 		if r.ID == v.cursor {
@@ -48,8 +43,6 @@ func (v runsView) cursorIndex(runs []service.RunSummary) int {
 	return 0
 }
 
-// move shifts the cursor by delta rows, clamped; delta beyond the list
-// jumps to an end (g/G).
 func (m model) runsMove(delta int) model {
 	runs := m.runs.visibleRuns(m.live.runs)
 	if len(runs) == 0 {
@@ -60,7 +53,6 @@ func (m model) runsMove(delta int) model {
 	return m
 }
 
-// runsOpen makes the run under the cursor the selected run and shows it.
 func (m model) runsOpen() (model, tea.Cmd) {
 	runs := m.runs.visibleRuns(m.live.runs)
 	if len(runs) == 0 {
@@ -72,7 +64,7 @@ func (m model) runsOpen() (model, tea.Cmd) {
 		return m, nil
 	}
 	m.live.runID, m.live.snap = id, nil
-	m.events = eventsPanel{focused: m.events.focused} // filters and pages belong to a run
+	m.events = eventsPanel{focused: m.events.focused}
 	if m.live.pending {
 		m.live.dirty = true
 		return m, nil
@@ -81,8 +73,6 @@ func (m model) runsOpen() (model, tea.Cmd) {
 	return m, m.live.load(m.src)
 }
 
-// runsFilterKey edits the filter while it has focus: enter keeps it, esc
-// clears it.
 func (m model) runsFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
@@ -143,12 +133,10 @@ func (m model) runsScreen(width int) string {
 	return b.String()
 }
 
-// active: the run can still make progress (interrupted runs need a resume).
 func active(r service.RunSummary) bool {
 	return !r.Status.Terminal() && r.Status != c.RunInterrupted
 }
 
-// when is a short local timestamp relative to now.
 func when(t, now time.Time) string {
 	t, now = t.Local(), now.Local()
 	y1, m1, d1 := t.Date()
@@ -163,8 +151,6 @@ func when(t, now time.Time) string {
 	}
 }
 
-// duration of a run: started to completed, or to now while it runs; — when
-// it never started or was interrupted without finishing.
 func duration(r service.RunSummary, now time.Time) string {
 	if r.StartedAt == nil {
 		return "—"
@@ -196,7 +182,7 @@ func clip(s string, n int) string {
 	if n < 1 {
 		return ""
 	}
-	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ", "\t", " ").Replace(s) // one line, indentation kept
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ", "\t", " ").Replace(s)
 	if r := []rune(s); len(r) > n {
 		return string(r[:n-1]) + "…"
 	}

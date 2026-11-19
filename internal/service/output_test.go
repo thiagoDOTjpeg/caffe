@@ -13,7 +13,6 @@ import (
 	"caffe/internal/runtime"
 )
 
-// brokenRuntime is a runtime that cannot be reached.
 type brokenRuntime struct{ *runtime.Fake }
 
 func (brokenRuntime) ReadAgentOutput(context.Context, string) (string, error) {
@@ -26,7 +25,6 @@ func TestAgentOutputLiveCapturedAndNone(t *testing.T) {
 	fake := runtime.NewFake()
 	f.svc.rt = fake
 
-	// The developer agent is alive in the runtime: live output.
 	ws, _ := fake.CreateWorkspace(ctx, f.cfg.Project.Path, "x")
 	if _, err := fake.StartAgent(ctx, "claude", ws.PaneID, "c3-developer", nil); err != nil {
 		t.Fatal(err)
@@ -36,7 +34,6 @@ func TestAgentOutputLiveCapturedAndNone(t *testing.T) {
 		t.Fatalf("live = %+v, %v", out, err)
 	}
 
-	// The researcher finished: its captured screen, redacted and bounded.
 	dir := filepath.Join(f.cfg.ArtifactDir(), "11111111-0000-0000-0000-000000000000", "research", "exresear")
 	must(t, os.MkdirAll(dir, 0o755))
 	var screen strings.Builder
@@ -58,13 +55,10 @@ func TestAgentOutputLiveCapturedAndNone(t *testing.T) {
 		t.Error("captured output not redacted")
 	}
 
-	// A planning agent has no execution and no captured output.
 	if out, err := f.svc.AgentOutput(ctx, "ag-plan", 5); err != nil || out.Source != OutputNone || out.Text != "" {
 		t.Errorf("planner = %+v, %v", out, err)
 	}
 
-	// A running agent that the runtime no longer knows falls back to what was
-	// captured for it (nothing, here), instead of failing.
 	if err := fake.StopAgent(ctx, ws.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +66,6 @@ func TestAgentOutputLiveCapturedAndNone(t *testing.T) {
 		t.Errorf("vanished agent = %+v, %v", out, err)
 	}
 
-	// An unreachable runtime is reported as such, not as "no output".
 	f.svc.rt = brokenRuntime{runtime.NewFake()}
 	if _, err := f.svc.AgentOutput(ctx, "ag-dev", 5); !errors.Is(err, ErrUnavailable) {
 		t.Errorf("broken runtime: %v", err)

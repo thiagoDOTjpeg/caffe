@@ -1,5 +1,3 @@
-// Package agents runs one agent session end to end: start it, hand it a
-// prompt, and decide when its work is actually finished.
 package agents
 
 import (
@@ -18,24 +16,20 @@ import (
 )
 
 var (
-	// ErrNoReport: the agent went idle and stayed idle without delivering.
 	ErrNoReport = errors.New("agent stopped without writing its report")
-	// ErrAgentGone: the agent disappeared from the runtime without a report.
+
 	ErrAgentGone = errors.New("agent session no longer exists and left no report")
 )
 
 const (
 	maxReportBytes     = 1 << 20
-	workingGracePolls  = 10 // report present but agent still "working": accept anyway
+	workingGracePolls  = 10
 	maxTransientErrors = 5
 
-	// Defaults for Manager.IdleNudgeAfter and Manager.IdleGiveUpAfter.
 	DefaultIdleNudgeAfter  = 45 * time.Second
 	DefaultIdleGiveUpAfter = 5 * time.Minute
 )
 
-// Session identifies a live agent in the runtime. It is what gets persisted so
-// that a restarted orchestrator can find the agent again.
 type Session struct {
 	Name        string
 	Kind        string
@@ -49,25 +43,21 @@ type Request struct {
 	Role        contracts.Role
 	Kind        string
 	Args        []string
-	Cwd         string // where the agent runs and where it writes its report
+	Cwd         string
 	Prompt      string
-	Dir         string // artifact directory of this execution
+	Dir         string
 
-	// Attach re-joins an agent started by a previous orchestrator process
-	// instead of starting a new one. Nothing is prompted again.
 	Attach *Session
 
-	// OnSession is called as soon as the runtime session exists, and again when
-	// more is known. Persist it: it is the only link to the agent after a crash.
 	OnSession func(Session)
-	// OnBlocked reports that the agent started or stopped waiting for a human.
+
 	OnBlocked func(blocked bool)
 }
 
 type Result struct {
-	Report     []byte // raw JSON object written by the agent; validated by the caller
-	ReportPath string // where it was archived
-	OutputPath string // captured terminal output, "" if it could not be read
+	Report     []byte
+	ReportPath string
+	OutputPath string
 	Session    Session
 }
 
@@ -76,35 +66,18 @@ type Manager struct {
 	Poll time.Duration
 	Log  zerolog.Logger
 
-	// An agent that is idle without having written its report is not
-	// necessarily finished: real agents go idle while a background command
-	// runs. So idleness is only acted on after it lasted a while.
-	//
-	// IdleNudgeAfter: continuous idle time before the agent is reminded, once.
-	// IdleGiveUpAfter: continuous idle time after the reminder before the
-	// execution fails with ErrNoReport. Zero means the default.
 	IdleNudgeAfter  time.Duration
 	IdleGiveUpAfter time.Duration
 }
 
-// AgentName derives the runtime name of an execution's agent. Herdr requires
-// [a-z][a-z0-9_-]{0,31} and uniqueness among live agents.
 func AgentName(executionID string, role contracts.Role) string {
 	return "c" + strings.ReplaceAll(executionID, "-", "")[:8] + "-" + string(role)
 }
 
-// ReportPath is where an execution's agent must write its report. It is inside
-// the agent's working directory because sandboxed agents cannot write elsewhere.
 func ReportPath(cwd, executionID string) string {
 	return filepath.Join(cwd, ".caffe-report-"+strings.ReplaceAll(executionID, "-", "")[:8]+".json")
 }
 
-// Execute runs one agent to completion. Completion means a well-formed report
-// file exists; the agent merely being idle never counts.
-//
-// The agent's workspace is closed on every return, including cancellation and
-// timeout. It is only left alone when the orchestrator process itself dies,
-// which is what makes re-attaching after a restart possible.
 func (m *Manager) Execute(ctx context.Context, req Request) (*Result, error) {
 	log := m.Log.With().Str("execution_id", req.ExecutionID).Str("role", string(req.Role)).Logger()
 	reportPath := ReportPath(req.Cwd, req.ExecutionID)
@@ -130,8 +103,7 @@ func (m *Manager) Execute(ctx context.Context, req Request) (*Result, error) {
 		if err := os.WriteFile(promptPath, []byte(req.Prompt), 0o600); err != nil {
 			return nil, err
 		}
-		// A stale report from an earlier execution with the same id cannot exist
-		// (ids are unique), but a pre-planted file could: start clean.
+
 		if err := os.Remove(reportPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
@@ -180,17 +152,13 @@ func (m *Manager) Execute(ctx context.Context, req Request) (*Result, error) {
 	return res, nil
 }
 
-// submit delivers the prompt exactly once. The prompt itself stays in a file:
-// the agent is only told where to read it, which keeps terminal input short
-// and prompt content out of process listings and logs.
 func (m *Manager) submit(ctx context.Context, agent, promptPath, reportPath string, setBlocked func(bool)) error {
 	text := fmt.Sprintf("Read the file %s and follow its instructions exactly. When you are done, write your JSON report to %s",
 		promptPath, reportPath)
 	marker := filepath.Base(reportPath)
 	resent := false
 	for {
-		// Wait for the agent to accept input (a trust or login dialog at
-		// startup needs a human; we never answer such dialogs ourselves).
+
 		for {
 			st, err := m.RT.GetAgentStatus(ctx, agent)
 			if err != nil {
@@ -211,9 +179,9 @@ func (m *Manager) submit(ctx context.Context, agent, promptPath, reportPath stri
 		case err == nil:
 			return nil
 		case errors.Is(err, runtime.ErrBlocked):
-			continue // became blocked in between; nothing was sent
+			continue
 		case errors.Is(err, runtime.ErrUncertain):
-			// The prompt may have been delivered. Look before sending again.
+
 			if st, serr := m.RT.GetAgentStatus(ctx, agent); serr == nil && st == runtime.StatusWorking {
 				return nil
 			}
@@ -230,8 +198,6 @@ func (m *Manager) submit(ctx context.Context, agent, promptPath, reportPath stri
 	}
 }
 
-// await polls until the report is delivered or the agent is clearly not going
-// to deliver it.
 func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocked func(bool), log zerolog.Logger) ([]byte, error) {
 	nudgeAfter, giveUpAfter := m.IdleNudgeAfter, m.IdleGiveUpAfter
 	if nudgeAfter == 0 {
@@ -241,7 +207,7 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 		giveUpAfter = DefaultIdleGiveUpAfter
 	}
 	var withReport, transient int
-	var idleSince time.Time // zero: not idle
+	var idleSince time.Time
 	nudged := false
 	for {
 		st, err := m.RT.GetAgentStatus(ctx, agent)
@@ -251,7 +217,7 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 			return nil, ctx.Err()
 		case errors.Is(err, runtime.ErrNotFound):
 			if rerr == nil {
-				return report, nil // finished before it vanished
+				return report, nil
 			}
 			return nil, ErrAgentGone
 		case err != nil:
@@ -263,8 +229,7 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 			transient = 0
 			setBlocked(st == runtime.StatusBlocked)
 			if rerr == nil {
-				// A report on disk while the agent is still busy may be half of
-				// what it intends to write; give it a bounded moment.
+
 				if withReport++; st != runtime.StatusWorking || withReport > workingGracePolls {
 					return report, nil
 				}
@@ -296,14 +261,12 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 	}
 }
 
-// readReport returns the JSON object in the report file, or an error if the
-// file is absent, not a regular file, too large or not yet complete JSON.
 func readReport(path string) ([]byte, error) {
 	fi, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
 	}
-	if !fi.Mode().IsRegular() { // a symlink could point the orchestrator at any file
+	if !fi.Mode().IsRegular() {
 		return nil, fmt.Errorf("report %s is not a regular file", path)
 	}
 	if fi.Size() > maxReportBytes {
@@ -316,8 +279,6 @@ func readReport(path string) ([]byte, error) {
 	return contracts.ExtractJSON(data)
 }
 
-// captureOutput stores the agent's recent terminal output, redacted, for
-// debugging. It is evidence for humans and is never parsed.
 func (m *Manager) captureOutput(agent, dir string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -332,8 +293,6 @@ func (m *Manager) captureOutput(agent, dir string) string {
 	return path
 }
 
-// stop closes the agent's workspace. It deliberately ignores the caller's
-// context: cleanup must happen exactly when that context was cancelled.
 func (m *Manager) stop(s Session, log zerolog.Logger) {
 	if s.WorkspaceID == "" {
 		return

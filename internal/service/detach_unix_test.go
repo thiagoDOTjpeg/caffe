@@ -9,11 +9,8 @@ import (
 	"testing"
 )
 
-// detachEvidence runs in the launched child: its pid and process group.
 func detachEvidence() string { return fmt.Sprintf("%d %d", os.Getpid(), syscall.Getpgrp()) }
 
-// assertDetached: Setsid made the child the leader of its own session and
-// process group, which is not ours.
 func assertDetached(t *testing.T, evidence string) {
 	t.Helper()
 	var pid, pgrp int

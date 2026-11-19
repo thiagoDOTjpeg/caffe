@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// caffe runs the CLI in-process against dir and returns its stdout.
 func caffe(t *testing.T, dir string, args ...string) (string, error) {
 	t.Helper()
 	cmd := NewRootCommand()
@@ -50,13 +49,13 @@ func TestInitCreatesProjectAndPersistsAcrossInvocations(t *testing.T) {
 			t.Errorf("%s not created", f)
 		}
 	}
-	// .caffe must not show up in the user's git status.
+
 	c := exec.Command("git", "status", "--porcelain")
 	c.Dir = dir
 	if st, _ := c.Output(); len(st) != 0 {
 		t.Errorf("git status after init: %q", st)
 	}
-	// Idempotent, and never overwrites an edited configuration.
+
 	cfgPath := filepath.Join(dir, ".caffe", "config.yaml")
 	data, _ := os.ReadFile(cfgPath)
 	edited := strings.Replace(string(data), "max_concurrent_agents: 3", "max_concurrent_agents: 7", 1)
@@ -68,7 +67,7 @@ func TestInitCreatesProjectAndPersistsAcrossInvocations(t *testing.T) {
 	if err != nil || !strings.Contains(out, "max_concurrent_agents: 7") {
 		t.Fatalf("config: %q, %v", out, err)
 	}
-	// Commands work from a subdirectory, like git.
+
 	sub := filepath.Join(dir, "a", "b")
 	os.MkdirAll(sub, 0o755)
 	if out, err := caffe(t, sub, "status"); err != nil || !strings.Contains(out, "No active runs") {
@@ -97,8 +96,6 @@ func TestInvalidConfigurationStopsEveryCommand(t *testing.T) {
 	}
 }
 
-// --run-id reaches the engine: a malformed id is refused by `caffe run`
-// itself, before any planning or runtime call.
 func TestRunIDFlag(t *testing.T) {
 	dir := repo(t)
 	if _, err := caffe(t, dir, "init"); err != nil {

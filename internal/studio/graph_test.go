@@ -9,7 +9,6 @@ import (
 	"caffe/internal/service"
 )
 
-// plan builds tasks from "key:dep,dep" specs, in plan order.
 func plan(specs ...string) []service.TaskView {
 	var out []service.TaskView
 	for _, s := range specs {
@@ -44,9 +43,9 @@ func TestLayers(t *testing.T) {
 		"fan-out":    {plan("root", "x:root", "y:root", "z:root"), "root | x,y,z"},
 		"fan-in":     {plan("x", "y", "z", "join:x,y,z"), "x,y,z | join"},
 		"chain":      {plan("a", "b:a", "c:b", "d:c", "e:d"), "a | b | c | d | e"},
-		"longest":    {plan("a", "b:a", "c:b", "d:a,c"), "a | b | c | d"}, // d waits for the long branch
+		"longest":    {plan("a", "b:a", "c:b", "d:a,c"), "a | b | c | d"},
 		"unknown":    {plan("a:ghost"), "a"},
-		"barycenter": {plan("r1", "r2", "x:r2", "y:r1"), "r1,r2 | y,x"}, // y next to r1
+		"barycenter": {plan("r1", "r2", "x:r2", "y:r1"), "r1,r2 | y,x"},
 	} {
 		if got := layerKeys(layers(tc.tasks)); got != tc.want {
 			t.Errorf("%s: %s, want %s", name, got, tc.want)
@@ -55,7 +54,7 @@ func TestLayers(t *testing.T) {
 }
 
 func TestLayersSurvivesACycle(t *testing.T) {
-	// Plans are validated acyclic; corrupt data must still not hang Studio.
+
 	if ls := layers(plan("a:b", "b:a")); len(ls) == 0 {
 		t.Error("no layers")
 	}

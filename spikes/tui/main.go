@@ -1,10 +1,3 @@
-// Command tui-spike is the throwaway program of backlog item F-17: it checks,
-// on a real terminal, the Bubble Tea v2 features Caffè Studio depends on
-// (docs/studio/technical-decisions.md, ADR-001). Run it, press the keys shown,
-// quit with q, and send back the summary it prints.
-//
-// It lives in its own Go module so Caffè's go.mod does not depend on Bubble
-// Tea before the decision is confirmed.
 package main
 
 import (
@@ -18,8 +11,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-type tickMsg int                   // sent from a goroutine through Program.Send
-type editorDoneMsg struct{ error } // the editor or shell hand-off returned
+type tickMsg int
+type editorDoneMsg struct{ error }
 
 type model struct {
 	width, height int
@@ -132,7 +125,7 @@ func main() {
 	defer os.Remove(f.Name())
 
 	p := tea.NewProgram(model{file: f.Name()})
-	go func() { // external events, the way the watcher will feed Studio
+	go func() {
 		for i := 1; ; i++ {
 			time.Sleep(500 * time.Millisecond)
 			p.Send(tickMsg(i))

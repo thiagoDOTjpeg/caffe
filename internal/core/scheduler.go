@@ -13,7 +13,6 @@ import (
 	"caffe/internal/persistence"
 )
 
-// TaskFunc executes one task. It must honour ctx.
 type TaskFunc func(ctx context.Context, t *c.Task) error
 
 type permanentError struct{ err error }
@@ -21,16 +20,8 @@ type permanentError struct{ err error }
 func (e *permanentError) Error() string { return e.err.Error() }
 func (e *permanentError) Unwrap() error { return e.err }
 
-// Permanent marks a task failure that retrying cannot fix (a rejected review,
-// failing validation commands). The scheduler does not retry it.
 func Permanent(err error) error { return &permanentError{err} }
 
-// Scheduler dispatches the tasks of one run: a task starts only when all its
-// dependencies completed, at most `limit` tasks run at once, failures are
-// retried up to each task's MaxAttempts.
-//
-// Every status change goes through Transition, which is a compare-and-swap in
-// the database: a task can only be claimed once, even by a second process.
 type Scheduler struct {
 	store   *persistence.Store
 	graph   *Graph
@@ -39,37 +30,28 @@ type Scheduler struct {
 	exec    TaskFunc
 	log     zerolog.Logger
 
-	// OnChange is called after each persisted transition.
 	OnChange func(t c.Task, from c.TaskStatus, reason string)
-	// OnActive is called from the scheduling loop with the number of tasks in
-	// flight per role.
+
 	OnActive func(active map[c.Role]int)
 
-	mu sync.Mutex // guards the tasks in graph
+	mu sync.Mutex
 }
 
 func NewScheduler(store *persistence.Store, graph *Graph, limit int, timeout time.Duration, exec TaskFunc, log zerolog.Logger) *Scheduler {
 	return &Scheduler{store: store, graph: graph, limit: limit, timeout: timeout, exec: exec, log: log}
 }
 
-// setMutable copies the fields that change during a run. Identity fields (ID,
-// Key, Role, Dependencies...) are never written after creation, so task
-// handlers may read those without locking; everything else goes through
-// Snapshot.
 func setMutable(dst, src *c.Task) {
 	dst.Status, dst.AssignedAgentID, dst.WorktreePath, dst.BranchName = src.Status, src.AssignedAgentID, src.WorktreePath, src.BranchName
 	dst.Attempts, dst.StartedAt, dst.CompletedAt, dst.Error = src.Attempts, src.StartedAt, src.CompletedAt, src.Error
 }
 
-// Snapshot returns a consistent copy of a task.
 func (s *Scheduler) Snapshot(t *c.Task) c.Task {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return *t
 }
 
-// Transition moves a task to a new status (or, with to == current status,
-// just persists changed fields). The lock is not held during the write.
 func (s *Scheduler) Transition(ctx context.Context, t *c.Task, to c.TaskStatus, reason string, mut func(*c.Task)) error {
 	cur := s.Snapshot(t)
 	next, err := transition(ctx, s.store, cur, to, reason, mut)
@@ -90,14 +72,10 @@ type result struct {
 	err  error
 }
 
-// Run schedules until every task is finished or ctx is cancelled. On
-// cancellation it stops dispatching, waits for running tasks to wind down and
-// cancels whatever had not started. It returns an error only when scheduling
-// itself broke (persistence failure), not when tasks failed.
 func (s *Scheduler) Run(ctx context.Context) error {
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
-	db := context.WithoutCancel(ctx) // state must still be written after cancellation
+	db := context.WithoutCancel(ctx)
 
 	results := make(chan result, s.limit)
 	var wg sync.WaitGroup
@@ -114,7 +92,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	for {
 		if ctx.Err() == nil {
 			if err := s.promote(db); errors.Is(err, persistence.ErrConflict) {
-				if err := s.refresh(db); err != nil { // changed elsewhere: trust the database
+				if err := s.refresh(db); err != nil {
 					fail(err)
 				}
 			} else if err != nil {
@@ -127,7 +105,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 				}
 				err := s.Transition(db, t, c.TaskAssigned, "", func(t *c.Task) { t.Attempts++ })
 				if errors.Is(err, persistence.ErrConflict) {
-					// Someone else changed the task (e.g. `caffe cancel`). Trust the database.
+
 					if err := s.refresh(db); err != nil {
 						fail(err)
 					}
@@ -171,8 +149,6 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	return fatal
 }
 
-// work runs one task on its own goroutine. The number of these goroutines is
-// bounded by the dispatch loop.
 func (s *Scheduler) work(ctx context.Context, t *c.Task, results chan<- result, wg *sync.WaitGroup) {
 	defer wg.Done()
 	tctx, cancel := context.WithTimeout(ctx, s.timeout)
@@ -192,8 +168,6 @@ func (s *Scheduler) work(ctx context.Context, t *c.Task, results chan<- result, 
 	results <- result{t, err}
 }
 
-// promote readies tasks whose dependencies completed and cancels tasks whose
-// dependencies can no longer complete.
 func (s *Scheduler) promote(ctx context.Context) error {
 	s.mu.Lock()
 	ready := s.graph.Promotable()
@@ -210,12 +184,11 @@ func (s *Scheduler) promote(ctx context.Context) error {
 		}
 	}
 	if len(doomed) > 0 {
-		return s.promote(ctx) // cancellations cascade to their own dependents
+		return s.promote(ctx)
 	}
 	return nil
 }
 
-// nextReady returns the first ready task in plan order and the queue length.
 func (s *Scheduler) nextReady() (*c.Task, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -232,7 +205,6 @@ func (s *Scheduler) nextReady() (*c.Task, int) {
 	return first, n
 }
 
-// settle records the outcome of a finished task and applies the retry policy.
 func (s *Scheduler) settle(db, run context.Context, r result) error {
 	t := r.task
 	cur := s.Snapshot(t)
@@ -263,7 +235,6 @@ func (s *Scheduler) settle(db, run context.Context, r result) error {
 	return err
 }
 
-// refresh reloads task state from the database after an external change.
 func (s *Scheduler) refresh(ctx context.Context) error {
 	tasks := s.graph.Tasks()
 	if len(tasks) == 0 {

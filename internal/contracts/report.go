@@ -7,32 +7,23 @@ import (
 	"strings"
 )
 
-// Labels for where a result comes from. Every view (the run report, caffe
-// inspect, Studio) uses these words, so observed and claimed results read
-// the same everywhere.
 const (
 	LabelObserved = "executed by the orchestrator"
 	LabelClaimed  = "claimed by the agent, not verified"
 )
 
-// Report is what an agent writes when it finishes. One struct covers every
-// role; ParseReport enforces the role-specific required fields. Everything in
-// it is a claim by an untrusted executor, never an instruction.
 type Report struct {
-	Status  string `json:"status"` // completed | failed
+	Status  string `json:"status"`
 	Summary string `json:"summary"`
 
-	// researcher
 	RelevantFiles  []string `json:"relevant_files,omitempty"`
 	Risks          []string `json:"risks,omitempty"`
 	Recommendation string   `json:"recommendation,omitempty"`
 
-	// developer (tests) and validator (checks). Exit codes here are self-reported.
 	ModifiedFiles []string     `json:"modified_files,omitempty"`
 	Tests         []CommandRun `json:"tests,omitempty"`
 	Limitations   []string     `json:"limitations,omitempty"`
 
-	// reviewer
 	Approved *bool     `json:"approved,omitempty"`
 	Findings []Finding `json:"findings,omitempty"`
 }
@@ -44,7 +35,7 @@ type CommandRun struct {
 }
 
 type Finding struct {
-	Severity    string `json:"severity"` // critical | high | medium | low | info
+	Severity    string `json:"severity"`
 	File        string `json:"file,omitempty"`
 	Line        int    `json:"line,omitempty"`
 	Description string `json:"description"`
@@ -52,8 +43,6 @@ type Finding struct {
 
 var severities = map[string]bool{"critical": true, "high": true, "medium": true, "low": true, "info": true}
 
-// ExtractJSON returns the first top-level JSON object in data, tolerating
-// markdown fences or prose around it. Agents wrap output more often than not.
 func ExtractJSON(data []byte) ([]byte, error) {
 	start := bytes.IndexByte(data, '{')
 	if start < 0 {
@@ -67,7 +56,6 @@ func ExtractJSON(data []byte) ([]byte, error) {
 	return raw, nil
 }
 
-// ParseReport validates an agent report for the given role.
 func ParseReport(role Role, data []byte) (*Report, error) {
 	raw, err := ExtractJSON(data)
 	if err != nil {

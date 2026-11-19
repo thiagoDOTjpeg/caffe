@@ -56,7 +56,7 @@ func openOn(t *testing.T, m model, keys ...string) model {
 
 func TestInspectorFromTaskBoardShowsReportWithClaimLabel(t *testing.T) {
 	m, _ := inspectorModel(t)
-	m = openOn(t, m, "l", "enter") // review → its latest execution
+	m = openOn(t, m, "l", "enter")
 	if m.inspect.id != "exreview-1" {
 		t.Fatalf("opened %q", m.inspect.id)
 	}
@@ -83,7 +83,7 @@ func TestInspectorTabs(t *testing.T) {
 		{"l", "● Checked the worktree"},
 		{"l", "reviewer report"},
 		{"l", "task.running"},
-		{"l", "[Report]"}, // wraps
+		{"l", "[Report]"},
 		{"h", "[Events]"},
 	} {
 		m, _ = press(m, tc.key)
@@ -99,7 +99,7 @@ func TestInspectorTabs(t *testing.T) {
 
 func TestInspectorValidationCommandIsObserved(t *testing.T) {
 	m, _ := inspectorModel(t)
-	m = openOn(t, m, "enter") // validate (PENDING column, first card)
+	m = openOn(t, m, "enter")
 	v := m.View().Content
 	if !strings.Contains(v, "exit 1 · observed ("+c.LabelObserved+")") {
 		t.Error("observed exit code not labelled")
@@ -141,7 +141,7 @@ func TestInspectorReloadsRunningExecutionOnly(t *testing.T) {
 	if m.refreshInspector() == nil {
 		t.Error("a running execution is not reloaded")
 	}
-	// A result for an execution no longer shown is dropped.
+
 	m, _ = m.updateInspector(inspectedMsg{id: "other"})
 	if m.inspect.d == nil {
 		t.Error("stale result applied")

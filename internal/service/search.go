@@ -14,25 +14,20 @@ import (
 	"strings"
 )
 
-// SearchHit is one matching line of a workspace.
 type SearchHit struct {
-	Path string // slash-separated, relative to the workspace
+	Path string
 	Line int
-	Text string // the line, without its newline
+	Text string
 }
 
-// SearchResult holds at most the asked number of hits.
 type SearchResult struct {
 	Hits      []SearchHit
-	Truncated bool   // more hits existed
-	Engine    string // "rg" or "git grep"
+	Truncated bool
+	Engine    string
 }
 
-// rgPath is ripgrep's executable; a variable so tests can force the fallback.
 var rgPath = "rg"
 
-// Search finds a literal string (smart case) in a workspace's files:
-// ripgrep when installed, else git grep. Ignored files are skipped by both.
 func (s *Service) Search(ctx context.Context, workspaceID, query string, limit int) (*SearchResult, error) {
 	if strings.TrimSpace(query) == "" {
 		return nil, errors.New("empty search")
@@ -42,7 +37,7 @@ func (s *Service) Search(ctx context.Context, workspaceID, query string, limit i
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel() // stops the search once the limit is reached
+	defer cancel()
 	if _, err := exec.LookPath(rgPath); err == nil {
 		cmd := exec.CommandContext(ctx, rgPath, "--json", "--fixed-strings", "--smart-case", "--max-columns", "500", "--", query, ".")
 		r, err := run(cmd, root, func(out io.Reader) (*SearchResult, error) { return parseRg(out, limit) })
@@ -64,8 +59,6 @@ func (s *Service) Search(ctx context.Context, workspaceID, query string, limit i
 	return r, err
 }
 
-// run streams cmd's output into parse. Exit status 1 means "no match" for
-// both tools; a search stopped at the limit is not an error either.
 func run(cmd *exec.Cmd, dir string, parse func(io.Reader) (*SearchResult, error)) (*SearchResult, error) {
 	cmd.Dir = dir
 	var stderr strings.Builder
@@ -93,7 +86,6 @@ func run(cmd *exec.Cmd, dir string, parse func(io.Reader) (*SearchResult, error)
 	return res, nil
 }
 
-// rgText is ripgrep's "arbitrary data": text, or base64 bytes when not UTF-8.
 type rgText struct {
 	Text  *string `json:"text"`
 	Bytes string  `json:"bytes"`
@@ -107,8 +99,6 @@ func (t rgText) String() string {
 	return strings.ToValidUTF8(string(b), "�")
 }
 
-// parseRg reads `rg --json`. It is lenient: unknown message types and
-// malformed lines are skipped, so a newer ripgrep cannot break the search.
 func parseRg(r io.Reader, limit int) (*SearchResult, error) {
 	res := &SearchResult{}
 	sc := bufio.NewScanner(r)
@@ -135,7 +125,6 @@ func parseRg(r io.Reader, limit int) (*SearchResult, error) {
 	return res, sc.Err()
 }
 
-// parseGitGrep reads `git grep -z -n`: path NUL line NUL text NL.
 func parseGitGrep(r io.Reader, limit int) (*SearchResult, error) {
 	res := &SearchResult{}
 	sc := bufio.NewScanner(r)

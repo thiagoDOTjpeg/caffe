@@ -13,9 +13,6 @@ import (
 	"caffe/internal/persistence"
 )
 
-// The test binary doubles as a fake `caffe` executable: when
-// CAFFE_FAKE_LAUNCH is set, TestMain behaves like `caffe -C <dir> run|resume`
-// and exits instead of running tests.
 func TestMain(m *testing.M) {
 	if mode := os.Getenv("CAFFE_FAKE_LAUNCH"); mode != "" {
 		os.Exit(fakeCaffe(mode, os.Args[1:]))
@@ -24,7 +21,7 @@ func TestMain(m *testing.M) {
 }
 
 func fakeCaffe(mode string, args []string) int {
-	// args: -C <dir> run --run-id <id> [--plan f] -- <request>   |   -C <dir> resume <id>
+
 	dir := args[1]
 	state := filepath.Join(dir, "fake-launch")
 	os.MkdirAll(state, 0o755)
@@ -60,7 +57,7 @@ func fakeCaffe(mode string, args []string) int {
 		}
 	}
 	fmt.Println("started")
-	time.Sleep(700 * time.Millisecond) // the "run" keeps going after the launcher returned
+	time.Sleep(700 * time.Millisecond)
 	os.WriteFile(filepath.Join(state, "done"), nil, 0o644)
 	return 0
 }
@@ -70,7 +67,7 @@ func launcherFixture(t *testing.T, mode string) (*fixture, string) {
 	f := newFixture(t)
 	f.svc.exe = os.Args[0]
 	t.Setenv("CAFFE_FAKE_LAUNCH", mode)
-	// Under -race the fake would sleep 1 s at every exit (atexit_sleep_ms).
+
 	t.Setenv("GORACE", strings.TrimSpace(os.Getenv("GORACE")+" atexit_sleep_ms=0"))
 	return f, filepath.Join(f.cfg.Project.Path, "fake-launch")
 }
@@ -83,25 +80,24 @@ func TestStartRunLaunchesDetachedProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The id is known before the run exists, and the run row is there now.
+
 	if _, err := f.svc.RunSnapshot(ctx, id); err != nil {
 		t.Fatalf("run %s not visible: %v", id, err)
 	}
-	// StartRun returned while the child is still running...
+
 	if _, err := os.Stat(filepath.Join(state, "done")); err == nil {
 		t.Error("StartRun waited for the whole run instead of its start")
 	}
-	// ...detached from the caller's terminal, so it cannot be signalled
-	// through it (per platform: detach_*_test.go).
+
 	evidence, _ := os.ReadFile(filepath.Join(state, "detach"))
 	assertDetached(t, string(evidence))
-	// Arguments arrive intact; the request cannot be parsed as a flag.
+
 	args, _ := os.ReadFile(filepath.Join(state, "args"))
 	want := strings.Join([]string{"-C", f.cfg.Project.Path, "run", "--run-id", id, "--", request}, "\n")
 	if string(args) != want {
 		t.Errorf("argv:\n%s\nwant:\n%s", args, want)
 	}
-	// The child keeps running after we returned and finishes on its own.
+
 	waitDone(t, state)
 	console, _ := os.ReadFile(filepath.Join(f.cfg.ArtifactDir(), id, "console.log"))
 	if !strings.Contains(string(console), "started") {
@@ -140,8 +136,8 @@ func TestResumeRunLaunchesAndWaitsForClaim(t *testing.T) {
 	if !strings.HasSuffix(string(args), "resume\n"+id) {
 		t.Errorf("argv = %q", args)
 	}
-	waitDone(t, state) // the child must not outlive the test's temp dir
-	// Only interrupted runs can be resumed.
+	waitDone(t, state)
+
 	if err := f.svc.ResumeRun(ctx, id); err == nil || !strings.Contains(err.Error(), "only interrupted") {
 		t.Errorf("resume of an executing run: %v", err)
 	}

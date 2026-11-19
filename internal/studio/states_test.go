@@ -16,9 +16,6 @@ import (
 	"caffe/internal/service"
 )
 
-// One golden render per state of ux-specification §6. The "terminal too
-// small" state is layout-50x12 (TestGoldenLayout).
-
 func sized(m model) model {
 	res, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	return res.(model)
@@ -33,7 +30,7 @@ func TestGoldenStateNotAProject(t *testing.T) {
 	if !strings.Contains(v, "/home/me/elsewhere") || !strings.Contains(v, "caffe init") {
 		t.Error("message lacks the directory or caffe init")
 	}
-	// Screen keys do nothing; q quits.
+
 	if next, _ := press(m, "4"); next.screen != screenOverview {
 		t.Error("a screen key worked without a project")
 	}
@@ -54,7 +51,7 @@ func TestGoldenStateNoRuns(t *testing.T) {
 }
 
 func TestGoldenStateLoading(t *testing.T) {
-	m := sized(liveModel(newFake())) // Init not run: nothing loaded yet
+	m := sized(liveModel(newFake()))
 	golden(t, "state-loading", m.View().Content)
 	for _, s := range []string{"1", "2", "3"} {
 		next, _ := press(m, s)
@@ -107,7 +104,7 @@ func TestGoldenStateActionFailed(t *testing.T) {
 }
 
 func TestEventCursorGapReloadsTheFeed(t *testing.T) {
-	m := overviewModel(t) // lastSeq 4
+	m := overviewModel(t)
 	if !gap(4, []c.Event{{Seq: 9}}) || gap(4, []c.Event{{Seq: 5}}) || gap(0, []c.Event{{Seq: 9}}) {
 		t.Fatal("gap detection")
 	}
@@ -141,5 +138,5 @@ func TestRunWithoutAProjectQuitsCleanly(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("Studio did not exit")
 	}
-	expectRestored(t, out.String()) // the message itself is the state-no-project golden: a pipe reports no size to draw at
+	expectRestored(t, out.String())
 }

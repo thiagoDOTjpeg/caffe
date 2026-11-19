@@ -39,7 +39,7 @@ func TestValidateRejectsAmbiguousBindings(t *testing.T) {
 			t.Errorf("%s: want error containing %q, got %v", name, tc.want, err)
 		}
 	}
-	// The same key in two different screens is fine: only one applies at a time.
+
 	r := &Registry{}
 	r.Add(Action{ID: "a", Title: "A", Scope: "tasks", Keys: []string{"d"}}, Action{ID: "b", Title: "B", Scope: "agents", Keys: []string{"d"}})
 	if err := r.Validate(); err != nil {
@@ -82,7 +82,7 @@ func TestFilterRanksSubstringBeforeFuzzy(t *testing.T) {
 	if got := ids(r.Filter("agent")); got != "screen.agents,agent.attach" {
 		t.Errorf("substring: %s", got)
 	}
-	if got := ids(r.Filter("tgbp")); got != "layout.panel" { // T-o-G-gle ... B-ottom P-anel
+	if got := ids(r.Filter("tgbp")); got != "layout.panel" {
 		t.Errorf("fuzzy: %s", got)
 	}
 	if got := ids(r.Filter("QUIT")); got != "app.quit" {

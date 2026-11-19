@@ -1,5 +1,3 @@
-# Runs every Caffè test binary of this kit and writes results.txt next to it.
-# Usage (from the kit folder):  powershell -ExecutionPolicy Bypass -File .\run-tests.ps1
 $ErrorActionPreference = "Continue"
 $kit = Split-Path -Parent $MyInvocation.MyCommand.Path
 $results = Join-Path $kit "results.txt"
@@ -16,7 +14,7 @@ foreach ($dir in Get-ChildItem (Join-Path $kit "tests") -Directory | Sort-Object
     $exe = Join-Path $dir.FullName "$($dir.Name).test.exe"
     if (-not (Test-Path $exe)) { continue }
     Write-Host "== $($dir.Name)"
-    Push-Location $dir.FullName   # tests read testdata/ relative to their package
+    Push-Location $dir.FullName
     $out = & $exe "-test.count=1" "-test.timeout=10m" 2>&1 | Out-String
     $code = $LASTEXITCODE
     Pop-Location
@@ -26,7 +24,6 @@ foreach ($dir in Get-ChildItem (Join-Path $kit "tests") -Directory | Sort-Object
     } else {
         $failed++
         $lines += "FAIL  $($dir.Name)  (exit $code)"
-        # The failing tests and their messages, not the whole log.
         $lines += ($out -split "`n" | Where-Object { $_ -match '^(--- FAIL|panic:)|_test\.go:\d+' } | ForEach-Object { "      $($_.TrimEnd())" })
     }
 }
