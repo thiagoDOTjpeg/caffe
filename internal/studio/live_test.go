@@ -59,6 +59,9 @@ type fakeSource struct {
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.dir != "" && strings.HasPrefix(path, f.dir+string(filepath.Separator)) {
+		path = filepath.ToSlash(strings.TrimPrefix(path, f.dir+string(filepath.Separator)))
+	}
 	text, ok := f.files[ws+":"+path]
 	if !ok {
 		return nil, service.ErrNotFound

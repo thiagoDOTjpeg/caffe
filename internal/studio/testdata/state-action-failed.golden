@@ -6,7 +6,7 @@
   5 Workspace        [38;2;169;149;131m│[m TASKS  ■■□□  2 completed · 1 running · 1 pending                                                 
   6 Terminals        [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m research     researcher  55s                                                       
   7 Integration      [38;2;169;149;131m│[m  [38;2;141;181;128m✓ completed [m impl         developer   39s      caffe/0112dd6a/impl                              
-                     [38;2;169;149;131m│[m  [38;2;197;162;123m● running   [m review       reviewer    12s      agent c8eccebbd                                  
+  8 Debug            [38;2;169;149;131m│[m  [38;2;197;162;123m● running   [m review       reviewer    12s      agent c8eccebbd                                  
                      [38;2;169;149;131m│[m  [38;2;169;149;131m◌ pending   [m validate     validator            waiting on review (running)                      
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m AGENTS                                                                                           

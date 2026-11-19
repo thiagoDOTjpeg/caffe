@@ -21,9 +21,10 @@ const (
 	screenWorkspace
 	screenTerminals
 	screenIntegration
+	screenDebug
 )
 
-var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace", "Terminals", "Integration"}
+var screenNames = [...]string{"Overview", "Tasks", "Agents", "Runs", "Workspace", "Terminals", "Integration", "Debug"}
 
 type model struct {
 	src      source
@@ -55,6 +56,7 @@ type model struct {
 	editor   string
 	integ    integration
 	code     codeIntel
+	dbg      debugger
 	rt       rtObs
 	watcher  pauser
 	toastSeq int
@@ -146,13 +148,15 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
+	case dbgStartedMsg, dbgEventMsg, dbgStackMsg, dbgVarsMsg, dbgExpandMsg, dbgSourceMsg, dbgEvalMsg:
+		return m.updateDebug(msg)
 	case diagMsg, lspOpenMsg, lspListMsg:
 		return m.updateCode(msg)
 	case integrationMsg, previewMsg, integratedMsg:
 		return m.updateIntegration(msg)
 	case leaseMsg, leaseTickMsg, leaseRenewMsg, savedMsg, manualMsg:
 		return m.updateEditing(msg)
-	case sessionMsg, termStartedMsg, termEndedMsg, termLinkMsg, shellReadyMsg, shellDoneMsg:
+	case sessionMsg, termStartedMsg, termDebugMsg, termEndedMsg, termLinkMsg, shellReadyMsg, shellDoneMsg:
 		return m.updateTerminals(msg)
 	case healthMsg, healthTickMsg:
 		return m.updateHealth(msg)
@@ -213,6 +217,8 @@ func (m model) view() tea.View {
 			main = m.terminalsScreen(l.Main.W, h)
 		case m.screen == screenIntegration:
 			main = m.integrationScreen(l.Main.W)
+		case m.screen == screenDebug:
+			main = m.debugScreen(l.Main.W, h)
 		}
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main

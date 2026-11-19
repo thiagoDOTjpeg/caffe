@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"caffe/internal/dap"
 	"caffe/internal/lsp"
 	"caffe/internal/service"
 	"caffe/internal/studio/ui"
@@ -52,6 +53,7 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	m.noProject = opts.NoProject
 	m.ed.holder = "studio-" + uuid.NewString()
 	m.editor = opts.Editor
+	m.dbg.cfg = dap.Delve
 	if svc != nil {
 		m.code = newCode(lsp.Go)
 		defer func() {
@@ -86,6 +88,9 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	}
 	opts.Log.Info().Str("project", p.Root).Msg("studio started")
 	final, err := tea.NewProgram(m, popts...).Run()
+	if fm, ok := final.(model); ok && fm.dbg.sess != nil {
+		fm.dbg.sess.Disconnect(context.Background())
+	}
 	if fm, ok := final.(model); ok && svc != nil {
 		for ws, l := range fm.ed.leases {
 			if rerr := svc.ReleaseLease(context.Background(), l); rerr != nil {

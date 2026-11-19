@@ -96,6 +96,8 @@ func (m model) updateTerminals(msg tea.Msg) (model, tea.Cmd) {
 			return m, nil
 		}
 		return m, m.startIn(msg.ws, "validation", msg.rest)
+	case termDebugMsg:
+		return m.debugTest(msg.ws, msg.path, msg.name)
 	case termLinkMsg:
 		if msg.err != nil {
 			return m.failed("open link", msg.err), nil
@@ -242,6 +244,41 @@ func (m model) termOpenLink() (model, tea.Cmd) {
 	}
 }
 
+func (m model) termDebug() (model, tea.Cmd) {
+	s := m.selected()
+	if s == nil || m.src == nil {
+		return m, nil
+	}
+	lines := s.Lines()
+	if m.terms.cursor >= len(lines) {
+		return m, nil
+	}
+	name, ok := failedTest(lines[m.terms.cursor])
+	if !ok {
+		return m.notify("move to a \"--- FAIL: TestX\" line to debug that test")
+	}
+	src, ws := m.src, m.terms.ws[s.Info().ID]
+	id := ws.ID
+	if id == "" {
+		id = service.MainWorkspace
+	}
+	return m, func() tea.Msg {
+		res, err := src.Search(context.Background(), id, "func "+name+"(", 5)
+		if err == nil && len(res.Hits) == 0 {
+			err = fmt.Errorf("no func %s in the workspace", name)
+		}
+		if err != nil {
+			return termLinkMsg{err: err}
+		}
+		return termDebugMsg{ws: ws, path: res.Hits[0].Path, name: name}
+	}
+}
+
+type termDebugMsg struct {
+	ws         service.Workspace
+	path, name string
+}
+
 func (m model) termNew() (model, tea.Cmd) {
 	if m.terms.mgr == nil || m.src == nil {
 		return m, nil
@@ -354,8 +391,12 @@ func (m model) quit() (model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	n := m.terms.mgr.Running()
-	if n == 0 {
+	if n == 0 && m.dbg.sess == nil {
 		return m, tea.Quit
+	}
+	if n == 0 {
+		return m.ask("Quit Caffè Studio?", "Stop it and quit", []string{"A debug session of " + m.dbg.test + " is running; quitting stops it."},
+			func(m model) (model, tea.Cmd) { return m, tea.Quit }), nil
 	}
 	return m.ask("Quit Caffè Studio?", "Stop them and quit", []string{
 		fmt.Sprintf("%d terminal session(s) still running; quitting stops them and everything they started.", n),

@@ -168,6 +168,13 @@ func diagSummary(ds []lsp.Diagnostic) string {
 	return strings.Join(parts, ", ")
 }
 
+func (m model) gutter(v *viewer, line int) string {
+	if v.file != nil && m.hasBreakpoint(v.file.Path, line+1) {
+		return m.theme.Render(ui.ToneError, "◆")
+	}
+	return m.gutterMark(m.fileDiags(v), line)
+}
+
 func (m model) gutterMark(ds []lsp.Diagnostic, line int) string {
 	mark := " "
 	for _, d := range ds {

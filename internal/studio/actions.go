@@ -79,6 +79,9 @@ func actions() (*ui.Registry, map[string]handler) {
 		if s == screenTerminals {
 			leaderKey = "x"
 		}
+		if s == screenDebug {
+			leaderKey = "d"
+		}
 		add(ui.Action{ID: "screen." + strings.ToLower(name), Title: "Go to " + name, Scope: g,
 			Keys: []string{fmt.Sprint(i + 1)}, Leader: "g " + leaderKey},
 			func(m model) (model, tea.Cmd) {
@@ -215,6 +218,36 @@ func actions() (*ui.Registry, map[string]handler) {
 		add(ui.Action{ID: "keys." + string(sc) + ".release", Title: "Release the worktree to agents", Scope: sc, Keys: []string{"L"}}, release)
 	}
 	es2 := ui.Scope("editor")
+	bpH := func(m model) (model, tea.Cmd) { return m.toggleBreakpoint() }
+	dbgHere := func(m model) (model, tea.Cmd) { return m.debugHere() }
+	for _, sc := range []ui.Scope{ws, es2} {
+		add(ui.Action{ID: "debug." + string(sc) + ".breakpoint", Title: "Toggle a breakpoint on this line", Scope: sc, Keys: []string{"b"}}, bpH)
+		add(ui.Action{ID: "debug." + string(sc) + ".test", Title: "Debug the test around this line", Scope: sc, Keys: []string{"T"}}, dbgHere)
+	}
+	dbs := ui.Scope("debug")
+	dctl := func(what string) handler { return func(m model) (model, tea.Cmd) { return m.dbgControl(what) } }
+	add(ui.Action{ID: "debug.continue", Title: "Continue", Scope: dbs, Keys: []string{"c", "f5"}}, dctl("continue"))
+	add(ui.Action{ID: "debug.next", Title: "Step over", Scope: dbs, Keys: []string{"n", "f10"}}, dctl("next"))
+	add(ui.Action{ID: "debug.in", Title: "Step into", Scope: dbs, Keys: []string{"s", "f11"}}, dctl("in"))
+	add(ui.Action{ID: "debug.out", Title: "Step out", Scope: dbs, Keys: []string{"o", "shift+f11"}}, dctl("out"))
+	add(ui.Action{ID: "debug.stop", Title: "Stop debugging", Scope: dbs, Keys: []string{"x", "shift+f5"}}, dctl("stop"))
+	add(ui.Action{ID: "debug.down", Title: "Next frame or variable", Scope: dbs, Keys: []string{"j", "down"}},
+		func(m model) (model, tea.Cmd) { return m.dbgMove(1) })
+	add(ui.Action{ID: "debug.up", Title: "Previous frame or variable", Scope: dbs, Keys: []string{"k", "up"}},
+		func(m model) (model, tea.Cmd) { return m.dbgMove(-1) })
+	add(ui.Action{ID: "debug.focus", Title: "Switch between stack and variables", Scope: dbs, Keys: []string{"v"}},
+		func(m model) (model, tea.Cmd) { m.dbg.onVars = !m.dbg.onVars; return m, nil })
+	add(ui.Action{ID: "debug.expand", Title: "Expand or collapse the variable", Scope: dbs, Keys: []string{"enter"}},
+		func(m model) (model, tea.Cmd) { return m.dbgExpand() })
+	add(ui.Action{ID: "debug.eval", Title: "Evaluate an expression", Scope: dbs, Keys: []string{"e"}},
+		func(m model) (model, tea.Cmd) {
+			if m.dbg.sess == nil {
+				return m, nil
+			}
+			s := ""
+			m.dbg.input = &s
+			return m, nil
+		})
 	diagsH := func(m model) (model, tea.Cmd) { return m.openDiagnostics() }
 	symsH := func(m model) (model, tea.Cmd) { return m.symbols() }
 	for _, sc := range []ui.Scope{ws, es2} {
@@ -302,6 +335,8 @@ func actions() (*ui.Registry, map[string]handler) {
 	add(ui.Action{ID: "termout.bottom", Title: "Last line", Scope: xo, Keys: []string{"G", "end"}}, tmv(1<<30))
 	add(ui.Action{ID: "termout.open", Title: "Open the file:line of this line", Scope: xo, Keys: []string{"enter", "o"}},
 		func(m model) (model, tea.Cmd) { return m.termOpenLink() })
+	add(ui.Action{ID: "termout.debug", Title: "Debug the failed test of this line", Scope: xo, Keys: []string{"D"}},
+		func(m model) (model, tea.Cmd) { return m.termDebug() })
 	add(ui.Action{ID: "termout.back", Title: "Back to the sessions", Scope: xo, Keys: []string{"h", "left"}},
 		func(m model) (model, tea.Cmd) { m.terms.focus = false; return m, nil })
 	ds := ui.Scope("diff")
@@ -450,6 +485,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.ed.commit != nil {
 		return m.commitKey(msg)
+	}
+	if m.screen == screenDebug && m.dbg.input != nil {
+		return m.dbgInputKey(msg)
 	}
 	if m.screen == screenIntegration && m.integ.note != nil {
 		return m.integNoteKey(msg)

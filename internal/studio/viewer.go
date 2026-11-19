@@ -158,7 +158,7 @@ func (m model) viewerScreen(v *viewer, width, height int) string {
 	gutter := len(fmt.Sprint(len(v.lines)))
 	text := max(width-gutter-4, 1)
 	for i, l := range highlight(v.lexer, visible, text, m.theme) {
-		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d", gutter, scroll+i+1)) + m.gutterMark(m.fileDiags(v), scroll+i) + m.theme.Render(ui.ToneMuted, "│")
+		num := m.theme.Render(ui.ToneMuted, fmt.Sprintf("%*d", gutter, scroll+i+1)) + m.gutter(v, scroll+i) + m.theme.Render(ui.ToneMuted, "│")
 		out = append(out, " "+num+" "+l)
 	}
 	return strings.Join(out, "\n")

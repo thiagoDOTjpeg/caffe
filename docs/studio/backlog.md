@@ -491,13 +491,13 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### [x] DB-02 · Delve launch (test/debug)
 - **P2 · M · Depends:** DB-01 · **Description:** `dlv dap` as a session; `mode: test` from a test name. **Tests:** optional real-`dlv` test behind an env flag.
 
-### DB-03 · Breakpoints in the viewer
+### [x] DB-03 · Breakpoints in the viewer
 - **P2 · M · Depends:** DB-02, WS-03
 
-### DB-04 · Debugger screen: stack, variables, controls
+### [x] DB-04 · Debugger screen: stack, variables, controls
 - **P2 · L · Depends:** DB-03
 
-### DB-05 · Debug console
+### [x] DB-05 · Debug console
 - **P2 · S · Depends:** DB-04
 
 ## M7 — Polish (continuous)

@@ -14,7 +14,7 @@ from Studio keep going after it exits.
 
 | Keys | What they do |
 |---|---|
-| `1`–`7` | Overview, Tasks, Agents, Runs, Workspace, Terminals, Integration |
+| `1`–`8` | Overview, Tasks, Agents, Runs, Workspace, Terminals, Integration, Debug |
 | `?` | the keys of the current view |
 | `:` or `ctrl+p` | command palette: every action, by name |
 | `space` | leader menu (`space g …` go to, `space r …` runs, `space w …` workspace, `space v …` view, `space a …` agents) |
@@ -130,6 +130,23 @@ caffe integrate <run>                      # list the branches
 caffe integrate <run> <task> approve [note]
 caffe integrate <run> <task> merge         # asks unless --yes
 ```
+
+## Debugging Go tests
+
+Debugging uses Delve (`dlv`, installed separately: `go install
+github.com/go-delve/delve/cmd/dlv@latest`).
+
+- In a file, `b` toggles a breakpoint on the cursor line (the first line on
+  screen when not editing); breakpoints show as `◆`.
+- `T` debugs the test function around that line; in Terminals, `D` on a
+  `--- FAIL: TestX` line debugs that test in the session's workspace.
+- **Debug** (`8`) shows the call stack, the variables of the selected frame,
+  the source with `▶` at the current line, the breakpoints and a console.
+  `c`/F5 continue, `n`/F10 step over, `s`/F11 step into, `o` step out,
+  `x` stops; `j`/`k` select a frame (or a variable after `v`), `enter`
+  expands a variable, `e` evaluates an expression.
+
+Stopping, the test ending, or quitting Studio ends the `dlv` process.
 
 ## Files Studio writes
 

@@ -6,7 +6,7 @@
   5 Workspace        [38;2;169;149;131m│[m                                                                                                  
   6 Terminals        [38;2;169;149;131m│[m enter starts · tab switches field · esc cancels                                                  
   7 Integration      [38;2;169;149;131m│[m The run is its own process: quitting Studio does not stop it.                                    
-                     [38;2;169;149;131m│[m                                                                                                  
+  8 Debug            [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  
                      [38;2;169;149;131m│[m                                                                                                  
