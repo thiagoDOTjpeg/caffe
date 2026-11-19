@@ -103,7 +103,9 @@ func (s *Session) start(logDir string) error {
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
 	s.info.LogPath = log.Name()
+	s.mu.Unlock()
 	r, w, err := os.Pipe()
 	if err != nil {
 		log.Close()
