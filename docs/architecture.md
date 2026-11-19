@@ -131,9 +131,11 @@ to the file it was told to write**. `agents.Manager.Execute`:
    `<cwd>/.caffe-report-<id>.json`*. The prompt body never passes through
    argv, the terminal or the logs;
 5. polls. A report on disk ends the execution (if the agent is still
-   `working`, it gets a few more polls to finish writing). An agent idle
-   without a report for `idle_nudge_after` is reminded once; idle for
-   `idle_give_up_after` after that fails the execution. An agent that
+   `working`, it gets a few more polls to finish writing). An agent that was
+   never seen `working` and stays idle for `idle_nudge_after` fails at once
+   (it is most likely on a login or trust screen). An agent that worked and
+   then sits idle without a report for `idle_nudge_after` is reminded once;
+   idle for `idle_give_up_after` after that fails the execution. An agent that
    disappeared fails it, unless its report is already there;
 6. saves the terminal output (redacted) and closes the workspace — on every
    outcome, including timeout and cancellation.
@@ -151,7 +153,7 @@ sends at most twice.
 | Role | Working directory | After the agent reports |
 |---|---|---|
 | researcher | project root | warn if `git status` of the checkout changed |
-| developer | own worktree `.caffe/worktrees/<run>/<task>` on branch `<prefix>/<run>/<task>`, created from the base commit or from the branch of the developer task it depends on | commit leftovers, store the diff. **No diff = failure**, whatever the report says |
+| developer | own worktree `.caffe/worktrees/<run>/<task>` on branch `<prefix>/<run>/<task>`, created from the base commit or from the branch of the developer task it depends on | commit leftovers, store the diff, warn when the branch conflicts with another completed developer branch (`git merge-tree`). **No diff = failure**, whatever the report says |
 | reviewer | the worktree of the developer task it depends on (project root if none) | if rejected: correction round (below). Stray edits by the reviewer are discarded |
 | validator | same worktree | with `validation.commands`: no agent; Caffè runs the commands and records exit codes |
 
@@ -193,7 +195,10 @@ Plans are untrusted. `ParsePlan` rejects unknown JSON fields (a typo such as
 `dependancies` must not silently produce an unordered graph) and
 `ExecutionPlan.Validate` rejects: missing/duplicate/unsafe ids, invalid roles,
 empty titles or descriptions, missing or blank acceptance criteria, unknown or
-self dependencies, cycles, more than the task limit. An invalid plan is
+self dependencies, cycles, more than the task limit, and any non-researcher
+task that builds (directly or through other tasks) on two developer tasks
+neither of which depends on the other — its worktree could start from only one
+of those branches. An invalid plan is
 retried `max_task_retries` times, then the run fails. Nothing in a plan is
 ever executed as a command.
 

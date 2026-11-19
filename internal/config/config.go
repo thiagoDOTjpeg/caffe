@@ -165,8 +165,8 @@ func (c *Config) resolve(projectRoot string) error {
 	if c.Project.Name == "" {
 		add("project.name is empty")
 	}
-	if c.Runtime.Provider != "herdr" {
-		add("runtime.provider %q is not supported (only herdr)", c.Runtime.Provider)
+	if c.Runtime.Provider != "herdr" && c.Runtime.Provider != "process" {
+		add("runtime.provider %q is not supported (herdr or process)", c.Runtime.Provider)
 	}
 	if c.Runtime.Executable == "" {
 		add("runtime.executable is empty")

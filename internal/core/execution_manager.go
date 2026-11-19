@@ -138,8 +138,32 @@ func (s *session) collectChanges(ctx context.Context, dev *c.Task, wt string) er
 		return err
 	}
 	s.event(c.Event{RunID: s.run.ID, TaskID: dev.ID, Type: c.EventDiffCollected, Payload: map[string]any{"path": path, "base": base, "files": files}})
+	s.warnConflicts(ctx, dev)
 	return s.Store.AddArtifact(ctx, &c.Artifact{RunID: s.run.ID, TaskID: dev.ID, Type: c.ArtifactDiff, Path: path,
 		Description: fmt.Sprintf("changes of task %s relative to %s (%d files)", dev.Key, base, len(files))})
+}
+
+func (s *session) warnConflicts(ctx context.Context, dev *c.Task) {
+	mine := s.sched.Snapshot(dev).BranchName
+	for _, other := range s.graph.Tasks() {
+		snap := s.sched.Snapshot(other)
+		if other == dev || other.Role != c.RoleDeveloper || snap.Status != c.TaskCompleted || snap.BranchName == "" {
+			continue
+		}
+		files, err := s.Git.MergeTree(ctx, snap.BranchName, mine)
+		if err != nil || len(files) == 0 {
+			continue
+		}
+		key := min(dev.Key, other.Key) + "|" + max(dev.Key, other.Key) + "|" + strings.Join(files, ",")
+		s.mu.Lock()
+		seen := s.conflicts[key]
+		s.conflicts[key] = true
+		s.mu.Unlock()
+		if !seen {
+			s.warn(s.run.ID, dev.ID, fmt.Sprintf("the branches of %s and %s conflict on %s; only one of them can be merged as is",
+				other.Key, dev.Key, strings.Join(files, ", ")))
+		}
+	}
 }
 
 func (s *session) runReviewer(ctx context.Context, t *c.Task) error {

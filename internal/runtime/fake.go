@@ -14,6 +14,8 @@ type Fake struct {
 	PromptErr error
 	KindsList []string
 
+	Inert bool
+
 	mu      sync.Mutex
 	seq     int
 	ws      map[string]string
@@ -27,6 +29,7 @@ type Fake struct {
 type fakeAgent struct {
 	kind, ws string
 	status   AgentStatus
+	finished bool
 }
 
 func NewFake() *Fake {
@@ -76,7 +79,11 @@ func (f *Fake) SendPrompt(_ context.Context, agent, prompt string) error {
 		return ErrBlocked
 	}
 	f.Prompts = append(f.Prompts, prompt)
-	a.status = StatusWorking
+	if f.Inert {
+		f.mu.Unlock()
+		return f.PromptErr
+	}
+	a.status, a.finished = StatusWorking, false
 	f.working++
 	if f.working > f.MaxConcurrent {
 		f.MaxConcurrent = f.working
@@ -90,9 +97,7 @@ func (f *Fake) SendPrompt(_ context.Context, agent, prompt string) error {
 		}
 		f.mu.Lock()
 		f.working--
-		if a.status == StatusWorking {
-			a.status = StatusIdle
-		}
+		a.finished = true
 		f.mu.Unlock()
 	}()
 	return f.PromptErr
@@ -105,7 +110,11 @@ func (f *Fake) GetAgentStatus(_ context.Context, agent string) (AgentStatus, err
 	if !ok {
 		return "", ErrNotFound
 	}
-	return a.status, nil
+	st := a.status
+	if a.finished && st == StatusWorking {
+		a.status, a.finished = StatusIdle, false
+	}
+	return st, nil
 }
 
 func (f *Fake) ReadAgentOutput(_ context.Context, agent string) (string, error) {

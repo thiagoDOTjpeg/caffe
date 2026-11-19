@@ -37,8 +37,11 @@ Each task is executed by one agent in one of these roles:
   Git worktree and branch. Developer branches are never merged automatically,
   so two developer tasks that do not depend on each other produce two separate
   branches. If one change builds on another, make it depend on that task: it
-  then starts from that task's branch. A developer task should depend on at
-  most one other developer task.
+  then starts from that task's branch. Every task builds on at most one line
+  of developer work: a task must not depend, directly or through other tasks,
+  on two developer tasks that do not depend on each other. Such a plan is
+  rejected. Developer tasks that run in parallel should change different
+  files; their branches are merged one by one later.
 - `reviewer`: read-only review of the diff of the developer task it depends
   on. If it rejects the change, that developer is asked to fix it.
 - `validator`: runs the project's tests and checks in the worktree of the

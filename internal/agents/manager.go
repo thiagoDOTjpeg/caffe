@@ -19,6 +19,8 @@ var (
 	ErrNoReport = errors.New("agent stopped without writing its report")
 
 	ErrAgentGone = errors.New("agent session no longer exists and left no report")
+
+	ErrNeverStarted = errors.New("agent never started working on the prompt; it may not be signed in, or it is waiting on a screen Caffè cannot see")
 )
 
 const (
@@ -132,7 +134,7 @@ func (m *Manager) Execute(ctx context.Context, req Request) (*Result, error) {
 		}
 	}
 
-	report, err := m.await(ctx, sess.Name, reportPath, setBlocked, log)
+	report, err := m.await(ctx, sess.Name, reportPath, req.Attach != nil, setBlocked, log)
 	res := &Result{Session: sess, OutputPath: m.captureOutput(sess.Name, req.Dir)}
 	m.stop(sess, log)
 	if err != nil {
@@ -198,7 +200,7 @@ func (m *Manager) submit(ctx context.Context, agent, promptPath, reportPath stri
 	}
 }
 
-func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocked func(bool), log zerolog.Logger) ([]byte, error) {
+func (m *Manager) await(ctx context.Context, agent, reportPath string, worked bool, setBlocked func(bool), log zerolog.Logger) ([]byte, error) {
 	nudgeAfter, giveUpAfter := m.IdleNudgeAfter, m.IdleGiveUpAfter
 	if nudgeAfter == 0 {
 		nudgeAfter = DefaultIdleNudgeAfter
@@ -228,6 +230,7 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 		default:
 			transient = 0
 			setBlocked(st == runtime.StatusBlocked)
+			worked = worked || st == runtime.StatusWorking
 			if rerr == nil {
 
 				if withReport++; st != runtime.StatusWorking || withReport > workingGracePolls {
@@ -238,6 +241,8 @@ func (m *Manager) await(ctx context.Context, agent, reportPath string, setBlocke
 					idleSince = time.Now()
 				}
 				switch idleFor := time.Since(idleSince); {
+				case !worked && idleFor >= nudgeAfter:
+					return nil, ErrNeverStarted
 				case !nudged && idleFor >= nudgeAfter:
 					nudged, idleSince = true, time.Time{}
 					log.Warn().Str("agent", agent).Msg("agent idle without report, reminding once")

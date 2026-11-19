@@ -85,12 +85,32 @@ func (p *ExecutionPlan) Validate() error {
 	if len(errs) == 0 {
 		if cyc := p.cycle(); len(cyc) > 0 {
 			add("cyclic dependencies among: %s", strings.Join(cyc, ", "))
+		} else {
+			p.checkDeveloperChains(add)
 		}
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid plan: %s", strings.Join(errs, "; "))
 	}
 	return nil
+}
+
+func (p *ExecutionPlan) checkDeveloperChains(add func(string, ...any)) {
+	byID := map[string]PlanTask{}
+	for _, t := range p.Tasks {
+		byID[t.ID] = t
+	}
+	deps := func(id string) []string { return byID[id].Dependencies }
+	isDev := func(id string) bool { return byID[id].Role == RoleDeveloper }
+	for _, t := range p.Tasks {
+		if t.Role == RoleResearcher {
+			continue
+		}
+		if f := Frontier(t.ID, deps, isDev); len(f) > 1 {
+			add("task %q builds on the unrelated developer tasks %s; a task can build on only one line of developer work, so chain them (one depends on the other) or split the dependent task",
+				t.ID, strings.Join(f, ", "))
+		}
+	}
 }
 
 func (p *ExecutionPlan) cycle() []string {

@@ -17,7 +17,9 @@ import (
 	"caffe/internal/git"
 	"caffe/internal/persistence"
 	"caffe/internal/planner"
+	"caffe/internal/runtime"
 	"caffe/internal/runtime/herdr"
+	"caffe/internal/runtime/process"
 	"caffe/internal/service"
 )
 
@@ -88,7 +90,10 @@ func Open(ctx context.Context, dir string, verbose bool) (*App, error) {
 	if err != nil {
 		return nil, errors.Join(err, store.Close(), logFile.Close())
 	}
-	rt := herdr.New(cfg.Runtime.Executable, cfg.Runtime.Session, cfg.Runtime.CommandTimeout, log)
+	var rt runtime.Runtime = herdr.New(cfg.Runtime.Executable, cfg.Runtime.Session, cfg.Runtime.CommandTimeout, log)
+	if cfg.Runtime.Provider == "process" {
+		rt = process.New(filepath.Join(root, ".caffe", "agents"), process.Builtin)
+	}
 	am := &agents.Manager{RT: rt, Poll: cfg.Runtime.PollInterval, Log: log,
 		IdleNudgeAfter: cfg.Runtime.IdleNudgeAfter, IdleGiveUpAfter: cfg.Runtime.IdleGiveUpAfter}
 	orch := &core.Orchestrator{Cfg: cfg, Store: store, RT: rt, Git: gm, Agents: am, Log: log}

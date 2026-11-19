@@ -54,6 +54,7 @@ type session struct {
 
 	mu        sync.Mutex
 	resumable map[string]*c.Execution
+	conflicts map[string]bool
 }
 
 func (o *Orchestrator) say(format string, a ...any) {
@@ -135,7 +136,7 @@ func (o *Orchestrator) drive(ctx context.Context, run *c.Run, preset *c.Executio
 	defer cancel(nil)
 	stopHeartbeat := o.heartbeat(run.ID, cancel)
 
-	s := &session{Orchestrator: o, run: run, resumable: resumable}
+	s := &session{Orchestrator: o, run: run, resumable: resumable, conflicts: map[string]bool{}}
 	err := s.execute(ctx, preset, tasks)
 	stopHeartbeat()
 	return run, errors.Join(err, s.finalize(ctx, err))

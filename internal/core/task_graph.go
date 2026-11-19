@@ -104,19 +104,11 @@ func (g *Graph) Waiting(t *c.Task) []*c.Task {
 }
 
 func (g *Graph) Nearest(t *c.Task, role c.Role) *c.Task {
-	seen := map[string]bool{t.ID: true}
-	queue := g.Deps(t)
-	for len(queue) > 0 {
-		d := queue[0]
-		queue = queue[1:]
-		if seen[d.ID] {
-			continue
-		}
-		seen[d.ID] = true
-		if d.Role == role {
-			return d
-		}
-		queue = append(queue, g.Deps(d)...)
+	f := c.Frontier(t.ID,
+		func(id string) []string { return g.byID[id].Dependencies },
+		func(id string) bool { return g.byID[id].Role == role })
+	if len(f) == 0 {
+		return nil
 	}
-	return nil
+	return g.byID[f[0]]
 }

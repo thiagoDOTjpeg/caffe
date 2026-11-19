@@ -463,6 +463,16 @@ func TestConcurrentDevelopersAreIsolatedAndBounded(t *testing.T) {
 	if e.rt.MaxConcurrent != 2 {
 		t.Errorf("max concurrent agents = %d, want 2 (bounded, but actually concurrent)", e.rt.MaxConcurrent)
 	}
+	evs, _ := e.store.ListEvents(context.Background(), run.ID)
+	conflicts := 0
+	for _, ev := range evs {
+		if msg, _ := ev.Payload["message"].(string); ev.Type == c.EventWarning && strings.Contains(msg, "conflict on shared.txt") {
+			conflicts++
+		}
+	}
+	if conflicts != 3 {
+		t.Errorf("want one conflict warning per pair of developers, got %d", conflicts)
+	}
 }
 
 func TestDependentDeveloperBuildsOnDependencyBranch(t *testing.T) {

@@ -121,6 +121,7 @@ Task lifecycle: `pending → ready → assigned → running → completed`, with
 | Runtime | Adapter | Status |
 |---|---|---|
 | [Herdr](https://herdr.dev) (CLI) | `internal/runtime/herdr` | implemented; developed against Herdr 0.9.5 |
+| Built-in headless processes | `internal/runtime/process` | implemented; `claude`, `codex`, `gemini`, `opencode` |
 | Herdr socket API | — | not implemented |
 
 Herdr is a separate project. Caffè asks it to open workspaces, start agents,
@@ -129,7 +130,16 @@ kinds it can start; `caffe agents` shows the result. Any kind Herdr supports
 whose executable is installed can be assigned to a role. End-to-end runs so far
 used Claude Code and Antigravity (`agy`).
 
-How the adapter works, and the runtime behaviours it has to account for:
+Without Herdr, set `runtime.provider: process`. Caffè then runs each agent's
+own non-interactive mode (`claude -p`, `codex exec`, `gemini -p`,
+`opencode run`) as a child process, with its output in
+`.caffe/agents/<agent>/output.log`. Completion is still the report file; an
+agent that exits without one fails at once, with its output. There is no
+terminal to answer a prompt in, so give the agent the permissions it needs in
+`agents.<role>.args` (for example `["--permission-mode", "acceptEdits"]` for
+Claude Code developers), and attaching only follows the output.
+
+How the Herdr adapter works, and the runtime behaviours it has to account for:
 [docs/runtime-integration.md](docs/runtime-integration.md).
 
 ## Installation
@@ -179,9 +189,10 @@ Before the first run, know that:
   agent's pane. Answer, and the run continues. The same holds for any
   permission prompt mid-task.
 - **An agent that is not signed in looks idle.** The prompt lands on its login
-  screen and nothing happens; the execution eventually fails with *agent
-  stopped without writing its report* and the path of a file showing the
-  agent's last screen. Start each agent once by hand first.
+  screen and nothing happens. An agent that never starts working on its prompt
+  fails after `idle_nudge_after` with *agent never started working on the
+  prompt* and the path of a file showing its last screen; it is not reminded,
+  so nothing is typed into a login screen. Start each agent once by hand first.
 - **Agents run with the permissions you give them.** Caffè adds no flags. Use
   `agents.<role>.args` for a model or a permission mode.
 - **Agents appear in your Herdr session**, one workspace per execution, closed
@@ -219,7 +230,7 @@ project:
   name: my-project
   path: .
 runtime:
-  provider: herdr             # the runtime adapter
+  provider: herdr             # herdr, or process (headless agents, no Herdr)
   executable: herdr
   session: ""                 # named Herdr session; empty = default session
   command_timeout: 1m         # per runtime CLI call
@@ -333,6 +344,10 @@ Not commitments; the order reflects what is known to be missing.
    from earlier runs when the code did not change.
 3. Corrections triggered by failed validation, not only by rejected reviews.
 4. A Herdr socket API adapter, replacing polling with status events.
+5. Validating the combination of parallel developer branches. Today a plan
+   cannot make one task build on two unrelated developer tasks, and parallel
+   branches that conflict are reported as a warning as soon as the second one
+   is delivered.
 
 ## Contributing
 

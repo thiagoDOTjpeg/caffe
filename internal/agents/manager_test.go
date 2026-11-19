@@ -107,6 +107,18 @@ func TestReminderRecoversForgetfulAgent(t *testing.T) {
 	}
 }
 
+func TestAgentThatNeverWorksFailsWithoutReminder(t *testing.T) {
+	m, rt, req := setup(t)
+	rt.Inert = true
+	_, err := m.Execute(context.Background(), req)
+	if !errors.Is(err, ErrNeverStarted) {
+		t.Fatalf("want ErrNeverStarted, got %v", err)
+	}
+	if len(rt.Prompts) != 1 {
+		t.Fatalf("a reminder was typed into an agent that never started: %q", rt.Prompts)
+	}
+}
+
 func TestBlockedAtStartupWaitsForHuman(t *testing.T) {
 	m, rt, req := setup(t)
 	rt.StartErr = fmt.Errorf("%w: trust dialog", runtime.ErrNotReady)
