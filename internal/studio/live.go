@@ -36,6 +36,7 @@ type source interface {
 	ReadArtifact(ctx context.Context, id string, max int64) (*service.ArtifactContent, error)
 
 	Workspaces(ctx context.Context) ([]service.Workspace, error)
+	ReadFile(ctx context.Context, workspaceID, path string, max int64) (*service.FileContent, error)
 }
 
 // Timings of architecture §7. Variables so tests can shrink them.

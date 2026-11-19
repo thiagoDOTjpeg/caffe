@@ -66,7 +66,7 @@ func actions() (*ui.Registry, map[string]handler) {
 			m.inspect, m.report = nil, nil
 			return m, nil
 		})
-	add(ui.Action{ID: "workspace.select", Title: "Select the workspace", Scope: g, Keys: []string{"W"}, Leader: "w s"},
+	add(ui.Action{ID: "workspace.select", Title: "Select the workspace", Scope: g, Keys: []string{"ctrl+w"}, Leader: "w s"},
 		func(m model) (model, tea.Cmd) { return m.openWorkspaces() })
 	add(ui.Action{ID: "layout.sidebar", Title: "Toggle the sidebar", Scope: g, Keys: []string{"ctrl+b"}, Leader: "v b"},
 		func(m model) (model, tea.Cmd) { m.toggles.Sidebar = flip(m.layout().Sidebar.Visible()); return m, nil })
@@ -141,6 +141,14 @@ func actions() (*ui.Registry, map[string]handler) {
 		})
 	add(ui.Action{ID: "agents.attach", Title: "Attach to the agent's terminal", Scope: as, Keys: []string{"a"}, Leader: "a a"},
 		func(m model) (model, tea.Cmd) { return m.attach() })
+	ws := ui.Scope("workspace")
+	vscroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.viewerScroll(d), nil } }
+	add(ui.Action{ID: "viewer.down", Title: "Scroll down", Scope: ws, Keys: []string{"j", "down"}}, vscroll(1))
+	add(ui.Action{ID: "viewer.up", Title: "Scroll up", Scope: ws, Keys: []string{"k", "up"}}, vscroll(-1))
+	add(ui.Action{ID: "viewer.pagedown", Title: "Scroll half a page down", Scope: ws, Keys: []string{"ctrl+d", "pgdown"}}, vscroll(20))
+	add(ui.Action{ID: "viewer.pageup", Title: "Scroll half a page up", Scope: ws, Keys: []string{"ctrl+u", "pgup"}}, vscroll(-20))
+	add(ui.Action{ID: "viewer.top", Title: "Top of the file", Scope: ws, Keys: []string{"g", "home"}}, vscroll(-1<<30))
+	add(ui.Action{ID: "viewer.bottom", Title: "End of the file", Scope: ws, Keys: []string{"G", "end"}}, vscroll(1<<30))
 	is := ui.Scope("inspector")
 	tab := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorTab(d), nil } }
 	scroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.inspectorScroll(d), nil } }

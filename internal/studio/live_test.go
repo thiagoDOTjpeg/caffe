@@ -39,6 +39,17 @@ type fakeSource struct {
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
 	ws        []service.Workspace
+	files     map[string]string // "workspace:path" → text
+}
+
+func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	text, ok := f.files[ws+":"+path]
+	if !ok {
+		return nil, service.ErrNotFound
+	}
+	return &service.FileContent{Path: "/" + path, Text: text, Size: int64(len(text))}, nil
 }
 
 func (f *fakeSource) Workspaces(context.Context) ([]service.Workspace, error) {

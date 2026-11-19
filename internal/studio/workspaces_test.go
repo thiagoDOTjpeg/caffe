@@ -20,7 +20,7 @@ func TestWorkspaceSelector(t *testing.T) {
 	if v := m.View().Content; !strings.Contains(v, "ws: main") {
 		t.Fatal("status bar does not show the main workspace")
 	}
-	m, cmd := press(m, "W")
+	m, cmd := press(m, "ctrl+w")
 	m = drive(t, m, cmd)
 	v := m.View().Content
 	if !strings.Contains(v, "uncommitted changes") || !strings.Contains(v, "removed") {

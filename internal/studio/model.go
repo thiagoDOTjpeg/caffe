@@ -44,8 +44,9 @@ type model struct {
 	form     *newRunForm       // set while overlayNewRun is open
 	output   agentOutput       // the Agent Room's output pane
 	ws       workspaces
-	rt       rtObs  // last runtime status of the agents on screen
-	watcher  pauser // paused while the terminal is handed over
+	file     *viewer // the Workspace screen's open file; nil: none
+	rt       rtObs   // last runtime status of the agents on screen
+	watcher  pauser  // paused while the terminal is handed over
 	toastSeq int
 	now      func() time.Time
 	project  Project
@@ -118,6 +119,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateLiveAgents(msg)
 	case actionDoneMsg:
 		return m.actionDone(msg)
+	case fileMsg:
+		return m.updateFile(msg), nil
 	case workspacesMsg:
 		return m.updateWorkspaces(msg), nil
 	case reportMsg:
@@ -176,6 +179,8 @@ func (m model) view() tea.View {
 			main = m.agentsScreen(l.Main.W, h)
 		case m.screen == screenRuns:
 			main = m.runsScreen(l.Main.W)
+		case m.screen == screenWorkspace && m.file != nil:
+			main = m.viewerScreen(l.Main.W, h)
 		}
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main

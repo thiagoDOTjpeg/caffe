@@ -352,7 +352,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ## M2a — Workspace (view)
 
 ### [x] WS-01 · Workspaces query and selector
-- **Done.** `service.Workspaces` (main + recorded task worktrees, `Missing`, `Dirty`); lease field deferred to WS-11. Selector: `W` or `space w s`; removed worktrees cannot be selected. Status bar always shows `ws:`; the header shows it for a task workspace.
+- **Done.** `service.Workspaces` (main + recorded task worktrees, `Missing`, `Dirty`); lease field deferred to WS-11. Selector: `ctrl+w` or `space w s`; removed worktrees cannot be selected. Status bar always shows `ws:`; the header shows it for a task workspace.
 - **P0 · M · Depends:** F-07 · **Description:** `service.Workspaces`
   (main + task worktrees, missing-on-disk flagged, dirty, lease). Selector
   overlay. **Acceptance:** header/status bar always show the selected workspace.
@@ -362,7 +362,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   --cached --others --exclude-standard`; change markers vs task base.
   **Tests:** large listing (100 k entries) stays responsive.
 
-### WS-03 · Highlighted viewer
+### [x] WS-03 · Highlighted viewer
+- **Done.** `service.ResolvePath` (symlinks followed, escapes refused) and `service.ReadFile` (bounded, binary detected). Viewer in the Workspace screen: Chroma v2 tokens mapped to theme tones (plain in mono), visible lines only, plain above 2 MB, reads at most 16 MB. Own scrolling instead of `bubbles/viewport` (no new dependency; same pattern as the report view). Opening a file comes with the explorer (WS-02).
 - **P0 · M · Depends:** WS-01 · **Description:** `bubbles/viewport` + Chroma v2,
   visible-region tokenisation, large-file plain mode (NFR-P4), `ResolvePath`.
   **Tests:** path escape and symlink tests; golden renders.
