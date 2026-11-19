@@ -158,7 +158,7 @@ func (m model) overviewScreen(height int) string {
 	if len(v.Agents) == 0 {
 		add("  none yet")
 	}
-	for _, a := range v.Agents {
+	for _, a := range m.withRuntime(v.Agents) {
 		add("  %s %-10s %-10s %s", padded(agentBadge(a.Visual), th, 14), shortN(a.ID, 9), a.Role, a.Kind)
 	}
 	add("")

@@ -341,8 +341,9 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 - **Acceptance:** run survives Studio exit; `ErrConflict` refreshes and informs.
 - **Done.** Keys: `n` new (form: request + optional plan file), `c` cancel, `R` resume, `x` clean on Runs (cursor run) and Overview (selected run), and `space r n/c/R/x` everywhere. Cancel and clean confirm (Cancel is the default); resume refuses non-interrupted runs. In flight: the run shows `⋯ cancelling`/`(cancelling…)`, a second request is refused; every result refreshes at once. New runs use `StartRun` (detached, F-10: survive Studio). Service gained `CancelRun`/`Clean` through an `Engine` (the App passes its orchestrator), `ErrConflict` (lost race or already finished: toast + refresh, no retry) and `ErrUnsupported` (no engine). `clean --failed` is CLI-only for now.
 
-### CC-15 · Live agent output
+### [x] CC-15 · Live agent output
 - **P1 · M · Depends:** F-15, CC-10 · **Acceptance:** focused agent at 1 Hz, labelled source, paused when hidden.
+- **Done.** `o` (or `space a o`) opens the output pane in the lower half of the Agent Room for the card under the cursor: read once a second only while the room is visible, titled with its source (`live, refreshed 1s ago` / `captured at end` / `no output saved` / the runtime's error). The same tick reads the runtime status of unfinished agents on the Overview or Agent Room every 2 s and re-derives their visual state with it (Working, Waiting, Blocked, Lost), advisory only: finished executions keep their stored state, and status older than 6 s is ignored. Test helper `drive` now runs commands concurrently and settles after 50 ms of quiet.
 
 ### CC-16 · Attach hand-off
 - **P1 · S · Depends:** F-14, CC-10 · **Acceptance:** `ExecProcess` of the attach argv; full refresh on return; hidden when unsupported.

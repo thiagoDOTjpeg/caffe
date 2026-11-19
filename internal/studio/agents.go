@@ -57,7 +57,7 @@ func (m model) agentsMove(delta func(perRow int) int) model {
 	if m.live.snap == nil || len(m.live.snap.Agents) == 0 {
 		return m
 	}
-	agents := sortedAgents(m.live.snap.Agents)
+	agents := sortedAgents(m.withRuntime(m.live.snap.Agents))
 	i := m.agents.index(agents) + delta(perRow(m.layout().Main.W))
 	m.agents.cursor = agents[min(max(i, 0), len(agents)-1)].ID
 	return m
@@ -137,7 +137,7 @@ func (m model) agentsScreen(width, height int) string {
 	if l.snap == nil {
 		return noRunsText("Agents")
 	}
-	agents := sortedAgents(l.snap.Agents)
+	agents := sortedAgents(m.withRuntime(l.snap.Agents))
 	live, done := 0, 0
 	for _, a := range agents {
 		if agentRank(a.Visual) == 5 {
@@ -159,6 +159,11 @@ func (m model) agentsScreen(width, height int) string {
 	last := l.lastEvents()
 	n, cur := perRow(width), m.agents.index(agents)
 	cardH := len(box(agentCard(agents[0], tasks, last), false))
+	var pane []string
+	if m.output.on {
+		pane = m.outputPane(width, height/2)
+		height -= len(pane)
+	}
 	rowsFit := max((height-len(out))/cardH, 1)
 	// Keep the cursor's row on screen.
 	first := max(cur/n-rowsFit+1, 0)
@@ -181,7 +186,10 @@ func (m model) agentsScreen(width, height int) string {
 	if hidden := len(agents) - min((first+rowsFit)*n, len(agents)); hidden > 0 {
 		out = append(out, fmt.Sprintf(" … %d more agents", hidden))
 	}
-	return strings.Join(out, "\n")
+	if !m.output.on {
+		out = append(out, " [o] output  [i] inspect")
+	}
+	return strings.Join(append(out, pane...), "\n")
 }
 
 // styledCard colours the state line of a card by its tone, after layout.

@@ -29,6 +29,10 @@ type fakeSource struct {
 	started   []service.StartRunRequest
 	calls     []string
 	cmdErr    error
+	output    map[string]*service.AgentOutput
+	outErr    error
+	rtObs     map[string]service.RuntimeObservation
+	outCalls  int
 	execs     map[string]*service.ExecutionDetail
 	prompts   map[string]string // execution id → prompt text
 	artifacts map[string]string // artifact id → text
@@ -159,6 +163,31 @@ func (f *fakeSource) Clean(_ context.Context, includeFailed bool) ([]string, err
 	return []string{"removed /wt/a (branch caffe/x/a kept)", "kept    /wt/b (run failed, task b failed; use --failed to remove)"}, f.cmdErr
 }
 
+func (f *fakeSource) AgentOutput(_ context.Context, id string, _ int) (*service.AgentOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.outCalls++
+	if f.outErr != nil {
+		return nil, f.outErr
+	}
+	if o, ok := f.output[id]; ok {
+		return o, nil
+	}
+	return &service.AgentOutput{AgentID: id, Source: service.OutputNone}, nil
+}
+
+func (f *fakeSource) AgentRuntimeStatus(_ context.Context, agents []service.AgentView) map[string]service.RuntimeObservation {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]service.RuntimeObservation{}
+	for _, a := range agents {
+		if o, ok := f.rtObs[a.ID]; ok {
+			out[a.ID] = o
+		}
+	}
+	return out
+}
+
 func (f *fakeSource) set(fn func(f *fakeSource)) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -184,47 +213,45 @@ func shrinkTimings(t *testing.T) {
 	t.Cleanup(func() { debounce, backoffMin, backoffMax = d, lo, hi })
 }
 
-// drive runs cmd and every command it leads to, feeding results to Update,
-// until nothing is left: the model has settled.
+// drive runs cmd and every command it leads to, as Bubble Tea does (each in
+// its own goroutine, results to Update one at a time), until nothing arrives
+// for a quiet period: the model has settled. Long timers (toast expiry, the
+// health and live-agent ticks) fire after it and are dropped.
 func drive(t *testing.T, m model, cmd tea.Cmd) model {
 	t.Helper()
-	queue := []tea.Cmd{cmd}
-	for steps := 0; len(queue) > 0; steps++ {
-		if steps > 100 {
+	const quiet = 50 * time.Millisecond // fake sources answer in microseconds
+	msgs := make(chan tea.Msg, 256)
+	var run func(tea.Cmd)
+	run = func(c tea.Cmd) {
+		if c == nil {
+			return
+		}
+		go func() {
+			msg := c()
+			if batch, ok := msg.(tea.BatchMsg); ok {
+				for _, b := range batch {
+					run(b)
+				}
+				return
+			}
+			if msg != nil {
+				msgs <- msg
+			}
+		}()
+	}
+	run(cmd)
+	for steps := 0; ; steps++ {
+		if steps > 200 {
 			t.Fatal("model never settled")
 		}
-		next := queue[0]
-		queue = queue[1:]
-		if next == nil {
-			continue
+		select {
+		case msg := <-msgs:
+			res, more := m.Update(msg)
+			m = res.(model)
+			run(more)
+		case <-time.After(quiet):
+			return m
 		}
-		msg, ok := within(next, 500*time.Millisecond)
-		if !ok {
-			continue // a long timer (toast expiry, health recheck): not part of settling
-		}
-		if batch, ok := msg.(tea.BatchMsg); ok {
-			queue = append(queue, batch...)
-			continue
-		}
-		res, more := m.Update(msg)
-		m = res.(model)
-		if _, ok := msg.(healthMsg); ok {
-			continue // the next check is a 10 s tick that never settles
-		}
-		queue = append(queue, more)
-	}
-	return m
-}
-
-// within runs cmd, giving up after d.
-func within(cmd tea.Cmd, d time.Duration) (tea.Msg, bool) {
-	ch := make(chan tea.Msg, 1)
-	go func() { ch <- cmd() }()
-	select {
-	case msg := <-ch:
-		return msg, true
-	case <-time.After(d):
-		return nil, false
 	}
 }
 

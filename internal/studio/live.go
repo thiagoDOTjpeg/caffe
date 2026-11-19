@@ -20,6 +20,9 @@ type source interface {
 	Capabilities(ctx context.Context) (*service.RuntimeInfo, error)
 	Report(ctx context.Context, runID string) (string, error)
 
+	AgentOutput(ctx context.Context, agentID string, lines int) (*service.AgentOutput, error)
+	AgentRuntimeStatus(ctx context.Context, agents []service.AgentView) map[string]service.RuntimeObservation
+
 	StartRun(ctx context.Context, req service.StartRunRequest) (string, error)
 	ResumeRun(ctx context.Context, runID string) error
 	CancelRun(ctx context.Context, runID string) (*service.RunSummary, error)

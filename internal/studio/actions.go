@@ -39,6 +39,7 @@ func actions() (*ui.Registry, map[string]handler) {
 	r.Group("g", "go to screen")
 	r.Group("v", "view")
 	r.Group("r", "run")
+	r.Group("a", "agent")
 
 	add(ui.Action{ID: "app.quit", Title: "Quit Caffè Studio", Scope: g, Keys: []string{"ctrl+q", "ctrl+c"}},
 		func(m model) (model, tea.Cmd) { return m, tea.Quit })
@@ -123,10 +124,15 @@ func actions() (*ui.Registry, map[string]handler) {
 			if m.live.snap == nil || len(m.live.snap.Agents) == 0 {
 				return m, nil
 			}
-			agents := sortedAgents(m.live.snap.Agents)
+			agents := sortedAgents(m.withRuntime(m.live.snap.Agents))
 			if a := agents[m.agents.index(agents)]; a.Execution != nil {
 				return m.openInspector(a.Execution.ID)
 			}
+			return m, nil
+		})
+	add(ui.Action{ID: "agents.output", Title: "Show or hide the agent's output", Scope: as, Keys: []string{"o"}, Leader: "a o"},
+		func(m model) (model, tea.Cmd) {
+			m.output = agentOutput{on: !m.output.on}
 			return m, nil
 		})
 	is := ui.Scope("inspector")
