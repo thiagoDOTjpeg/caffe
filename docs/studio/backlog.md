@@ -227,8 +227,8 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
   closing the console.
 - **Progress (2026-11-18):** launcher tests are portable (`service/launcher_test.go`); on Windows the child must have no console (`GetConsoleWindow() == 0`). Passes under Wine, **but a control build without `DETACHED_PROCESS` passes too there** — Wine cannot tell; the assertion is first exercised by `run-tests.ps1` on real Windows. Manual console-close check: kit step 4. **Real Windows (2026-11-18, kit of `4635dc9`, Windows 10.0.26200, Git 2.54): kit step 1 passed, all 13 packages.** The no-console assertion now holds on real Windows; still pending: the manual console-close / Ctrl-C check (kit step 4).
 
-### W-05 · CI on Linux and Windows
-- **Progress (2026-11-19):** GitHub Actions (`.github/workflows/ci.yml`): gofmt, `go vet`, `go test -race` on `ubuntu-latest` and `windows-latest` for every push and pull request. Closes when both jobs are green on the first push.
+### [x] W-05 · CI on Linux and Windows
+- **Progress (2026-11-19):** GitHub Actions (`.github/workflows/ci.yml`): gofmt, `go vet`, `go test -race` on `ubuntu-latest` and `windows-latest` for every push and pull request. Both jobs green on PR #1 (2026-11-19), after keeping LF line endings on the Windows checkout.
 - **P0 · S · Depends:** W-01, W-02 · **Requires a decision:** where the CI runs
   (the repository has no remote yet).
 - **Description:** run `go vet ./...` and `go test -race ./...` on Linux and
