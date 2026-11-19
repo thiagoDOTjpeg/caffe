@@ -823,6 +823,15 @@ func TestCleanRemovesOnlyCompletedWorktreesAndKeepsBranches(t *testing.T) {
 		t.Fatal(run.Status, err)
 	}
 	impl := e.tasks(run.ID)["impl"]
+	// A leased worktree is kept, with the reason.
+	human := &persistence.Lease{Path: impl.WorktreePath, HolderKind: persistence.LeaseHuman, HolderID: "studio-1"}
+	if err := e.store.AcquireLease(context.Background(), human); err != nil {
+		t.Fatal(err)
+	}
+	if actions, err := e.o.Clean(context.Background(), true); err != nil || len(actions) != 1 || !strings.Contains(actions[0], "leased by human studio-1") {
+		t.Fatalf("clean of a leased worktree = %v, %v", actions, err)
+	}
+	e.store.ReleaseLease(context.Background(), human)
 	actions, err := e.o.Clean(context.Background(), false)
 	if err != nil || len(actions) != 1 || !strings.HasPrefix(actions[0], "removed") {
 		t.Fatalf("clean = %v, %v", actions, err)

@@ -514,8 +514,9 @@ func (o *Orchestrator) stopAgents(ctx context.Context, runID string) error {
 
 // Clean removes the worktrees of finished runs. Worktrees of runs or tasks
 // that did not complete are kept unless includeFailed is set or the
-// configuration says not to preserve them. Branches are never deleted, and Git refuses to remove
-// a worktree with uncommitted changes.
+// configuration says not to preserve them, and leased worktrees are always
+// kept. Branches are never deleted, and Git refuses to remove a worktree with
+// uncommitted changes.
 func (o *Orchestrator) Clean(ctx context.Context, includeFailed bool) ([]string, error) {
 	includeFailed = includeFailed || !o.Cfg.Security.PreserveFailedWorktrees
 	runs, err := o.Store.ListRuns(ctx, false)
@@ -539,6 +540,14 @@ func (o *Orchestrator) Clean(ctx context.Context, includeFailed bool) ([]string,
 			}
 			if _, err := os.Stat(t.WorktreePath); errors.Is(err, os.ErrNotExist) {
 				continue
+			}
+			// A leased worktree is in use: by a human editing it in Studio, or
+			// an agent (WS-16).
+			if l, err := o.Store.GetLease(ctx, t.WorktreePath); err == nil {
+				actions = append(actions, fmt.Sprintf("kept    %s (leased by %s %s since %s)", t.WorktreePath, l.HolderKind, l.HolderID, l.AcquiredAt.Local().Format("2006-01-02 15:04")))
+				continue
+			} else if !errors.Is(err, persistence.ErrNotFound) {
+				return actions, err
 			}
 			// A worktree is only disposable when both its task and its run
 			// succeeded; anything else is evidence someone may want to look at.

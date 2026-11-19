@@ -419,7 +419,7 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### WS-15 · Manual commit and discard
 - **P1 · M · Depends:** WS-13 · **Description:** `CommitManual` with the user's identity and `manual:` prefix; discard confirmed. **Acceptance:** manual commits never contain files the agent changed after the lease was taken (they cannot: lease).
 
-### WS-16 · Clean honours leases
+### [x] WS-16 · Clean honours leases
 - **P1 · S · Depends:** WS-11 · **Acceptance:** `caffe clean` skips leased worktrees and says why.
 
 ## M3a / M3b — Execution
