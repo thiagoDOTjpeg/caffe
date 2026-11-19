@@ -20,14 +20,15 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: git settings for tests
+        run: |
+          git config --global core.autocrlf false
+          git config --global user.name ci
+          git config --global user.email ci@example.com
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: git identity for tests
-        run: |
-          git config --global user.name ci
-          git config --global user.email ci@example.com
       - name: gofmt
         if: runner.os == 'Linux'
         run: test -z "$(gofmt -l .)" || (gofmt -l .; exit 1)
