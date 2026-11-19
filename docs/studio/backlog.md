@@ -485,10 +485,10 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 
 ## M6 — Debugging
 
-### DB-01 · DAP client core
+### [x] DB-01 · DAP client core
 - **P2 · L · Depends:** EX-01 · **Tests:** fake adapter; event handling; disconnect.
 
-### DB-02 · Delve launch (test/debug)
+### [x] DB-02 · Delve launch (test/debug)
 - **P2 · M · Depends:** DB-01 · **Description:** `dlv dap` as a session; `mode: test` from a test name. **Tests:** optional real-`dlv` test behind an env flag.
 
 ### DB-03 · Breakpoints in the viewer

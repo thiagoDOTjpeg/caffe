@@ -281,6 +281,13 @@ so other DAP adapters can be added.
 reliably, or whether `--client-addr` (Delve connecting to Studio) is
 preferable.
 
+**Outcome (2026-11-19).** `--client-addr`: Studio listens on `127.0.0.1:0`
+and `dlv dap --client-addr <addr>` connects to it, so no output is parsed.
+`go-dap` is not used: as for LSP (ADR-006), the framing is shared
+(`internal/frame`) and `internal/dap` has hand-written types for the dozen
+requests it sends. Tests run against a fake adapter (`internal/dap/daptest`);
+a real-Delve test runs with `CAFFE_DAP_REAL=1`.
+
 ---
 
 ## ADR-008 — Worktree selection model

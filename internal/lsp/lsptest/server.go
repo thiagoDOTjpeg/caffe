@@ -3,39 +3,15 @@ package lsptest
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
-	"strconv"
-	"strings"
+
+	"caffe/internal/frame"
 )
 
 const Env = "CAFFE_LSP_FAKE"
 
-func read(r *bufio.Reader) ([]byte, error) {
-	n := -1
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			break
-		}
-		if v, ok := strings.CutPrefix(line, "Content-Length:"); ok {
-			n, _ = strconv.Atoi(strings.TrimSpace(v))
-		}
-	}
-	b := make([]byte, n)
-	_, err := io.ReadFull(r, b)
-	return b, err
-}
-
-func write(w io.Writer, v any) {
-	b, _ := json.Marshal(v)
-	fmt.Fprintf(w, "Content-Length: %d\r\n\r\n%s", len(b), b)
-}
+func write(w io.Writer, v any) { frame.Write(w, v) }
 
 func pos(line int) map[string]any {
 	return map[string]any{"start": map[string]int{"line": line}, "end": map[string]int{"line": line}}
@@ -45,7 +21,7 @@ func Serve(mode string) {
 	r := bufio.NewReader(os.Stdin)
 	root := ""
 	for {
-		body, err := read(r)
+		body, err := frame.Read(r)
 		if err != nil {
 			return
 		}
