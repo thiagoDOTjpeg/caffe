@@ -12,7 +12,11 @@ make e2e       # real Herdr, real agents; opt-in, see below
 Go 1.27 or newer (the `go` line of `go.mod`). No cgo: SQLite is `modernc.org/sqlite`.
 
 Dependencies: `cobra` (CLI), `zerolog` (logs), `google/uuid`, `yaml.v3`
-(config), `modernc.org/sqlite`. Tests use only the standard `testing` package.
+(config), `modernc.org/sqlite`, `golang.org/x/sys` (Windows job objects);
+for Studio, `charm.land/bubbletea/v2`, `charm.land/lipgloss/v2`,
+`charmbracelet/x/ansi` and `alecthomas/chroma/v2` (highlighting). The LSP and
+DAP clients use only the standard library. Tests use only the standard
+`testing` package.
 
 ## Tests
 
@@ -29,7 +33,12 @@ No test in `make check` needs Herdr, a network or an agent.
 | `planner` | valid plan, 16 rejection cases, planning through the runtime, context collection | `runtime.Fake` |
 | `core` (scheduler) | transition table, cycle detection, dependency order, concurrency bound, retries, permanent failures, cascading cancellation, timeouts, panics, no duplicate dispatch across two schedulers | real SQLite |
 | `core` (orchestrator) | full run with planner, review correction loop, rejected review, real validation exit codes, concurrent isolated developers, stacked developers, developer without changes, invalid plan/report, unavailable kind, cross-process cancel, **restart without loss or duplication**, vanished agent on resume, cancel of an interrupted run, clean | real SQLite + real Git + `runtime.Fake` |
-| `app` | `init`, idempotency, config never overwritten, commands from a subdirectory, invalid config stops every command | in-process CLI |
+| `core` (leases) | developer and correction wait for a human lease, an expired lease is taken over only on a clean worktree, recovery releases agent leases, clean keeps leased worktrees | real SQLite + real Git + `runtime.Fake` |
+| `app` | `init`, idempotency, config never overwritten, commands from a subdirectory, invalid config stops every command, golden output of the read-only commands | in-process CLI |
+| `service` | snapshots consistent under a concurrent writer, event cursor, watcher, detached launcher, workspaces, diffs, search, leases, safe save, manual commit, integration decisions, merge preview with conflicts, refused and real merges | real SQLite + real Git |
+| `session` | output and exit codes, bounded buffer, start failures, stop leaves no process behind | the test binary as the command |
+| `lsp`, `dap`, `frame` | framing, requests and notifications, server crash, one server per root with a cap, launch/step/variables/evaluate/disconnect | fake server and adapter (`lsp/lsptest`, `dap/daptest`) run from the test binary |
+| `studio` | every screen through `Update` and golden `View` renders at fixed sizes, a full run on the fake runtime, terminals, editor, leases, LSP and debugger flows, import boundary | fake `source`, fake LSP/DAP |
 
 `runtime.Fake` (`internal/runtime/fake.go`) implements `Runtime` in memory. Its
 `OnPrompt` hook plays the agent: tests read the prompt file the agent was
@@ -39,6 +48,9 @@ number of concurrently working agents.
 The crash tests build the exact database and Git state a killed orchestrator
 leaves behind (`env.crash` in `core/orchestrator_test.go`) rather than killing
 a goroutine, then run `Recover` and `Resume` against it.
+
+Opt-in tests against real tools: `CAFFE_LSP_REAL=1` (needs `gopls`) and
+`CAFFE_DAP_REAL=1` (needs `dlv`).
 
 Run one package with the race detector:
 
@@ -77,10 +89,29 @@ Windows is a target. Without Go on the Windows machine:
 make windows-kit      # dist/caffe-windows-kit.zip, built on Linux
 ```
 
-Unzip it on Windows and follow `LEIA-ME.md` inside: `run-tests.ps1` runs
-every test package (needs Git for Windows) and writes `results.txt`; the rest
-are manual checks (TUI spike, a real run through Herdr, detached runs). Test
-binaries are built without `-race`, which needs cgo on Windows.
+CI runs `go vet` and `go test -race` on `windows-latest` for every push and
+pull request (`.github/workflows/ci.yml`). What CI cannot check is in the
+kit: unzip it on Windows and follow `README.md` inside. `run-tests.ps1` runs
+every test package on a real machine (needs Git for Windows); the rest are
+manual checks (TUI spike, a real run through Herdr, detached runs surviving
+their console).
+
+## CI and releases
+
+- `.github/workflows/ci.yml`: gofmt, `go vet`, `go test -race` on Linux and
+  Windows. Pull requests that only touch `CHANGELOG.md` and
+  `.release-please-manifest.json` (release pull requests) are skipped.
+- `.github/workflows/release.yml`: release-please keeps a release pull
+  request up to date from the Conventional Commit messages on `main`.
+  Merging it tags `vX.Y.Z`, publishes the release with `CHANGELOG.md`, and
+  builds the binaries (Linux, macOS, Windows; amd64, arm64; no cgo) with
+  `checksums.txt`. The version is set with
+  `-X caffe/internal/app.Version=…` and printed by `caffe --version`;
+  `make build` uses `git describe`.
+
+Commit messages are therefore part of the release: `fix:` makes a patch
+release, `feat:` a minor one, `feat!:` or a `BREAKING CHANGE:` footer a major
+one.
 
 ## Conventions
 
@@ -96,8 +127,8 @@ binaries are built without `-race`, which needs cgo on Windows.
   one's rows: collect, close, then query.
 - Agent and planner output is parsed into fixed structs and validated before
   use. Do not add a field whose value gets executed.
-- Comments say why. A deliberate shortcut is marked `ponytail:` with its
-  ceiling and the upgrade path.
+- No comments in code. The why goes in these documents, the ADRs and the
+  commit message. Only compiler directives (`//go:build`, `//go:embed`) stay.
 
 ## Adding things
 
@@ -133,6 +164,9 @@ validation applies.
     <task>/changes.diff
     <task>/attempt-N/{command-N.log,report.json}     validation commands
 ```
+
+Studio adds `.caffe/studio/`: `studio.log`, `crash-<ts>.log` and
+`sessions/<id>-*.log` (full output of terminal sessions).
 
 `.caffe/` and `.caffe-report-*.json` are listed in the repository's
 `.git/info/exclude` by `caffe init`; the tracked `.gitignore` is not touched.

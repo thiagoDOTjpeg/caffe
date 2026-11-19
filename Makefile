@@ -37,7 +37,7 @@ windows-kit:
 		[ -f $(KIT)/tests/$$n/$$n.test.exe ] || rmdir $(KIT)/tests/$$n; \
 	done
 	cp -r internal/app/testdata $(KIT)/tests/app/
-	cp scripts/windows/run-tests.ps1 scripts/windows/LEIA-ME.md $(KIT)/
+	cp scripts/windows/run-tests.ps1 scripts/windows/README.md $(KIT)/
 	cp scripts/windows/plans/*.json $(KIT)/plans/
 	cd dist && zip -qr caffe-windows-kit.zip windows
 	@echo "kit: dist/caffe-windows-kit.zip"

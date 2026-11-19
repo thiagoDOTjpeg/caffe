@@ -2,6 +2,8 @@
 
 Caffè Studio is the terminal environment for supervising and working
 alongside Caffè's agents. To use it, read the [user guide](user-guide.md).
+What is delivered and what is still open is at the top of
+[roadmap.md](roadmap.md).
 
 The planning documents, in this order:
 

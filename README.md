@@ -22,7 +22,7 @@ laptop restarts. Running several agents by hand adds new problems — they edit
 the same files, and "done" means whatever each one says it means.
 
 Caffè takes over that coordination and keeps the decisions that matter with
-you: it never merges anything.
+you: nothing is merged unless you approve the branch and confirm the merge.
 
 ## Core capabilities
 
@@ -45,6 +45,13 @@ you: it never merges anything.
   the run is flagged interrupted and can be resumed without repeating finished
   work or duplicating running work.
 - **A consolidated report** per run, plus the event log behind it.
+- **Integration you decide.** Approve or reject each branch; an approved one
+  is merged into your current branch only after a conflict-free preview and
+  your confirmation. Nothing is pushed.
+- **Caffè Studio.** A terminal UI to follow runs live, attach to agents,
+  review and edit worktrees (safely, with a lease agents respect), run tests,
+  navigate Go code with `gopls`, debug tests with Delve and integrate
+  branches. See the [user guide](docs/studio/user-guide.md).
 
 ## Architecture
 
@@ -61,8 +68,14 @@ internal/planner          planning provider abstraction and plan parsing
 internal/agents           one agent execution end to end; prompt rendering
 internal/runtime          runtime adapter interface, in-memory fake
 internal/runtime/herdr    the Herdr adapter
-internal/git              worktrees, diffs, safe cleanup
+internal/git              worktrees, diffs, merges, safe cleanup
 internal/persistence      SQLite store and migrations
+internal/service          application API for the CLI and Studio
+internal/studio           Caffè Studio, the terminal UI
+internal/session          command sessions (process trees, output buffers)
+internal/proctree         a command and everything it starts, killed as one
+internal/lsp, internal/dap  language server and debug adapter clients
+internal/frame            Content-Length framing shared by lsp and dap
 prompts                   role prompt templates
 ```
 
@@ -306,6 +319,10 @@ Nothing else is needed: no manual tags, no version file to edit.
 - Sign-in state of an agent cannot be detected up front.
 - `caffe config` is read-only; edit the YAML.
 - Token usage is not recorded.
+- Studio: code intelligence and debugging are configured for Go only
+  (`gopls`, `dlv`); interactive shells hand the whole terminal over instead
+  of running in a pane; `studio.mouse`, `reduce_motion` and `avatars` are not
+  used yet.
 
 ## Roadmap
 

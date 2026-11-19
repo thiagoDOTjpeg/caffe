@@ -17,14 +17,27 @@ internal/planner    LLMProvider interface, agent-backed provider, plan parsing,
 internal/agents     one agent execution end to end; prompt rendering
 internal/runtime    Runtime interface, in-memory Fake, secret redaction
 internal/runtime/herdr   Herdr CLI adapter
-internal/git        worktrees, diffs, safe cleanup
+internal/git        worktrees, diffs, merges, safe cleanup
 internal/persistence     SQLite store and migrations
+internal/service    application API: queries, commands, change watcher,
+                    detached run launcher, leases, integration
+internal/studio     Caffè Studio (Bubble Tea); internal/studio/edit is the
+                    editor buffer, internal/studio/ui layout and theme
+internal/session    command sessions for Studio
+internal/proctree   process trees: process group (Unix), job object (Windows)
+internal/lsp        LSP client and server manager (gopls)
+internal/dap        DAP client (Delve)
+internal/frame      Content-Length message framing for lsp and dap
 prompts             role prompt templates (embedded)
+spikes              throwaway programs behind ADRs (own modules)
 tests/integration   end-to-end test against a real Herdr (opt-in)
 ```
 
 Dependencies point inward: `core` knows `runtime.Runtime`, never Herdr.
-`contracts` depends on nothing.
+`contracts` depends on nothing. The CLI and Studio go through
+`internal/service`; Studio never imports the engine packages
+(`internal/studio/boundary_test.go`). Studio's design is in
+[docs/studio/architecture.md](studio/architecture.md).
 
 Deviations from the originally proposed tree, and why:
 
@@ -198,6 +211,12 @@ logs are files under `.caffe/artifacts/<run-id>/`, referenced from `artifacts`.
 
 Every run starts with `VACUUM INTO .caffe/backups/…` (newest five kept).
 
+Migrations: `001_init` (runs, tasks, executions, agents, artifacts, events),
+`002_worktree_leases` (who may write in a worktree, see Role policies),
+`003_integration_decisions` (approve, reject and merged decisions, kept as a
+history). Readers such as Studio open a second, read-only connection; events
+have a monotonic `seq`, so consumers read them incrementally.
+
 ## Recovery
 
 A run's owning process writes a heartbeat every 2 s. On startup every command
@@ -252,7 +271,10 @@ Agents are untrusted executors.
   commit, reset or remove anything outside `git.worktree_directory`. Report
   files must be regular files (no symlinks) under 1 MB.
 - **Dialogs**: trust, login and permission prompts are never answered.
-- **Merging**: not implemented. Worktree removal never forces and never
+- **Merging**: only through `caffe integrate` or Studio's Integration screen,
+  for an approved task of a finished run, into the branch checked out in the
+  main checkout, when it is clean and `git merge-tree` reports no conflict;
+  confirmed first, never pushed. Worktree removal never forces and never
   deletes branches.
 - **Logs**: prompt text is never logged (lengths only). Stored output and error
   text pass through a pattern-based redaction of credential-looking strings.

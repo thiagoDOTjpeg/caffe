@@ -2,8 +2,11 @@
 
 **Caffè Studio** — *Brew better software.*
 
-Status: **Proposed.** Nothing in this document is implemented yet unless it is
-marked otherwise. What exists today is described in [audit.md](audit.md).
+Status: **Implemented**, except embedded shells (M3b, blocked on a Windows
+run of the ADR-004 criteria) and the polish items PO-01 to PO-06 (see
+[backlog.md](backlog.md)). Where the implementation differs from the
+original design, this document says so.
+How to use it: [user-guide.md](user-guide.md).
 
 ---
 

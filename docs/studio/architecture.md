@@ -1,7 +1,11 @@
 # Caffè Studio — Architecture
 
-Status: **Proposed.** Builds on the existing engine described in
-[../architecture.md](../architecture.md) and audited in [audit.md](audit.md).
+Status: **Implemented**, except embedded shells (M3b, blocked on a Windows
+run of the ADR-004 criteria) and the polish items PO-01 to PO-06 (see
+[backlog.md](backlog.md)). Where the implementation differs from the
+original design, this document says so.
+Builds on the engine described in [../architecture.md](../architecture.md),
+as audited before Studio in [audit.md](audit.md).
 Technology choices are argued in [technical-decisions.md](technical-decisions.md)
 (ADR-*n*).
 
@@ -67,13 +71,20 @@ flowchart TB
 | Package | Status | Responsibility | May import |
 |---|---|---|---|
 | `internal/contracts`, `core`, `persistence`, `git`, `runtime`, `runtime/herdr`, `agents`, `planner`, `config` | Implemented | the engine | unchanged |
-| `internal/service` | Proposed | application API: queries, commands, change watcher, run launcher, view types | engine packages |
+| `internal/service` | Implemented | application API: queries, commands, change watcher, run launcher, view types, leases, integration | engine packages |
 | `internal/app` | Implemented → changed | CLI wiring; commands call `service` instead of `Store`/`RT` | `service`, `config` |
-| `internal/studio` | Proposed | Bubble Tea program: model, screens, layout, theme, action registry, key maps | `service`, `session`, `workspace`, `lsp`, `dap` — **never** `persistence`, `core`, `runtime`, `git` |
-| `internal/studio/workspace` | Proposed | buffers, file loading/saving, highlighting cache, search (via `rg`), file watching | `service` (for workspaces, leases, safe paths) |
-| `internal/session` | Proposed | process sessions: command (pipes) and shell (PTY / hand-off), process groups, ring buffers | stdlib, PTY library |
-| `internal/lsp` | Proposed | generic LSP client, server registry, document sync, diagnostics store | JSON-RPC library |
-| `internal/dap` | Proposed | generic DAP client, debug session lifecycle | DAP protocol types |
+| `internal/studio` | Implemented | Bubble Tea program: model, screens (including the workspace explorer, viewer, diff, search and file watching), action registry, key maps | `service`, `session`, `lsp`, `dap`, `studio/edit`, `studio/ui` — **never** `persistence`, `core`, `runtime`, `git` |
+| `internal/studio/edit` | Implemented | the editor buffer: insert/normal edits, grouped undo/redo, in-buffer search (saving goes through `service`) | stdlib |
+| `internal/studio/ui` | Implemented | layout regions, theme, action registry | Lip Gloss |
+| `internal/session` | Implemented | command sessions over pipes, process trees, ring buffers, log files (interactive shells are a hand-off, ADR-004) | `proctree` |
+| `internal/proctree` | Implemented | a command and everything it starts: process group (Unix), kill-on-close job object (Windows); shared with `core` | stdlib, `x/sys/windows` |
+| `internal/lsp` | Implemented | LSP client, server manager (one per language and root, LRU cap) | `frame` (no JSON-RPC library, ADR-006) |
+| `internal/dap` | Implemented | DAP client, Delve over `--client-addr` | `frame` (no `go-dap`, ADR-007) |
+| `internal/frame` | Implemented | `Content-Length` message framing | stdlib |
+
+The planned `internal/studio/workspace` package was not created: the
+workspace screens are part of `internal/studio`, and only the editor buffer,
+which has no UI, is a package of its own.
 
 An import-boundary test (`go list -deps`) fails the build if
 `internal/studio/...` imports an engine package directly.
@@ -193,9 +204,9 @@ sequenceDiagram
 
 `PRAGMA data_version` changes when *another* connection commits; reading it is
 a cheap local check, not a query over data. It is "polling" only in the sense
-of a timer; real reads happen only on change. (**Investigate** in M0: measure
-its cost under `modernc.org/sqlite` with WAL; fallback is watching the
-`caffe.db-wal` file with fsnotify.) Actions performed by Studio itself trigger
+of a timer; real reads happen only on change. (Measured in F-01 under
+`modernc.org/sqlite` with WAL: every commit is detected and the check is
+cheap; numbers in ADR-002.) Actions performed by Studio itself trigger
 an immediate refresh without waiting for the tick.
 
 ### 5.4 Guarantees
@@ -295,7 +306,7 @@ Rules:
 |---|---|---|---|
 | **Command** | tests, builds, validation, any argv | pipes, no PTY; argv only (no shell); output to ring buffer + log file | M3a |
 | **Hand-off shell / editor** | interactive shell, `$EDITOR`, runtime attach | Studio suspends and gives the whole terminal to the child; resumes on exit (ADR-004) | M2a/M3a |
-| **Embedded shell** | interactive shell inside a pane | PTY + terminal emulator (ADR-004) | M3b, **Investigate** |
+| **Embedded shell** | interactive shell inside a pane | PTY + terminal emulator (ADR-004) | M3b; spike EX-07 passed on Linux, blocked on Windows |
 | Agent session | an agent's terminal | **not a Studio session**: owned by the external runtime, shown read-only in the Agent Room or via attach | — |
 
 ### 8.2 Command sessions
