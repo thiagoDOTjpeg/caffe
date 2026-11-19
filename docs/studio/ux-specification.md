@@ -214,13 +214,16 @@ ran it). For agent-reported tests the Report tab shows
 │  1  command  caffe/0112dd6a/impl     go test ./...       exit 1      4.2s     │
 │  2  command  main                    make check          running     12s      │
 │  3  shell    caffe/0112dd6a/impl     $SHELL              running     3m       │
-│ [enter] focus  [n] new command  [s] new shell  [k] stop  [x] close            │
+│ [n] new command  [v] validation  [s] shell  [c] stop  [x] close  [enter] out │
 │ ─ #1 go test ./... ── exit 1 ───────────────────────────────────────────────  │
 │ --- FAIL: TestHello (0.00s)                                                    │
 │     hello_test.go:12: got "x", want "hello from herd"     ← enter opens file  │
 ```
 
 Agent sessions do **not** appear here; they live in the Agent Room.
+`s` hands the whole terminal to `$SHELL` in the selected workspace (ADR-004)
+and returns on exit; until M3b, shells are not rows of this list. `enter`
+moves a cursor through the output; `enter` on a `file:line` opens it.
 
 ### 2.8 Debugger (M5)
 

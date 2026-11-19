@@ -40,6 +40,8 @@ type source interface {
 	Search(ctx context.Context, workspaceID, query string, limit int) (*service.SearchResult, error)
 	Files(ctx context.Context, workspaceID string) (*service.FileList, error)
 	ReadFile(ctx context.Context, workspaceID, path string, max int64) (*service.FileContent, error)
+	ResolvePath(ctx context.Context, workspaceID, p string) (string, error)
+	ValidationCommands() []string
 }
 
 // Timings of architecture §7. Variables so tests can shrink them.

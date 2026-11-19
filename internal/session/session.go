@@ -42,6 +42,7 @@ const (
 // Info is a consistent copy of a session's state.
 type Info struct {
 	ID        int
+	Kind      string // what started it: "command", "validation", …
 	Workspace string // label shown next to the session
 	Dir       string
 	Argv      []string
@@ -83,11 +84,11 @@ func NewManager(logDir string) *Manager { return &Manager{logDir: logDir} }
 
 // Start runs argv in dir. A command that cannot start still becomes a
 // session, in state Failed, so the UI can show why.
-func (m *Manager) Start(workspace, dir string, argv []string) *Session {
+func (m *Manager) Start(kind, workspace, dir string, argv []string) *Session {
 	m.mu.Lock()
 	m.next++
 	s := &Session{done: make(chan struct{}), info: Info{
-		ID: m.next, Workspace: workspace, Dir: dir, Argv: argv,
+		ID: m.next, Kind: kind, Workspace: workspace, Dir: dir, Argv: argv,
 		State: Running, Code: -1, Started: time.Now(),
 	}}
 	m.sessions = append(m.sessions, s)

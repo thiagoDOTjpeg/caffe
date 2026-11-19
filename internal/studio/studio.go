@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"syscall"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -48,6 +50,10 @@ type Options struct {
 // guard has written the panic and stack to Dir. Runs started from Studio are
 // separate processes and are not affected by Studio exiting.
 func Run(ctx context.Context, svc *service.Service, p Project, opts Options) error {
+	// A closed terminal (SIGHUP) ends Studio like SIGINT/SIGTERM do, so the
+	// sessions are stopped instead of left running.
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGHUP)
+	defer stop()
 	guard := &crashGuard{dir: opts.Dir, log: opts.Log}
 	var src source
 	if svc != nil { // a nil *Service must not become a non-nil interface
@@ -55,6 +61,12 @@ func Run(ctx context.Context, svc *service.Service, p Project, opts Options) err
 	}
 	m := newModel(src, p, guard)
 	m.noProject = opts.NoProject
+	if svc != nil {
+		m.terms = newTerminals(filepath.Join(opts.Dir, "sessions"))
+		// Every exit path, panic and signal included, ends the sessions
+		// (NFR-R4); quitting normally asked first.
+		defer m.terms.mgr.StopAll()
+	}
 	if err := m.registry.Validate(); err != nil {
 		return err // a programming error: refuse to start with ambiguous keys
 	}

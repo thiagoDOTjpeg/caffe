@@ -65,7 +65,7 @@ func TestOutputExitCodeAndLog(t *testing.T) {
 	m := NewManager(filepath.Join(t.TempDir(), "sessions"))
 	var notified atomic.Int32
 	m.Notify = func(int) { notified.Add(1) }
-	s := m.Start("main", t.TempDir(), []string{os.Args[0], "lines", "3", "4"})
+	s := m.Start("command", "main", t.TempDir(), []string{os.Args[0], "lines", "3", "4"})
 	info := wait(t, s)
 	if info.State != Exited || info.Code != 4 || info.Err != nil || info.Ended.IsZero() {
 		t.Fatalf("info: %+v", info)
@@ -92,7 +92,7 @@ func TestOutputExitCodeAndLog(t *testing.T) {
 
 func TestBufferIsBounded(t *testing.T) {
 	m := NewManager(t.TempDir())
-	s := m.Start("main", t.TempDir(), []string{os.Args[0], "lines", strconv.Itoa(BufferLines + 500), "0"})
+	s := m.Start("command", "main", t.TempDir(), []string{os.Args[0], "lines", strconv.Itoa(BufferLines + 500), "0"})
 	wait(t, s)
 	lines := s.Lines()
 	if len(lines) != BufferLines {
@@ -106,12 +106,12 @@ func TestBufferIsBounded(t *testing.T) {
 
 func TestStartFailureIsASession(t *testing.T) {
 	m := NewManager(t.TempDir())
-	s := m.Start("main", t.TempDir(), []string{filepath.Join(t.TempDir(), "no-such-binary")})
+	s := m.Start("command", "main", t.TempDir(), []string{filepath.Join(t.TempDir(), "no-such-binary")})
 	info := wait(t, s)
 	if info.State != Failed || info.Code != -1 || info.Err == nil {
 		t.Fatalf("info: %+v", info)
 	}
-	if s := m.Start("main", t.TempDir(), nil); wait(t, s).State != Failed {
+	if s := m.Start("command", "main", t.TempDir(), nil); wait(t, s).State != Failed {
 		t.Fatal("empty argv started")
 	}
 }
@@ -125,7 +125,7 @@ func TestStopLeavesNoProcessBehind(t *testing.T) {
 	for i := range 2 {
 		f := filepath.Join(dir, fmt.Sprintf("pid-%d", i))
 		pidFiles = append(pidFiles, f)
-		m.Start("main", dir, []string{os.Args[0], "spawn", f})
+		m.Start("command", "main", dir, []string{os.Args[0], "spawn", f})
 	}
 	var pids []int
 	for _, f := range pidFiles {

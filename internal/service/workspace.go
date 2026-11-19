@@ -59,3 +59,9 @@ func (s *Service) Workspaces(ctx context.Context) ([]Workspace, error) {
 	}
 	return all, nil
 }
+
+// ValidationCommands are the configured validation.commands, for running
+// them by hand in a workspace (EX-03).
+func (s *Service) ValidationCommands() []string {
+	return append([]string(nil), s.cfg.Validation.Commands...)
+}

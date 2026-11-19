@@ -427,19 +427,19 @@ Target decided 2026-11-18: Linux + Windows; macOS out of scope.
 ### [x] EX-01 · `internal/session`: command sessions
 - **P1 · L · Depends:** — · **Description:** argv sessions, process group, ring buffer, log file, batched output messages, stop (TERM→KILL). **Tests:** orphan check; buffer bound; batching.
 
-### EX-02 · Terminal Manager screen
+### [x] EX-02 · Terminal Manager screen
 - **P1 · M · Depends:** EX-01, CC-04
 
-### EX-03 · Run validation commands in a workspace
+### [x] EX-03 · Run validation commands in a workspace
 - **P1 · S · Depends:** EX-01, WS-01 · **Acceptance:** same commands as `validation.commands`, labelled as a manual run (not recorded as a task execution).
 
-### EX-04 · `file:line` links
+### [x] EX-04 · `file:line` links
 - **P1 · S · Depends:** EX-02, WS-03 · **Tests:** Go test output, compiler errors, stack traces; links outside the workspace refused.
 
-### EX-05 · Shell hand-off
+### [x] EX-05 · Shell hand-off
 - **P1 · S · Depends:** CC-01, WS-01
 
-### EX-06 · Session cleanup on quit and signals
+### [x] EX-06 · Session cleanup on quit and signals
 - **P1 · S · Depends:** EX-01 · **Acceptance:** quit confirms when sessions run; nothing survives.
 
 ### EX-07 · Spike: embedded PTY pane

@@ -46,7 +46,7 @@ func actions() (*ui.Registry, map[string]handler) {
 	r.Group("w", "workspace")
 
 	add(ui.Action{ID: "app.quit", Title: "Quit Caffè Studio", Scope: g, Keys: []string{"ctrl+q", "ctrl+c"}},
-		func(m model) (model, tea.Cmd) { return m, tea.Quit })
+		func(m model) (model, tea.Cmd) { return m.quit() })
 	add(ui.Action{ID: "help.toggle", Title: "Show the keys of this view", Scope: g, Keys: []string{"?"}},
 		func(m model) (model, tea.Cmd) { return m.toggleOverlay(overlayHelp), nil })
 	add(ui.Action{ID: "palette.open", Title: "Command palette", Scope: g, Keys: []string{":", "ctrl+p"}},
@@ -199,6 +199,38 @@ func actions() (*ui.Registry, map[string]handler) {
 			}
 			return m, nil
 		})
+	xt := ui.Scope("terminals")
+	xo := ui.Scope("termout")
+	tmv := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.termMove(d), nil } }
+	tsc := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.termScroll(d), nil } }
+	termNew := func(m model) (model, tea.Cmd) { return m.termNew() }
+	termVal := func(m model) (model, tea.Cmd) { return m.termValidate() }
+	shell := func(m model) (model, tea.Cmd) { return m.openShell() }
+	add(ui.Action{ID: "terminals.down", Title: "Next session", Scope: xt, Keys: []string{"j", "down"}}, tmv(1))
+	add(ui.Action{ID: "terminals.up", Title: "Previous session", Scope: xt, Keys: []string{"k", "up"}}, tmv(-1))
+	add(ui.Action{ID: "terminals.new", Title: "Run a command", Scope: xt, Keys: []string{"n"}}, termNew)
+	add(ui.Action{ID: "terminals.validate", Title: "Run the validation commands", Scope: xt, Keys: []string{"v"}}, termVal)
+	add(ui.Action{ID: "terminals.shell", Title: "Open a shell in the workspace", Scope: xt, Keys: []string{"s"}}, shell)
+	add(ui.Action{ID: "terminals.stop", Title: "Stop the session", Scope: xt, Keys: []string{"c"}},
+		func(m model) (model, tea.Cmd) { return m.termStop() })
+	add(ui.Action{ID: "terminals.close", Title: "Close the session", Scope: xt, Keys: []string{"x"}},
+		func(m model) (model, tea.Cmd) { return m.termClose() })
+	add(ui.Action{ID: "terminals.focus", Title: "Move through the output (links)", Scope: xt, Keys: []string{"enter", "l", "right"}},
+		func(m model) (model, tea.Cmd) { return m.termFocus(), nil })
+	add(ui.Action{ID: "terminals.pageup", Title: "Scroll the output up", Scope: xt, Keys: []string{"ctrl+u", "pgup"}}, tsc(-20))
+	add(ui.Action{ID: "terminals.pagedown", Title: "Scroll the output down", Scope: xt, Keys: []string{"ctrl+d", "pgdown"}}, tsc(20))
+	add(ui.Action{ID: "terminals.end", Title: "Follow the output", Scope: xt, Keys: []string{"G", "end"}},
+		func(m model) (model, tea.Cmd) { m.terms.scroll = 0; return m, nil })
+	add(ui.Action{ID: "termout.down", Title: "Next line", Scope: xo, Keys: []string{"j", "down"}}, tmv(1))
+	add(ui.Action{ID: "termout.up", Title: "Previous line", Scope: xo, Keys: []string{"k", "up"}}, tmv(-1))
+	add(ui.Action{ID: "termout.pagedown", Title: "Half a page down", Scope: xo, Keys: []string{"ctrl+d", "pgdown"}}, tmv(20))
+	add(ui.Action{ID: "termout.pageup", Title: "Half a page up", Scope: xo, Keys: []string{"ctrl+u", "pgup"}}, tmv(-20))
+	add(ui.Action{ID: "termout.top", Title: "First line", Scope: xo, Keys: []string{"g", "home"}}, tmv(-1<<30))
+	add(ui.Action{ID: "termout.bottom", Title: "Last line", Scope: xo, Keys: []string{"G", "end"}}, tmv(1<<30))
+	add(ui.Action{ID: "termout.open", Title: "Open the file:line of this line", Scope: xo, Keys: []string{"enter", "o"}},
+		func(m model) (model, tea.Cmd) { return m.termOpenLink() })
+	add(ui.Action{ID: "termout.back", Title: "Back to the sessions", Scope: xo, Keys: []string{"h", "left"}},
+		func(m model) (model, tea.Cmd) { m.terms.focus = false; return m, nil })
 	ds := ui.Scope("diff")
 	dscroll := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.diffScroll(d), nil } }
 	dfile := func(d int) handler { return func(m model) (model, tea.Cmd) { return m.diffFile(d), nil } }
@@ -303,6 +335,9 @@ func (m model) scope() ui.Scope {
 	if m.screen == screenWorkspace && (m.tree.focused || m.file == nil) {
 		return "explorer"
 	}
+	if m.screen == screenTerminals && m.terms.focus {
+		return "termout"
+	}
 	return ui.Scope(strings.ToLower(screenNames[m.screen]))
 }
 
@@ -336,6 +371,9 @@ func (m model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.events.typing {
 		return m.eventsFilterKey(msg)
+	}
+	if m.screen == screenTerminals && m.terms.typing {
+		return m.termInputKey(msg)
 	}
 	if m.screen == screenRuns && m.runs.filtering {
 		return m.runsFilterKey(msg)

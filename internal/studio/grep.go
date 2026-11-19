@@ -72,11 +72,7 @@ func (m model) grepKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if g.sel < len(g.res.Hits) {
 			h := g.res.Hits[g.sel]
 			m.overlay = overlayNone
-			m.screen, m.diff, m.inspect, m.report = screenWorkspace, nil, nil, nil
-			m, read := m.openFile(g.ws, h.Path)
-			m.file.scroll = max(h.Line-3, 0) // a little context above the hit
-			m, tree := m.loadTree()
-			return m, tea.Batch(read, tree)
+			return m.openAt(g.ws, h.Path, h.Line)
 		}
 	case "up", "ctrl+k":
 		g.sel = max(0, g.sel-1)

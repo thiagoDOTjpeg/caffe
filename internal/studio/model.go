@@ -51,7 +51,8 @@ type model struct {
 	fileGen  int       // identifies the open file's watch chain
 	file     *viewer   // the active buffer; always one of tabs
 	tabs     []*viewer // open buffers, in tab order
-	split    *viewer   // shown left of the active buffer; nil: no split // the Workspace screen's open file; nil: none
+	split    *viewer   // shown left of the active buffer; nil: no split
+	terms    terminals // the Terminal Manager's sessions
 	rt       rtObs     // last runtime status of the agents on screen
 	watcher  pauser    // paused while the terminal is handed over
 	toastSeq int
@@ -86,7 +87,7 @@ func (m model) Init() tea.Cmd {
 	if m.src == nil {
 		return nil
 	}
-	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src), liveTick(0))
+	return tea.Batch(m.live.load(m.src), waitChange(m.changes), checkRuntime(m.src), liveTick(0), waitSession(m.terms.notes))
 }
 
 // Update is guarded: a panic anywhere below is written to the crash log
@@ -147,6 +148,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateReport(msg), nil
 	case toastExpiredMsg:
 		return m.expireToast(msg.id), nil
+	case sessionMsg, termStartedMsg, termEndedMsg, termLinkMsg, shellReadyMsg, shellDoneMsg:
+		return m.updateTerminals(msg)
 	case healthMsg, healthTickMsg:
 		return m.updateHealth(msg)
 	}
@@ -203,6 +206,8 @@ func (m model) view() tea.View {
 			main = m.runsScreen(l.Main.W)
 		case m.screen == screenWorkspace:
 			main = m.workspaceScreen(l.Main.W, h)
+		case m.screen == screenTerminals:
+			main = m.terminalsScreen(l.Main.W, h)
 		}
 		if stale != "" {
 			main = " " + m.theme.Render(ui.ToneWarn, stale) + "\n" + main

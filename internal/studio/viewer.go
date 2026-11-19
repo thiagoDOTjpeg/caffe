@@ -60,6 +60,17 @@ func (m model) openFile(ws, path string) (model, tea.Cmd) {
 	return m, m.readFile(ws, path)
 }
 
+// openAt shows path of workspace ws on the Workspace screen at line.
+func (m model) openAt(ws, path string, line int) (model, tea.Cmd) {
+	m.screen, m.diff, m.inspect, m.report = screenWorkspace, nil, nil, nil
+	m, read := m.openFile(ws, path)
+	if m.file != nil {
+		m.file.scroll = max(line-3, 0) // a little context above the line
+	}
+	m, tree := m.loadTree()
+	return m, tea.Batch(read, tree)
+}
+
 // readFile (re)reads a buffer; the text on screen stays until it arrives.
 func (m model) readFile(ws, path string) tea.Cmd {
 	src := m.src

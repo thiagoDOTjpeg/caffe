@@ -26,22 +26,24 @@ type fakeSource struct {
 	err    error
 	afters []int64 // EventsSince calls
 
-	report    string
-	started   []service.StartRunRequest
-	calls     []string
-	cmdErr    error
-	output    map[string]*service.AgentOutput
-	outErr    error
-	rtObs     map[string]service.RuntimeObservation
-	outCalls  int
-	attachArg []string // nil: the runtime cannot attach
-	execs     map[string]*service.ExecutionDetail
-	prompts   map[string]string // execution id → prompt text
-	artifacts map[string]string // artifact id → text
-	ws        []service.Workspace
-	files     map[string]string // "workspace:path" → text
-	lists     map[string]*service.FileList
-	diffs     map[string]*service.Diff
+	report     string
+	started    []service.StartRunRequest
+	calls      []string
+	cmdErr     error
+	output     map[string]*service.AgentOutput
+	outErr     error
+	rtObs      map[string]service.RuntimeObservation
+	outCalls   int
+	attachArg  []string // nil: the runtime cannot attach
+	execs      map[string]*service.ExecutionDetail
+	prompts    map[string]string // execution id → prompt text
+	artifacts  map[string]string // artifact id → text
+	ws         []service.Workspace
+	files      map[string]string // "workspace:path" → text
+	lists      map[string]*service.FileList
+	diffs      map[string]*service.Diff
+	dir        string   // ResolvePath of any workspace; "": not found
+	validation []string // ValidationCommands
 }
 
 func (f *fakeSource) ReadFile(_ context.Context, ws, path string, max int64) (*service.FileContent, error) {
@@ -465,4 +467,19 @@ func TestChooseRun(t *testing.T) {
 	if got := chooseRun(runs[:2], ""); got != "c" {
 		t.Errorf("no active run: %q", got)
 	}
+}
+
+func (f *fakeSource) ResolvePath(_ context.Context, ws, p string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.dir == "" {
+		return "", service.ErrNotFound
+	}
+	return f.dir, nil
+}
+
+func (f *fakeSource) ValidationCommands() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.validation
 }
